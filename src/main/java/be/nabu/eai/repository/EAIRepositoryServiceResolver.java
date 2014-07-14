@@ -5,9 +5,9 @@ import be.nabu.libs.services.api.DefinedServiceResolver;
 
 public class EAIRepositoryServiceResolver implements DefinedServiceResolver {
 
-	private EAIRepository repository;
+	private EAIResourceRepository repository;
 	
-	public EAIRepositoryServiceResolver(EAIRepository repository) {
+	public EAIRepositoryServiceResolver(EAIResourceRepository repository) {
 		this.repository = repository;
 	}
 	

@@ -7,16 +7,18 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.Node;
+import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 
 @XmlRootElement(name = "node")
-public class EAINode {
+@SuppressWarnings("rawtypes")
+public class EAINode implements Node {
 	
-	private Class<? extends ArtifactManager<?>> artifactManager;
-	private EAIRepository repository;
+	private Class<? extends ArtifactManager> artifactManager;
 	private Artifact artifact;
-	private String id;
 	private List<String> references;
+	private RepositoryEntry entry;
 	
 	/**
 	 * By default all nodes are leafs
@@ -29,6 +31,7 @@ public class EAINode {
 		// TODO
 	}
 	
+	@Override
 	@XmlTransient
 	public Artifact getArtifact() {
 		return artifact;
@@ -37,22 +40,7 @@ public class EAINode {
 		this.artifact = artifact;
 	}
 	
-	@XmlTransient
-	public String getId() {
-		return id;
-	}
-	public void setId(String id) {
-		this.id = id;
-	}
-	
-	@XmlTransient
-	public EAIRepository getRepository() {
-		return repository;
-	}
-	public void setRepository(EAIRepository repository) {
-		this.repository = repository;
-	}
-
+	@Override
 	@XmlAttribute
 	public boolean isLeaf() {
 		return leaf;
@@ -62,13 +50,14 @@ public class EAINode {
 	}
 
 	@XmlAttribute
-	public Class<? extends ArtifactManager<?>> getArtifactManager() {
+	public Class<? extends ArtifactManager> getArtifactManager() {
 		return artifactManager;
 	}
-	public void setArtifactManager(Class<? extends ArtifactManager<?>> artifactManager) {
+	public void setArtifactManager(Class<? extends ArtifactManager> artifactManager) {
 		this.artifactManager = artifactManager;
 	}
 
+	@Override
 	public List<String> getReferences() {
 		return references;
 	}
@@ -76,6 +65,7 @@ public class EAINode {
 		this.references = references;
 	}
 	
+	@Override
 	@XmlTransient
 	public Class<? extends Artifact> getArtifactClass() {
 		return newArtifactManager().getArtifactClass();
@@ -92,4 +82,12 @@ public class EAINode {
 			throw new RuntimeException(e);
 		}
 	}
+
+	@XmlTransient
+	public RepositoryEntry getEntry() {
+		return entry;
+	}
+	public void setEntry(RepositoryEntry entry) {
+		this.entry = entry;
+	}	
 }

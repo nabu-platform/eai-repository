@@ -5,9 +5,9 @@ import be.nabu.libs.types.api.DefinedTypeResolver;
 
 public class EAIRepositoryTypeResolver implements DefinedTypeResolver {
 
-	private EAIRepository repository;
+	private EAIResourceRepository repository;
 	
-	public EAIRepositoryTypeResolver(EAIRepository repository) {
+	public EAIRepositoryTypeResolver(EAIResourceRepository repository) {
 		this.repository = repository;
 	}
 	
