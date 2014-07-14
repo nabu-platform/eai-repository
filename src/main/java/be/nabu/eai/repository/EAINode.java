@@ -49,6 +49,7 @@ public class EAINode implements Node {
 		this.leaf = leaf;
 	}
 
+	@Override
 	@XmlAttribute
 	public Class<? extends ArtifactManager> getArtifactManager() {
 		return artifactManager;

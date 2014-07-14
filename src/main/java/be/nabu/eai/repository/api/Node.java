@@ -9,4 +9,7 @@ public interface Node {
 	public Artifact getArtifact();
 	public Class<? extends Artifact> getArtifactClass();
 	public boolean isLeaf();
+	
+	@SuppressWarnings("rawtypes")
+	public Class<? extends ArtifactManager> getArtifactManager();
 }
