@@ -75,4 +75,21 @@ public class EAINode {
 	public void setReferences(List<String> references) {
 		this.references = references;
 	}
+	
+	@XmlTransient
+	public Class<? extends Artifact> getArtifactClass() {
+		return newArtifactManager().getArtifactClass();
+	}
+	
+	private ArtifactManager<?> newArtifactManager() {
+		try {
+			return getArtifactManager().newInstance();
+		}
+		catch (InstantiationException e) {
+			throw new RuntimeException(e);
+		}
+		catch (IllegalAccessException e) {
+			throw new RuntimeException(e);
+		}
+	}
 }
