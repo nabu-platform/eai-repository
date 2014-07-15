@@ -2,6 +2,7 @@ package be.nabu.eai.repository;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -151,9 +152,17 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 	@Override
 	public Artifact resolve(String id) {
 		Node node = nodes.get(id);
-		return node != null 
-			? node.getArtifact()
-			: null;
+		try {
+			return node != null 
+				? node.getArtifact()
+				: null;
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+		catch (ParseException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	public String getId(ResourceContainer<?> container) {

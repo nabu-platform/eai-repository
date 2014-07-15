@@ -1,5 +1,7 @@
 package be.nabu.eai.repository;
 
+import java.io.IOException;
+import java.text.ParseException;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
@@ -33,7 +35,10 @@ public class EAINode implements Node {
 	
 	@Override
 	@XmlTransient
-	public Artifact getArtifact() {
+	public Artifact getArtifact() throws IOException, ParseException {
+		if (artifact == null) {
+			artifact = newArtifactManager().load(entry);
+		}
 		return artifact;
 	}
 	public void setArtifact(Artifact artifact) {

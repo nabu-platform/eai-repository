@@ -151,7 +151,6 @@ public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
 					readable.close();
 				}
 				repository.getEventDispatcher().fire(new NodeEvent(getId(), State.LOAD, true), this);
-				return node;
 			}
 			catch (IOException e) {
 				logger.error("Could not load node " + getId(), e);
