@@ -171,11 +171,11 @@ public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
 	public String getId() {
 		String id = "";
 		RepositoryEntry entry = this;
-		while (entry != null) {
+		while (entry.getParent() != null) {
 			if (!id.isEmpty()) {
 				id = "." + id;
 			}
-			id = "." + entry.getName();
+			id = entry.getName() + id;
 			entry = entry.getParent();
 		}
 		return id;
