@@ -1,4 +1,4 @@
-package be.nabu.eai.repository.handlers;
+package be.nabu.eai.repository.managers;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;

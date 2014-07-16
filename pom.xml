@@ -80,6 +80,10 @@
 			<groupId>be.nabu.libs.services</groupId>
 			<artifactId>services-pojo</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.services</groupId>
+			<artifactId>services-vm</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>be.nabu.libs.resources</groupId>
