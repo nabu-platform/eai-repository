@@ -21,6 +21,8 @@ import be.nabu.libs.services.vm.VMService;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
+import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
+import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanType;
 import be.nabu.libs.validator.api.ValidationMessage;
@@ -46,11 +48,11 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	@Override
 	public VMService load(ResourceEntry<?> entry) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
-		XMLBinding pipelineBinding = new XMLBinding(new BeanType<Pipeline>(Pipeline.class), Charset.forName("UTF-8"));
+		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "pipeline.xml", false));
-		Pipeline pipeline = null;
+		Pipeline pipeline = new Pipeline();
 		try {
-			pipeline = TypeUtils.getAsBean(pipelineBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Pipeline.class);
+			unmarshaller.unmarshal(IOUtils.toInputStream(readable), pipeline);
 		}
 		finally {
 			readable.close();
@@ -69,15 +71,16 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		
 		SimpleVMServiceDefinition definition = new SimpleVMServiceDefinition(pipeline);
 		definition.setRoot(sequence);
+		definition.setId(entry.getId());
 		return definition;
 	}
 
 	@Override
 	public List<ValidationMessage> save(ResourceEntry<?> entry, VMService artifact) throws IOException {
-		XMLBinding pipelineBinding = new XMLBinding(new BeanType<Pipeline>(Pipeline.class), Charset.forName("UTF-8"));
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) getResource(entry, "pipeline.xml", true));
 		try {
-			pipelineBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Pipeline>(artifact.getPipeline()));
+			XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
+			marshaller.marshal(IOUtils.toOutputStream(writable), artifact.getPipeline());
 		}
 		finally {
 			writable.close();
