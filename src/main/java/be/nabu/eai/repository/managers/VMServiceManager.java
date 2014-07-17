@@ -14,6 +14,7 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.SimpleServiceRuntime.SimpleServiceContext;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.Sequence;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
@@ -30,7 +31,6 @@ import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
-import be.nabu.libs.services.SimpleServiceRuntime.SimpleServiceContext;
 
 public class VMServiceManager implements ArtifactManager<VMService> {
 
@@ -50,14 +50,13 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		// we need to load the pipeline which is basically a structure
 		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "pipeline.xml", false));
-		Pipeline pipeline = new Pipeline();
+		Pipeline pipeline = new Pipeline(null, null);
 		try {
 			unmarshaller.unmarshal(IOUtils.toInputStream(readable), pipeline);
 		}
 		finally {
 			readable.close();
 		}
-		
 		// next we load the root sequence
 		XMLBinding sequenceBinding = new XMLBinding(new BeanType<Sequence>(Sequence.class), Charset.forName("UTF-8"));
 		readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false));
