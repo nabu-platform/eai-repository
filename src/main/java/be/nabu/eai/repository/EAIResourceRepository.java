@@ -1,6 +1,8 @@
 package be.nabu.eai.repository;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.Arrays;
@@ -14,10 +16,12 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.EventDispatcherImpl;
 import be.nabu.libs.events.api.EventDispatcher;
+import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -58,9 +62,14 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, "class", "package", "import", "for", "while", "if", "do", "else" });
 	private Charset charset = Charset.forName("UTF-8");
 	
+	public EAIResourceRepository() throws IOException, URISyntaxException {
+		this((ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", ".")), null));
+	}
+	
 	public EAIResourceRepository(ManageableContainer<?> root) {
 		this.resourceRoot = root;
 		this.repositoryRoot = new RepositoryEntry(this, root, null, "/");
+		ArtifactResolverFactory.getInstance().addResolver(this);
 		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
