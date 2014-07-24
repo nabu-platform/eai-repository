@@ -34,7 +34,7 @@ import be.nabu.utils.io.api.WritableContainer;
 
 public class VMServiceManager implements ArtifactManager<VMService> {
 
-	private Resource getResource(ResourceEntry<?> entry, String name, boolean create) throws IOException {
+	private Resource getResource(ResourceEntry entry, String name, boolean create) throws IOException {
 		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null && create) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
@@ -46,7 +46,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 	
 	@Override
-	public VMService load(ResourceEntry<?> entry) throws IOException, ParseException {
+	public VMService load(ResourceEntry entry) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
 		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "pipeline.xml", false));
@@ -75,7 +75,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry<?> entry, VMService artifact) throws IOException {
+	public List<ValidationMessage> save(ResourceEntry entry, VMService artifact) throws IOException {
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) getResource(entry, "pipeline.xml", true));
 		try {
 			XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();

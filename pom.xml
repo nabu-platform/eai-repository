@@ -27,6 +27,19 @@
 			<groupId>be.nabu.utils</groupId>
 			<artifactId>utils-http</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.maven</groupId>
+			<artifactId>maven-repository</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.maven</groupId>
+			<artifactId>maven-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.artifacts</groupId>
+			<artifactId>artifacts-maven</artifactId>
+		</dependency>
+
 
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>

@@ -12,6 +12,8 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
@@ -39,7 +41,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * A repository entry is basically a container that can either contain a node, child entries or both
  * In the simplest case this maps to a "folder" on the file system
  */
-public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
+public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -50,7 +52,7 @@ public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
 	private EAINode node;
 	private ResourceRepository repository;
 	
-	private Map<String, RepositoryEntry> children;
+	private Map<String, Entry> children;
 	
 	public RepositoryEntry(ResourceRepository repository, ResourceContainer<?> container, RepositoryEntry parent, String name) {
 		this.repository = repository;
@@ -77,18 +79,18 @@ public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
 	}
 
 	@Override
-	public Iterator<RepositoryEntry> iterator() {
+	public Iterator<Entry> iterator() {
 		return getChildren().values().iterator();
 	}
 
 	@Override
-	public RepositoryEntry getChild(String name) {
+	public Entry getChild(String name) {
 		return getChildren().get(name);
 	}
 	
-	private Map<String, RepositoryEntry> getChildren() {
+	private Map<String, Entry> getChildren() {
 		if (children == null) {
-			children = new LinkedHashMap<String, RepositoryEntry>();
+			children = new LinkedHashMap<String, Entry>();
 			if (!isLeaf()) {
 				for (Resource child : container) {
 					if (child instanceof ResourceContainer && !repository.isInternal(container)) {
@@ -193,6 +195,20 @@ public class RepositoryEntry implements ResourceEntry<RepositoryEntry> {
 	@Override
 	public ResourceContainer<?> getContainer() {
 		return container;
+	}
+
+	@Override
+	public void addChildren(Entry...children) {
+		for (Entry child : children) {
+			getChildren().put(child.getName(), child);
+		}
+	}
+
+	@Override
+	public void removeChildren(String...children) {
+		for (String name : children) {
+			getChildren().remove(name);
+		}
 	}
 
 }

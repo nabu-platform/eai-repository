@@ -9,8 +9,9 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Node;
-import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 
 @XmlRootElement(name = "node")
@@ -20,7 +21,7 @@ public class EAINode implements Node {
 	private Class<? extends ArtifactManager> artifactManager;
 	private Artifact artifact;
 	private List<String> references;
-	private RepositoryEntry entry;
+	private Entry entry;
 	
 	/**
 	 * By default all nodes are leafs
@@ -37,7 +38,7 @@ public class EAINode implements Node {
 	@XmlTransient
 	public Artifact getArtifact() throws IOException, ParseException {
 		if (artifact == null) {
-			artifact = newArtifactManager().load(entry);
+			artifact = newArtifactManager().load((ResourceEntry) entry);
 		}
 		return artifact;
 	}
@@ -74,7 +75,7 @@ public class EAINode implements Node {
 	@Override
 	@XmlTransient
 	public Class<? extends Artifact> getArtifactClass() {
-		return newArtifactManager().getArtifactClass();
+		return artifact != null ? artifact.getClass() : newArtifactManager().getArtifactClass();
 	}
 	
 	private ArtifactManager<?> newArtifactManager() {
@@ -90,10 +91,10 @@ public class EAINode implements Node {
 	}
 
 	@XmlTransient
-	public RepositoryEntry getEntry() {
+	public Entry getEntry() {
 		return entry;
 	}
-	public void setEntry(RepositoryEntry entry) {
+	public void setEntry(Entry entry) {
 		this.entry = entry;
 	}	
 }

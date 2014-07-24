@@ -26,7 +26,7 @@ import be.nabu.utils.io.api.WritableContainer;
 public class StructureManager implements ArtifactManager<DefinedStructure> {
 
 	@Override
-	public DefinedStructure load(ResourceEntry<?> entry) throws IOException, ParseException {
+	public DefinedStructure load(ResourceEntry entry) throws IOException, ParseException {
 		Resource resource = entry.getContainer().getChild("structure.xml");
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find structure.xml");
@@ -45,7 +45,7 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry<?> entry, DefinedStructure artifact) throws IOException {
+	public List<ValidationMessage> save(ResourceEntry entry, DefinedStructure artifact) throws IOException {
 		Resource resource = entry.getContainer().getChild("structure.xml");
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create("structure.xml", "application/xml");
