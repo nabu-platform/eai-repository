@@ -17,6 +17,7 @@ import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.DefinedStructure;
+import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
@@ -27,16 +28,21 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 
 	@Override
 	public DefinedStructure load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
-		Resource resource = entry.getContainer().getChild("structure.xml");
+		DefinedStructure structure = (DefinedStructure) parse(entry, "structure.xml");
+		structure.setId(entry.getId());
+		return structure;
+	}
+
+	public static Structure parse(ResourceEntry entry, String name) throws FileNotFoundException, IOException, ParseException {
+		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find structure.xml");
 		}
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 		try {
 			XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
-			// evil!
-			DefinedStructure structure = (DefinedStructure) unmarshaller.unmarshal(IOUtils.toInputStream(readable));
-			structure.setId(entry.getId());
+			// evil cast!
+			Structure structure = (Structure) unmarshaller.unmarshal(IOUtils.toInputStream(readable));
 			return structure;
 		}
 		finally {
@@ -46,9 +52,13 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 
 	@Override
 	public List<ValidationMessage> save(ResourceEntry entry, DefinedStructure artifact) throws IOException {
-		Resource resource = entry.getContainer().getChild("structure.xml");
+		return format(entry, artifact, "structure.xml");
+	}
+
+	public static List<ValidationMessage> format(ResourceEntry entry, Structure artifact, String name) throws IOException {
+		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null) {
-			resource = ((ManageableContainer<?>) entry.getContainer()).create("structure.xml", "application/xml");
+			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
 		}
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) resource);
 		try {
