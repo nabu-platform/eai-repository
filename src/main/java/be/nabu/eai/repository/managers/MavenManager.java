@@ -41,7 +41,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 	
 	@Override
-	public MavenArtifact load(ResourceEntry entry) throws IOException, ParseException {
+	public MavenArtifact load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
 		String id = entry.getId();
 		int index = id.lastIndexOf('.');
 		if (index < 0) {
@@ -89,11 +89,11 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		for (String childId : keys) {
 			ModifiableEntry parent = getParent(root, childId, false);
 			int index = childId.lastIndexOf('.');
-			String childName = index < 0 ? childId : childId.substring(index + 1);
+			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
 			EAINode node = new EAINode();
 			node.setArtifact(artifact.getChildren().get(childId));
 			node.setLeaf(true);
-			MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, root.getId() + "." + childId, childName);
+			MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
 			node.setEntry(child);
 			node.setEntry(parent);
 			parent.addChildren(child);
@@ -104,10 +104,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		// resolve a parent path
 		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
-			Entry entry = root.getChild(path.getName());
+			Entry entry = root.getChild(prettify(path.getName()));
 			// if it's null, create a new entry
 			if (entry == null) {
-				entry = new MemoryEntry(root.getRepository(), root, null, root.getId() + "." + path.getName(), path.getName());
+				entry = new MemoryEntry(root.getRepository(), root, null, root.getId() + "." + prettify(path.getName()), prettify(path.getName()));
 				root.addChildren(entry);
 			}
 			else if (entry.isNode()) {
@@ -118,6 +118,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		}
 		return root;
 	}
+	
+	private String prettify(String name) {
+		return name.substring(0, 1).toLowerCase() + name.substring(1);
+	}
 
 	public void remove(ModifiableEntry root, MavenArtifact artifact) throws IOException {
 		if (root.getParent() == null) {
@@ -127,7 +131,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		for (String id : artifact.getChildren().keySet()) {
 			int index = id.lastIndexOf('.');
 			ModifiableEntry parent = index < 0 ? root : getParent(root, id, false);
-			String name = index < 0 ? id : id.substring(index + 1);
+			String name = prettify(index < 0 ? id : id.substring(index + 1));
 			parent.removeChildren(name);
 			// if no children are remaining, remove parent as well
 			if (!parent.iterator().hasNext()) {

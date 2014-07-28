@@ -97,6 +97,10 @@
 			<groupId>be.nabu.libs.services</groupId>
 			<artifactId>services-vm</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.services</groupId>
+			<artifactId>services-jdbc</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>be.nabu.libs.resources</groupId>
@@ -116,5 +120,14 @@
 			<artifactId>events-impl</artifactId>
 		</dependency>
 
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>be.nabu.libs.artifacts</groupId>
+			<artifactId>artifacts-jdbc</artifactId>
+		</dependency>
 	</dependencies>
 </project>

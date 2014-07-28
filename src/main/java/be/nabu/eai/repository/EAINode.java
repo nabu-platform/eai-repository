@@ -2,6 +2,7 @@ package be.nabu.eai.repository;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.xml.bind.annotation.XmlAttribute;
@@ -13,6 +14,7 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.validator.api.ValidationMessage;
 
 @XmlRootElement(name = "node")
 @SuppressWarnings("rawtypes")
@@ -22,6 +24,7 @@ public class EAINode implements Node {
 	private Artifact artifact;
 	private List<String> references;
 	private Entry entry;
+	private List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
 	
 	/**
 	 * By default all nodes are leafs
@@ -38,7 +41,8 @@ public class EAINode implements Node {
 	@XmlTransient
 	public Artifact getArtifact() throws IOException, ParseException {
 		if (artifact == null) {
-			artifact = newArtifactManager().load((ResourceEntry) entry);
+			messages.clear();
+			artifact = newArtifactManager().load((ResourceEntry) entry, messages);
 		}
 		return artifact;
 	}

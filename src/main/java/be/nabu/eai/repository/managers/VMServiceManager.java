@@ -46,7 +46,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 	
 	@Override
-	public VMService load(ResourceEntry entry) throws IOException, ParseException {
+	public VMService load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
 		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "pipeline.xml", false));
