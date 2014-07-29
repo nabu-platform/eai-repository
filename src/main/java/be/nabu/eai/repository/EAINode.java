@@ -21,6 +21,7 @@ import be.nabu.libs.validator.api.ValidationMessage;
 public class EAINode implements Node {
 	
 	private Class<? extends ArtifactManager> artifactManager;
+	private Class<? extends Artifact> artifactClass;
 	private Artifact artifact;
 	private List<String> references;
 	private Entry entry;
@@ -79,7 +80,10 @@ public class EAINode implements Node {
 	@Override
 	@XmlTransient
 	public Class<? extends Artifact> getArtifactClass() {
-		return artifact != null ? artifact.getClass() : newArtifactManager().getArtifactClass();
+		if (artifactClass == null) {
+			artifactClass = artifact != null ? artifact.getClass() : newArtifactManager().getArtifactClass();
+		}
+		return artifactClass;
 	}
 	
 	private ArtifactManager<?> newArtifactManager() {
@@ -100,5 +104,8 @@ public class EAINode implements Node {
 	}
 	public void setEntry(Entry entry) {
 		this.entry = entry;
-	}	
+	}
+	public void setArtifactClass(Class<? extends Artifact> artifactClass) {
+		this.artifactClass = artifactClass;
+	}
 }

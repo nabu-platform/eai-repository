@@ -9,8 +9,13 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.ArtifactRepositoryManager;
+import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
@@ -19,18 +24,19 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.jdbc.JDBCService;
 import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanType;
-import be.nabu.libs.types.structure.Structure;
+import be.nabu.libs.types.structure.DefinedStructure;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class JDBCServiceManager implements ArtifactManager<JDBCService> {
+public class JDBCServiceManager implements ArtifactManager<JDBCService>, ArtifactRepositoryManager<JDBCService> {
 
 	@Override
 	public JDBCService load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
@@ -49,8 +55,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService> {
 		finally {
 			readable.close();
 		}
-		service.setInput(StructureManager.parse(entry, "input.xml"));
-		service.setOutput(StructureManager.parse(entry, "output.xml"));
+		service.setParameters((DefinedStructure) StructureManager.parse(entry, "parameters.xml"));
+		service.setResults((DefinedStructure) StructureManager.parse(entry, "results.xml"));
 		return service;
 	}
 
@@ -59,8 +65,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService> {
 		JDBCServiceConfig config = new JDBCServiceConfig();
 		config.setConnectionId(artifact.getConnectionId());
 		config.setSql(artifact.getSql());
-		StructureManager.format(entry, (Structure) artifact.getInput(), "input.xml");
-		StructureManager.format(entry, (Structure) artifact.getOutput(), "output.xml");
+		StructureManager.format(entry, artifact.getParameters(), "parameters.xml");
+		StructureManager.format(entry, artifact.getResults(), "results.xml");
 		Resource resource = entry.getContainer().getChild("jdbcservice.xml");
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create("jdbcservice.xml", "application/xml");
@@ -101,5 +107,29 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService> {
 		public void setSql(String sql) {
 			this.sql = sql;
 		}
+	}
+
+	@Override
+	public void addChildren(ModifiableEntry parent, JDBCService artifact) throws IOException {
+		((EAINode) parent.getNode()).setLeaf(false);
+		
+		EAINode node = new EAINode();
+		node.setArtifactClass(DefinedType.class);
+		node.setArtifact(artifact.getParameters());
+		node.setLeaf(true);
+		Entry parameters = new MemoryEntry(parent.getRepository(), parent, node, parent.getId() + "." + JDBCService.PARAMETERS, JDBCService.PARAMETERS);
+		// need to explicitly set id (it was loaded from file)
+		artifact.getParameters().setId(parameters.getId());
+		node.setEntry(parameters);
+		parent.addChildren(parameters);
+		
+		node = new EAINode();
+		node.setArtifactClass(DefinedType.class);
+		node.setArtifact(artifact.getResults());
+		node.setLeaf(true);
+		Entry results = new MemoryEntry(parent.getRepository(), parent, node, parent.getId() + "." + JDBCService.RESULTS, JDBCService.RESULTS);
+		artifact.getResults().setId(results.getId());
+		node.setEntry(results);
+		parent.addChildren(results);
 	}
 }

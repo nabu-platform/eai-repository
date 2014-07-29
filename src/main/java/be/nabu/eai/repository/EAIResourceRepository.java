@@ -14,7 +14,9 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.managers.MavenManager;
@@ -177,6 +179,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		return charset;
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void load(Entry entry) {
 		for (Entry child : entry) {
 			if (child.isNode()) {
@@ -188,6 +191,23 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 				}
 				nodesByType.get(artifactClass).put(child.getId(), child.getNode());
 				nodes.put(child.getId(), child.getNode());
+				if (child instanceof ModifiableEntry && ArtifactRepositoryManager.class.isAssignableFrom(child.getNode().getArtifactManager())) {
+					try {
+						((ArtifactRepositoryManager) child.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) child, child.getNode().getArtifact());
+					}
+					catch (InstantiationException e) {
+						throw new RuntimeException(e);
+					}
+					catch (IllegalAccessException e) {
+						throw new RuntimeException(e);
+					}
+					catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+					catch (ParseException e) {
+						throw new RuntimeException(e);
+					}
+				}
 			}
 			else if (!child.isLeaf()) {
 				load(child);
