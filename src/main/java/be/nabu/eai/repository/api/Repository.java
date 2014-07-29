@@ -9,4 +9,5 @@ public interface Repository {
 	public RepositoryEntry getRoot();
 	public Charset getCharset();
 	public EventDispatcher getEventDispatcher();
+	public Node getNode(String id);
 }

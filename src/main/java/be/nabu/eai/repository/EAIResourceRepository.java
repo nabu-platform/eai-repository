@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.Charset;
+import java.security.Principal;
 import java.text.ParseException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -38,6 +39,7 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.api.ServiceContext;
+import be.nabu.libs.services.api.ServiceRuntime;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
@@ -158,6 +160,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		return resource;
 	}
 	
+	@Override
 	public Node getNode(String id) {
 		return nodes.get(id);
 	}
@@ -322,5 +325,9 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 				return (ArtifactResolver<T>) EAIResourceRepository.this;
 			}
 		};
+	}
+	
+	public ServiceRuntime newRuntime(Principal principal) {
+		return new EAIRepositoryRuntime(this, principal);
 	}
 }
