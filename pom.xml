@@ -101,6 +101,10 @@
 			<groupId>be.nabu.libs.services</groupId>
 			<artifactId>services-jdbc</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.services</groupId>
+			<artifactId>services-wsdl</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>be.nabu.libs.resources</groupId>

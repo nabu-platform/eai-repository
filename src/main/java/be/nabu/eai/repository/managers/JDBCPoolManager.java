@@ -40,7 +40,6 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 			Properties properties = new Properties();
 			properties.load(IOUtils.toInputStream(readable));
 			pool.setConfig(properties);
-			System.out.println("loaded config: " + pool.getConfig());
 			return pool;
 		}
 		finally {
