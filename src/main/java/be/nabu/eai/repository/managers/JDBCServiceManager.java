@@ -47,6 +47,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		}
 		XMLBinding binding = new XMLBinding(new BeanType<JDBCServiceConfig>(JDBCServiceConfig.class), Charset.forName("UTF-8"));
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
+		service.setParameters((DefinedStructure) StructureManager.parse(entry, "parameters.xml"));
+		service.setResults((DefinedStructure) StructureManager.parse(entry, "results.xml"));
 		try {
 			JDBCServiceConfig config = TypeUtils.getAsBean(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), JDBCServiceConfig.class);
 			service.setSql(config.getSql());
@@ -55,8 +57,6 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		finally {
 			readable.close();
 		}
-		service.setParameters((DefinedStructure) StructureManager.parse(entry, "parameters.xml"));
-		service.setResults((DefinedStructure) StructureManager.parse(entry, "results.xml"));
 		return service;
 	}
 
