@@ -41,6 +41,7 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 		try {
 			XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
+			unmarshaller.setIdToUnmarshal(entry.getId());
 			// evil cast!
 			Structure structure = (Structure) unmarshaller.unmarshal(IOUtils.toInputStream(readable));
 			return structure;
