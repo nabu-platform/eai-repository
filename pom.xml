@@ -8,6 +8,19 @@
 	<version>1.0-SNAPSHOT</version>
 	<name>eai-repository</name>
 
+	<build>
+		<plugins>
+                        <plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-compiler-plugin</artifactId>
+                                <configuration>
+                                        <source>1.6</source>
+                                        <target>1.6</target>
+                                </configuration>
+                        </plugin>
+                </plugins>
+        </build>
+
 	<parent>
 		<groupId>be.nabu.eai</groupId>
 		<artifactId>eai-common</artifactId>
