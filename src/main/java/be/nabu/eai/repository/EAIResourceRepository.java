@@ -48,7 +48,9 @@ import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
-import be.nabu.utils.http.HTTPServer;
+import be.nabu.utils.http.api.HTTPRequest;
+import be.nabu.utils.http.api.server.HTTPServer;
+import be.nabu.utils.http.server.DefaultHTTPServer;
 import be.nabu.utils.io.ContentTypeMap;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -275,7 +277,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 	}
 	
 	private void startMavenListener(int port, ResourceContainer<?> target) throws IOException {
-		HTTPServer server = new HTTPServer(port, 10);
+		HTTPServer server = new DefaultHTTPServer(port, 10, getEventDispatcher());
 		mavenRepository = new be.nabu.libs.maven.ResourceRepository(target, getEventDispatcher());
 		// everything in the "nabu" domain is considered internal
 		// TODO: allow configurable entries
@@ -305,8 +307,8 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 			}
 		}).filter(new EventHandler<DeleteResourceRepositoryEvent, Boolean>() {
 			@Override
-			public Boolean handle(DeleteResourceRepositoryEvent arg0) {
-				return arg0.isInternal();
+			public Boolean handle(DeleteResourceRepositoryEvent event) {
+				return !event.isInternal();
 			}
 		});
 		getEventDispatcher().subscribe(CreateResourceRepositoryEvent.class, new EventHandler<CreateResourceRepositoryEvent, Void>() {
@@ -325,11 +327,12 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 			}
 		}).filter(new EventHandler<CreateResourceRepositoryEvent, Boolean>() {
 			@Override
-			public Boolean handle(CreateResourceRepositoryEvent arg0) {
-				return arg0.isInternal();
+			public Boolean handle(CreateResourceRepositoryEvent event) {
+				return !event.isInternal();
 			}
 		});
-		server.addListener("/", new MavenListener(mavenRepository));
+		// no support for non-root calls atm!
+		server.getEventDispatcher().subscribe(HTTPRequest.class, new MavenListener(mavenRepository));
 		server.start();
 	}
 

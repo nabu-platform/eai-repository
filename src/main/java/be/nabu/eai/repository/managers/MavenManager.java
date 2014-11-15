@@ -33,7 +33,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	public MavenArtifact load(DomainRepository repository, Artifact artifact) {
 		try {
-			return new MavenArtifact(definedTypeResolver, new DependencyResolver(new URI("http://ibiblio.org/maven2")), repository, artifact.getGroupId() + "." + artifact.getArtifactId(), artifact);
+			return new MavenArtifact(definedTypeResolver, new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2")), repository, artifact.getGroupId() + "." + artifact.getArtifactId(), artifact);
 		}
 		catch (URISyntaxException e) {
 			throw new RuntimeException(e);
