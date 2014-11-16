@@ -38,6 +38,7 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
+import be.nabu.libs.resources.api.ResourceRoot;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.api.ServiceContext;
@@ -99,9 +100,13 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 			@Override
 			public void run() {
 				try {
-					URI uri = new URI(System.getProperty("maven.repository.uri", "file:/" + System.getProperty("user.home") + "/maven"));
-					System.out.println("Starting maven repository at " + uri);
-					startMavenListener(5555, (ResourceContainer<?>) ResourceFactory.getInstance().resolve(uri, null));
+					URI uri = new URI(System.getProperty("maven.repository.uri", "file:" + System.getProperty("user.home") + "/maven"));
+					logger.info("Starting maven repository at " + uri + " (TODO: add to settings)");
+					ResourceRoot mavenRoot = ResourceFactory.getInstance().resolve(uri, null);
+					if (mavenRoot == null) {
+						throw new RuntimeException("Can not find the maven root, currently hardcoded as: file:" + System.getProperty("user.home") + "/maven");
+					}
+					startMavenListener(5555, (ResourceContainer<?>) mavenRoot);
 				}
 				catch (URISyntaxException e) {
 					throw new RuntimeException(e);
@@ -185,7 +190,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 	private void load(Entry entry) {
 		for (Entry child : entry) {
 			if (child.isNode()) {
-				System.out.println("Loading " + child.getId());
+				logger.info("Loading entry: " + child.getId());
 				buildReferenceMap(child.getId(), child.getNode().getReferences());
 				Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
 				if (!nodesByType.containsKey(artifactClass)) {
@@ -286,7 +291,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		
 		// do an initial load of all internal artifacts
 		for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
-			System.out.println("Loading internal artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
+			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
 			MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
 			MavenArtifact artifact = manager.load(mavenRepository, internal);
 			manager.addChildren(getRoot(), artifact);
@@ -295,7 +300,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		getEventDispatcher().subscribe(DeleteResourceRepositoryEvent.class, new EventHandler<DeleteResourceRepositoryEvent, Void>() {
 			@Override
 			public Void handle(DeleteResourceRepositoryEvent event) {
-				System.out.println("Deleting artifact " + event.getArtifact().getArtifactId());
+				logger.info("Deleting maven artifact " + event.getArtifact().getArtifactId());
 				MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
 				try {
 					manager.remove(getRoot(), manager.load(mavenRepository, event.getArtifact()));
@@ -314,7 +319,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		getEventDispatcher().subscribe(CreateResourceRepositoryEvent.class, new EventHandler<CreateResourceRepositoryEvent, Void>() {
 			@Override
 			public Void handle(CreateResourceRepositoryEvent event) {
-				System.out.println("Installing artifact " + event.getArtifact().getArtifactId());
+				logger.info("Installing maven artifact " + event.getArtifact().getArtifactId());
 				MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
 				MavenArtifact artifact = manager.load(getMavenRepository(), event.getArtifact());
 				try {
