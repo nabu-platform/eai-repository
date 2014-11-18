@@ -41,8 +41,8 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.ResourceRoot;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
+import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
-import be.nabu.libs.services.api.ServiceRuntime;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
@@ -355,7 +355,7 @@ public class EAIResourceRepository implements ArtifactResolver<Artifact>, Resour
 		};
 	}
 	
-	public ServiceRuntime newRuntime(Principal principal) {
-		return new EAIRepositoryRuntime(this, principal);
+	public ExecutionContext newExecutionContext(Principal principal) {
+		return new EAIExecutionContext(this, principal);
 	}
 }

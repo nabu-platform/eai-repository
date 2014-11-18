@@ -14,7 +14,7 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
-import be.nabu.libs.services.SimpleServiceRuntime.SimpleServiceContext;
+import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.Sequence;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;

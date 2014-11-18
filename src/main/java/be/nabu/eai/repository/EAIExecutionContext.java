@@ -4,18 +4,18 @@ import java.security.Principal;
 
 import be.nabu.libs.services.SimpleSecurityContext;
 import be.nabu.libs.services.SimpleTransactionContext;
+import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.SecurityContext;
 import be.nabu.libs.services.api.ServiceContext;
-import be.nabu.libs.services.api.ServiceRuntime;
 import be.nabu.libs.services.api.TransactionContext;
 
-public class EAIRepositoryRuntime implements ServiceRuntime {
+public class EAIExecutionContext implements ExecutionContext {
 
 	private TransactionContext transactionContext = new SimpleTransactionContext();
 	private SecurityContext securityContext;
 	private EAIResourceRepository repository;
 	
-	public EAIRepositoryRuntime(EAIResourceRepository repository, Principal principal) {
+	public EAIExecutionContext(EAIResourceRepository repository, Principal principal) {
 		this.repository = repository;
 		this.securityContext = new SimpleSecurityContext(principal);
 	}
