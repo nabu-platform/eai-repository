@@ -34,6 +34,18 @@
 		</dependency>
 		<dependency>
 			<groupId>be.nabu.utils</groupId>
+			<artifactId>utils-codec</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.utils</groupId>
+			<artifactId>utils-security</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.utils</groupId>
+			<artifactId>utils-security-resources</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.utils</groupId>
 			<artifactId>utils-mime</artifactId>
 		</dependency>
 		<dependency>
@@ -146,7 +158,25 @@
 			<groupId>be.nabu.libs.artifacts</groupId>
 			<artifactId>artifacts-jdbc</artifactId>
 		</dependency>
-		
+
+		<!-- Task system -->
+		<dependency>
+			<groupId>be.nabu.libs.tasks</groupId>
+			<artifactId>tasks-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.tasks</groupId>
+			<artifactId>tasks-queues-database</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.tasks</groupId>
+			<artifactId>tasks-remote</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.eai</groupId>
+			<artifactId>eai-broker</artifactId>
+		</dependency>
+
 		<!-- logging -->
 		<dependency>
 			<groupId>org.slf4j</groupId>

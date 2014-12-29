@@ -61,7 +61,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * Ideally at some point I want to plug in the higher level VFS api instead of the low level resource API
  * To make this easier, I have tried to encapsulate as much resource-related stuff here as possible
  */
-public class EAIResourceRepository implements ArtifactResolver<Artifact>, ResourceRepository {
+public class EAIResourceRepository implements ResourceRepository {
 	
 	private ManageableContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
