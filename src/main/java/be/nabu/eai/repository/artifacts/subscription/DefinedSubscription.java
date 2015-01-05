@@ -120,6 +120,10 @@ public class DefinedSubscription implements Artifact {
 							}
 						}
 					}
+					@Override
+					public Class<ComplexContent> getTaskClass() {
+						return ComplexContent.class;
+					}
 				}), 
 				getConfiguration().getPriority(), 
 				getConfiguration().getBestEffort(), 

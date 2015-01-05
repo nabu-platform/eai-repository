@@ -24,7 +24,7 @@ import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
-import be.nabu.libs.events.EventDispatcherImpl;
+import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventHandler;
 import be.nabu.libs.maven.CreateResourceRepositoryEvent;
