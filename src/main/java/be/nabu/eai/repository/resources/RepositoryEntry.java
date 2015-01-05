@@ -114,6 +114,16 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 		return container.getChild("node.xml") != null;
 	}
 	
+	public RepositoryEntry createDirectory(String name) throws IOException {
+		if (!getRepository().isValidName(getContainer(), name)) {
+			throw new IOException("Invalid name: " + name);
+		}
+		ManageableContainer<?> newDirectory = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);
+		RepositoryEntry entry = new RepositoryEntry(getRepository(), newDirectory, this, name);
+		children.put(name, entry);
+		return entry;
+	}
+	
 	public RepositoryEntry createNode(String name, ArtifactManager<?> manager) throws IOException {
 		if (getRepository().isValidName(getContainer(), name)) {
 			ManageableContainer<?> nodeContainer = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);

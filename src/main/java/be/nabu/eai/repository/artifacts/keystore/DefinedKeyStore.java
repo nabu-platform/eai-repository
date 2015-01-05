@@ -70,11 +70,12 @@ public class DefinedKeyStore implements Artifact {
 	}
 	
 	public void save(ResourceContainer<?> directory) throws IOException, KeyStoreException {
+		ManagedKeyStoreImpl keystore = getKeyStore();
 		Resource target = directory.getChild("keystore.jks");
 		if (target == null) {
 			target = ((ManageableContainer<?>) directory).create("keystore.jks", StoreType.JKS.getContentType());
 		}
-		getKeyStore().save(target);
+		keystore.save(target);
 		target = directory.getChild("keystore.xml");
 		if (target == null) {
 			target = ((ManageableContainer<?>) directory).create("keystore.xml", "application/xml");
