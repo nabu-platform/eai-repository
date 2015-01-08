@@ -7,18 +7,22 @@ import java.net.URI;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
+import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 
 @XmlRootElement(name = "broker")
+@XmlType(propOrder = { "endpoint", "keystore", "username", "password", "clientId", "encoding", "processingPoolSize", "connectionPoolSize", "connectionTimeout", "socketTimeout", "pollInterval" })
 public class BrokerConfiguration {
 	
 	private DefinedKeyStore keystore;
 	private String clientId, username, password;
 	private URI endpoint;
 	private String encoding;
-	private int processingPoolSize, connectionPoolSize, connectionTimeout, socketTimeout;
-	private long pollInterval;
+	private Integer processingPoolSize, connectionPoolSize, connectionTimeout, socketTimeout;
+	private Long pollInterval;
 	
 	public String getClientId() {
 		return clientId;
@@ -50,36 +54,37 @@ public class BrokerConfiguration {
 	public void setEncoding(String encoding) {
 		this.encoding = encoding;
 	}
-	public int getProcessingPoolSize() {
+	public Integer getProcessingPoolSize() {
 		return processingPoolSize;
 	}
-	public void setProcessingPoolSize(int processingPoolSize) {
+	public void setProcessingPoolSize(Integer processingPoolSize) {
 		this.processingPoolSize = processingPoolSize;
 	}
-	public int getConnectionPoolSize() {
+	public Integer getConnectionPoolSize() {
 		return connectionPoolSize;
 	}
-	public void setConnectionPoolSize(int connectionPoolSize) {
+	public void setConnectionPoolSize(Integer connectionPoolSize) {
 		this.connectionPoolSize = connectionPoolSize;
 	}
-	public int getConnectionTimeout() {
+	public Integer getConnectionTimeout() {
 		return connectionTimeout;
 	}
-	public void setConnectionTimeout(int connectionTimeout) {
+	public void setConnectionTimeout(Integer connectionTimeout) {
 		this.connectionTimeout = connectionTimeout;
 	}
-	public int getSocketTimeout() {
+	public Integer getSocketTimeout() {
 		return socketTimeout;
 	}
-	public void setSocketTimeout(int socketTimeout) {
+	public void setSocketTimeout(Integer socketTimeout) {
 		this.socketTimeout = socketTimeout;
 	}
-	public long getPollInterval() {
+	public Long getPollInterval() {
 		return pollInterval;
 	}
-	public void setPollInterval(long pollInterval) {
+	public void setPollInterval(Long pollInterval) {
 		this.pollInterval = pollInterval;
 	}
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedKeyStore getKeystore() {
 		return keystore;
 	}

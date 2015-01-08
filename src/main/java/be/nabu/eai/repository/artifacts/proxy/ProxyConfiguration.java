@@ -10,17 +10,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
-import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.utils.security.EncryptionXmlAdapter;
 
 @XmlRootElement(name = "proxy")
-@XmlType(propOrder = { "host", "port", "domain", "username", "password", "type", "bypass", "keystore" })
+@XmlType(propOrder = { "host", "port", "domain", "username", "password", "type", "bypass" })
 public class ProxyConfiguration {
 	private String host, username, password, domain, bypass;
 	private int port;
 	private Type type;
-	private DefinedKeyStore keystore;
 	
 	public String getHost() {
 		return host;
@@ -66,13 +63,6 @@ public class ProxyConfiguration {
 		this.bypass = bypass;
 	}
 	
-	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	public DefinedKeyStore getKeystore() {
-		return keystore;
-	}
-	public void setKeystore(DefinedKeyStore keystore) {
-		this.keystore = keystore;
-	}
 	public static ProxyConfiguration unmarshal(InputStream input) throws JAXBException {
 		JAXBContext context = JAXBContext.newInstance(ProxyConfiguration.class);
 		return (ProxyConfiguration) context.createUnmarshaller().unmarshal(input);

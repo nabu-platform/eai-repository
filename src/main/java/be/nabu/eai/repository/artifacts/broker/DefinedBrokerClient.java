@@ -32,7 +32,8 @@ public class DefinedBrokerClient implements Artifact {
 	private static final String BROKER_POLL_INTERVAL = "be.nabu.eai.broker.pollInterval";
 	private static final String BROKER_CONNECTION_TIMEOUT = "be.nabu.eai.broker.connectionTimeout";
 	private static final String BROKER_SOCKET_TIMEOUT = "be.nabu.eai.broker.socketTimeout";
-	private static final String BROKER_POOL_SIZE = "be.nabu.eai.broker.poolSize";
+	private static final String BROKER_PROCESSING_POOL_SIZE = "be.nabu.eai.broker.processingPoolSize";
+	private static final String BROKER_CONNECTION_POOL_SIZE = "be.nabu.eai.broker.connectionPoolSize";
 	
 	private String id;
 	private BrokerClient brokerClient;
@@ -74,12 +75,6 @@ public class DefinedBrokerClient implements Artifact {
 					Resource target = directory.getChild("broker.xml");
 					if (target == null) {
 						configuration = new BrokerConfiguration();
-						configuration.setClientId(TaskUtils.generateManagerId());
-						configuration.setEncoding(Charset.defaultCharset().name());
-						configuration.setPollInterval(new Integer(System.getProperty(BROKER_POLL_INTERVAL, "1000")));
-						configuration.setConnectionTimeout(new Integer(System.getProperty(BROKER_CONNECTION_TIMEOUT, "60000")));
-						configuration.setSocketTimeout(new Integer(System.getProperty(BROKER_SOCKET_TIMEOUT, "60000")));
-						configuration.setProcessingPoolSize(new Integer(System.getProperty(BROKER_POOL_SIZE, "5")));
 					}
 					else {
 						ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) target);
@@ -106,16 +101,16 @@ public class DefinedBrokerClient implements Artifact {
 					DefinedKeyStore keystore = getConfiguration().getKeystore();
 					try {
 						brokerClient = new BrokerClient(
-							getConfiguration().getClientId(), 
-							getConfiguration().getEndpoint(), 
+							getConfiguration().getClientId() == null ? TaskUtils.generateManagerId() : getConfiguration().getClientId(),
+							getConfiguration().getEndpoint(),
 							getConfiguration().getUsername(), 
 							getConfiguration().getPassword(), 
-							Charset.forName(getConfiguration().getEncoding()), 
-							getConfiguration().getProcessingPoolSize(), 
-							getConfiguration().getPollInterval(), 
-							getConfiguration().getConnectionPoolSize(), 
-							getConfiguration().getConnectionTimeout(), 
-							getConfiguration().getSocketTimeout(), 
+							getConfiguration().getEncoding() == null ? Charset.defaultCharset() : Charset.forName(getConfiguration().getEncoding()), 
+							getConfiguration().getProcessingPoolSize() == null ? new Integer(System.getProperty(BROKER_PROCESSING_POOL_SIZE, "5")) : getConfiguration().getProcessingPoolSize(), 
+							getConfiguration().getPollInterval() == null ? new Integer(System.getProperty(BROKER_POLL_INTERVAL, "1000")) : getConfiguration().getPollInterval(), 
+							getConfiguration().getConnectionPoolSize() == null ? new Integer(System.getProperty(BROKER_CONNECTION_POOL_SIZE, "5")) : getConfiguration().getConnectionPoolSize(),
+							getConfiguration().getConnectionTimeout() == null ? new Integer(System.getProperty(BROKER_CONNECTION_TIMEOUT, "60000")) : getConfiguration().getConnectionTimeout(), 
+							getConfiguration().getSocketTimeout() == null ? new Integer(System.getProperty(BROKER_SOCKET_TIMEOUT, "60000")) : getConfiguration().getSocketTimeout(), 
 							false, 
 							keystore == null ? null : new KeyStoreHandler(keystore.getKeyStore().getKeyStore()).createContext(SSLContextType.TLS)
 						);
