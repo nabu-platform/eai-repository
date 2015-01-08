@@ -6,6 +6,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.security.Principal;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -24,9 +25,9 @@ import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
-import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventHandler;
+import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.maven.CreateResourceRepositoryEvent;
 import be.nabu.libs.maven.DeleteResourceRepositoryEvent;
 import be.nabu.libs.maven.MavenListener;
@@ -357,5 +358,25 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	public ExecutionContext newExecutionContext(Principal principal) {
 		return new EAIExecutionContext(this, principal);
+	}
+
+	@Override
+	public List<Node> getNodes(Class<Artifact> artifactClazz) {
+		List<Node> nodes = new ArrayList<Node>();
+		for (String id : this.nodes.keySet()) {
+			Node node = this.nodes.get(id);
+			try {
+				if (artifactClazz.isAssignableFrom(node.getArtifact().getClass())) {
+					nodes.add(node);
+				}
+			}
+			catch (IOException e) {
+				logger.error("Can not parse node: " + id, e);
+			}
+			catch (ParseException e) {
+				logger.error("Can not parse node: " + id, e);
+			}
+		}
+		return nodes;
 	}
 }

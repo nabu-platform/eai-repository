@@ -8,10 +8,13 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.annotation.XmlRootElement;
 
+import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
+
 @XmlRootElement(name = "broker")
 public class BrokerConfiguration {
 	
-	private String clientId, username, password, keystoreId;
+	private DefinedKeyStore keystore;
+	private String clientId, username, password;
 	private URI endpoint;
 	private String encoding;
 	private int processingPoolSize, connectionPoolSize, connectionTimeout, socketTimeout;
@@ -34,12 +37,6 @@ public class BrokerConfiguration {
 	}
 	public void setPassword(String password) {
 		this.password = password;
-	}
-	public String getKeystoreId() {
-		return keystoreId;
-	}
-	public void setKeystoreId(String keystoreId) {
-		this.keystoreId = keystoreId;
 	}
 	public URI getEndpoint() {
 		return endpoint;
@@ -82,6 +79,12 @@ public class BrokerConfiguration {
 	}
 	public void setPollInterval(long pollInterval) {
 		this.pollInterval = pollInterval;
+	}
+	public DefinedKeyStore getKeystore() {
+		return keystore;
+	}
+	public void setKeystore(DefinedKeyStore keystore) {
+		this.keystore = keystore;
 	}
 	
 	public static BrokerConfiguration unmarshal(InputStream input) throws JAXBException {

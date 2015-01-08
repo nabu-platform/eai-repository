@@ -12,7 +12,6 @@ import javax.xml.bind.JAXBException;
 import be.nabu.eai.broker.client.BrokerClient;
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
@@ -39,12 +38,10 @@ public class DefinedBrokerClient implements Artifact {
 	private BrokerClient brokerClient;
 	private BrokerConfiguration configuration;
 	private ResourceContainer<?> directory;
-	private ArtifactResolver<DefinedKeyStore> keystoreResolver;
 
-	public DefinedBrokerClient(String id, ResourceContainer<?> directory, ArtifactResolver<DefinedKeyStore> keystoreResolver) { 
+	public DefinedBrokerClient(String id, ResourceContainer<?> directory) { 
 		this.id = id;
 		this.directory = directory;
-		this.keystoreResolver = keystoreResolver;
 	}
 
 	@Override
@@ -106,10 +103,7 @@ public class DefinedBrokerClient implements Artifact {
 		if (brokerClient == null) {
 			synchronized(this) {
 				if (brokerClient == null) {
-					DefinedKeyStore keystore = getConfiguration().getKeystoreId() == null ? null : keystoreResolver.resolve(getConfiguration().getKeystoreId());
-					if (getConfiguration().getKeystoreId() != null && keystore == null) {
-						throw new IllegalArgumentException("Invalid keystore defined: " + getConfiguration().getKeystoreId());
-					}
+					DefinedKeyStore keystore = getConfiguration().getKeystore();
 					try {
 						brokerClient = new BrokerClient(
 							getConfiguration().getClientId(), 
