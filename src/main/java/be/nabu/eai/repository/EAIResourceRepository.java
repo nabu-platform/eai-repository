@@ -356,6 +356,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		};
 	}
 	
+	@Override
 	public ExecutionContext newExecutionContext(Principal principal) {
 		return new EAIExecutionContext(this, principal);
 	}

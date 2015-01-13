@@ -1,11 +1,7 @@
 package be.nabu.eai.repository.artifacts.proxy;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.Proxy.Type;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -61,15 +57,5 @@ public class ProxyConfiguration {
 	}
 	public void setBypass(String bypass) {
 		this.bypass = bypass;
-	}
-	
-	public static ProxyConfiguration unmarshal(InputStream input) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(ProxyConfiguration.class);
-		return (ProxyConfiguration) context.createUnmarshaller().unmarshal(input);
-	}
-	
-	public void marshal(OutputStream output) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(ProxyConfiguration.class);
-		context.createMarshaller().marshal(this, output);
 	}
 }

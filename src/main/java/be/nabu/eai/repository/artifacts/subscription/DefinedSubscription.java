@@ -4,120 +4,69 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import javax.xml.bind.JAXBException;
-
-import be.nabu.eai.repository.artifacts.broker.DefinedBrokerClient;
-import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.artifacts.api.ArtifactResolver;
-import be.nabu.libs.resources.ResourceReadableContainer;
-import be.nabu.libs.resources.ResourceWritableContainer;
-import be.nabu.libs.resources.api.ManageableContainer;
-import be.nabu.libs.resources.api.ReadableResource;
-import be.nabu.libs.resources.api.Resource;
+import be.nabu.eai.repository.InternalPrincipal;
+import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.libs.resources.api.WritableResource;
-import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.ServiceRuntime;
+import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.tasks.TaskUtils;
 import be.nabu.libs.tasks.api.ExecutionException;
 import be.nabu.libs.tasks.api.TaskExecutor;
+import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.DefinedType;
-import be.nabu.utils.io.IOUtils;
-import be.nabu.utils.io.api.ByteBuffer;
-import be.nabu.utils.io.api.ReadableContainer;
-import be.nabu.utils.io.api.WritableContainer;
+import be.nabu.libs.types.api.Element;
 
-public class DefinedSubscription implements Artifact {
+public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration> {
 
 	private static final String AMOUNT_OF_SUBSCRIBERS = "be.nabu.eai.broker.amountOfSubscribers";
 	private static final String PRIORITY = "be.nabu.eai.broker.priority";
-	private ArtifactResolver<DefinedService> serviceResolver;
-	private String id;
-	private ResourceContainer<?> directory;
-	private ArtifactResolver<DefinedBrokerClient> brokerClientResolver;
+	private static final String DELAY_INITIAL = "be.nabu.eai.broker.delayInitial";
+	private static final String DELAY_DELTA = "be.nabu.eai.broker.delayDelta";
+	private static final String DELAY_MAX = "be.nabu.eai.broker.delayMax";
+	private Repository repository;
 	
-	private SubscriptionConfiguration configuration;
-
-	public DefinedSubscription(String id, ResourceContainer<?> directory, ArtifactResolver<DefinedBrokerClient> brokerClientResolver, ArtifactResolver<DefinedService> serviceResolver) {
-		this.id = id;
-		this.directory = directory;
-		this.brokerClientResolver = brokerClientResolver;
-		this.serviceResolver = serviceResolver;
+	public DefinedSubscription(String id, ResourceContainer<?> directory, Repository repository) {
+		super(id, directory, "subscription.xml", SubscriptionConfiguration.class);
+		this.repository = repository;
 	}
-	
-	@Override
-	public String getId() {
-		return id;
-	}
-	
-	public void save(ResourceContainer<?> directory) throws IOException {
-		SubscriptionConfiguration configuration = getConfiguration();
-		Resource target = directory.getChild("subscription.xml");
-		if (target == null) {
-			target = ((ManageableContainer<?>) directory).create("subscription.xml", "application/xml");
-		}
-		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
-		try {
-			configuration.marshal(IOUtils.toOutputStream(writable));
-		}
-		catch (JAXBException e) {
-			throw new IOException(e);
-		}
-		finally {
-			writable.close();
-		}
-	}
-	
-	public SubscriptionConfiguration getConfiguration() throws IOException {
-		if (configuration == null) {
-			synchronized(this) {
-				if (configuration == null) {
-					Resource target = directory.getChild("subscription.xml");
-					if (target == null) {
-						configuration = new SubscriptionConfiguration();
-						configuration.setAmountOfSubscribers(new Integer(System.getProperty(AMOUNT_OF_SUBSCRIBERS, "1")));
-						configuration.setBestEffort(false);
-						configuration.setDedicated(false);
-						configuration.setPriority(new Integer(System.getProperty(PRIORITY, "0")));
-					}
-					else {
-						ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) target);
-						try {
-							configuration = SubscriptionConfiguration.unmarshal(IOUtils.toInputStream(readable));
-						}
-						catch (JAXBException e) {
-							throw new IOException(e);
-						}
-						finally {
-							readable.close();
-						}
-					}
-				}
-			}
-		}
-		return configuration;
-	}
-	
+		
 	public void start() throws IOException {
-		if (getConfiguration().getClientId() != null && getConfiguration().getServiceId() != null) {
-			final DefinedService service = serviceResolver.resolve(getConfiguration().getServiceId());
-			DefinedBrokerClient brokerClient = brokerClientResolver.resolve(getConfiguration().getClientId());
-			brokerClient.getBrokerClient().subscribe(
-				getConfiguration().getSubscriptionId(), 
+		final SubscriptionConfiguration configuration = getConfiguration();
+		if (configuration.getBrokerClient() != null && configuration.getService() != null) {
+			configuration.getBrokerClient().getBrokerClient().subscribe(
+				configuration.getSubscriptionId(), 
 				TaskUtils.always(new TaskExecutor<ComplexContent>(){
 					private Map<String, String> inputFields = new HashMap<String, String>();
 					@Override
 					public void execute(ComplexContent content) throws ExecutionException {
-						// TODO
 						// we need to find the input field that matches the type for this content
 						// we cache the result so we don't have to inspect the service every time
 						String typeId = ((DefinedType) content.getType()).getId();
 						if (!inputFields.containsKey(typeId)) {
 							synchronized(inputFields) {
 								if (!inputFields.containsKey(typeId)) {
-									// TODO
+									for (Element<?> element : TypeUtils.getAllChildren(configuration.getService().getServiceInterface().getInputDefinition())) {
+										if (element.getType() instanceof DefinedType && ((DefinedType) element.getType()).getId().equals(typeId)) {
+											inputFields.put(typeId, element.getName());
+											break;
+										}
+									}
 								}
 							}
+						}
+						if (!inputFields.containsKey(typeId)) {
+							throw new RuntimeException("There is no matching input variable in the service " + configuration.getService().getId() + " for the type: " + typeId);
+						}
+						ServiceRuntime runtime = new ServiceRuntime(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())));
+						ComplexContent input = configuration.getService().getServiceInterface().getInputDefinition().newInstance();
+						input.set(inputFields.get(typeId), content);
+						try {
+							runtime.run(input);
+						}
+						catch (ServiceException e) {
+							throw new ExecutionException(e);
 						}
 					}
 					@Override
@@ -125,10 +74,13 @@ public class DefinedSubscription implements Artifact {
 						return ComplexContent.class;
 					}
 				}), 
-				getConfiguration().getPriority(), 
-				getConfiguration().getBestEffort(), 
-				getConfiguration().getAmountOfSubscribers(), 
-				getConfiguration().getDedicated()
+				configuration.getPriority() == null ? new Integer(System.getProperty(PRIORITY, "0")) : configuration.getPriority(), 
+				configuration.getBestEffort() == null ? false : configuration.getBestEffort(), 
+				configuration.getAmountOfSubscribers() == null ? new Integer(System.getProperty(AMOUNT_OF_SUBSCRIBERS, "1")) : configuration.getAmountOfSubscribers(), 
+				configuration.getDedicated() == null ? false : configuration.getDedicated(),
+				configuration.getDelayInitial() == null ? new Long(System.getProperty(DELAY_INITIAL, "1000")) : configuration.getDelayInitial(),
+				configuration.getDelayDelta() == null ? new Long(System.getProperty(DELAY_DELTA, "1000")) : configuration.getDelayDelta(),
+				configuration.getDelayMax() == null ? new Long(System.getProperty(DELAY_MAX, "60000")) : configuration.getDelayMax()
 			);
 		}
 	}

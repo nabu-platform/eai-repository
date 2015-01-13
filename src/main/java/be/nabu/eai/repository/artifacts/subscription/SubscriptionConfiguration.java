@@ -1,42 +1,45 @@
 package be.nabu.eai.repository.artifacts.subscription;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
+import javax.validation.constraints.NotNull;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-@XmlRootElement(name = "subscription")
+import be.nabu.eai.repository.artifacts.broker.DefinedBrokerClient;
+import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
+import be.nabu.libs.services.api.DefinedService;
+
+@XmlRootElement(name = "trigger")
+@XmlType(propOrder = { "brokerClient", "subscriptionId", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax" })
 public class SubscriptionConfiguration {
+	
+	private DefinedBrokerClient brokerClient;
+	private DefinedService service;
+	private Integer priority, amountOfSubscribers;
+	private Long delayInitial, delayDelta, delayMax;
+	private Boolean bestEffort, dedicated;
+	private String userId;
 
 	/**
 	 * The subscription you are polling. This should match a subscription on the target server
 	 */
 	private String subscriptionId;
-	/**
-	 * The resulting service that should be called
-	 */
-	private String serviceId;
-	/**
-	 * The broker client that should be used
-	 */
-	private String clientId;
 	
-	private Integer priority, amountOfSubscribers;
-	private Boolean bestEffort, dedicated;
-	
-	public String getSubscriptionId() {
-		return subscriptionId;
+	@NotNull
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public DefinedBrokerClient getBrokerClient() {
+		return brokerClient;
 	}
-	public void setSubscriptionId(String subscriptionId) {
-		this.subscriptionId = subscriptionId;
+	public void setBrokerClient(DefinedBrokerClient brokerClient) {
+		this.brokerClient = brokerClient;
 	}
-	public String getServiceId() {
-		return serviceId;
+	@NotNull
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public DefinedService getService() {
+		return service;
 	}
-	public void setServiceId(String serviceId) {
-		this.serviceId = serviceId;
+	public void setService(DefinedService service) {
+		this.service = service;
 	}
 	public Integer getPriority() {
 		return priority;
@@ -62,20 +65,36 @@ public class SubscriptionConfiguration {
 	public void setDedicated(Boolean dedicated) {
 		this.dedicated = dedicated;
 	}
-	public String getClientId() {
-		return clientId;
+	@NotNull
+	public String getSubscriptionId() {
+		return subscriptionId;
 	}
-	public void setClientId(String clientId) {
-		this.clientId = clientId;
+	public void setSubscriptionId(String subscriptionId) {
+		this.subscriptionId = subscriptionId;
 	}
-
-	public static SubscriptionConfiguration unmarshal(InputStream input) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(SubscriptionConfiguration.class);
-		return (SubscriptionConfiguration) context.createUnmarshaller().unmarshal(input);
+	public Long getDelayInitial() {
+		return delayInitial;
 	}
-	
-	public void marshal(OutputStream output) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(SubscriptionConfiguration.class);
-		context.createMarshaller().marshal(this, output);
+	public void setDelayInitial(Long delayInitial) {
+		this.delayInitial = delayInitial;
+	}
+	public Long getDelayDelta() {
+		return delayDelta;
+	}
+	public void setDelayDelta(Long delayDelta) {
+		this.delayDelta = delayDelta;
+	}
+	public Long getDelayMax() {
+		return delayMax;
+	}
+	public void setDelayMax(Long delayMax) {
+		this.delayMax = delayMax;
+	}
+	@NotNull
+	public String getUserId() {
+		return userId;
+	}
+	public void setUserId(String userId) {
+		this.userId = userId;
 	}
 }

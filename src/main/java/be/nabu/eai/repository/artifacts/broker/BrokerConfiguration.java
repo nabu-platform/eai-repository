@@ -1,11 +1,7 @@
 package be.nabu.eai.repository.artifacts.broker;
 
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.URI;
 
-import javax.xml.bind.JAXBContext;
-import javax.xml.bind.JAXBException;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -14,7 +10,7 @@ import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 
 @XmlRootElement(name = "broker")
-@XmlType(propOrder = { "endpoint", "keystore", "username", "password", "clientId", "encoding", "processingPoolSize", "connectionPoolSize", "connectionTimeout", "socketTimeout", "pollInterval" })
+@XmlType(propOrder = { "endpoint", "keystore", "username", "password", "clientId", "encoding", "processingPoolSize", "connectionPoolSize", "connectionTimeout", "socketTimeout", "pollInterval", "deviation" })
 public class BrokerConfiguration {
 	
 	private DefinedKeyStore keystore;
@@ -23,6 +19,7 @@ public class BrokerConfiguration {
 	private String encoding;
 	private Integer processingPoolSize, connectionPoolSize, connectionTimeout, socketTimeout;
 	private Long pollInterval;
+	private Double deviation;
 	
 	public String getClientId() {
 		return clientId;
@@ -84,21 +81,17 @@ public class BrokerConfiguration {
 	public void setPollInterval(Long pollInterval) {
 		this.pollInterval = pollInterval;
 	}
+	public Double getDeviation() {
+		return deviation;
+	}
+	public void setDeviation(Double deviation) {
+		this.deviation = deviation;
+	}
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedKeyStore getKeystore() {
 		return keystore;
 	}
 	public void setKeystore(DefinedKeyStore keystore) {
 		this.keystore = keystore;
-	}
-	
-	public static BrokerConfiguration unmarshal(InputStream input) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(BrokerConfiguration.class);
-		return (BrokerConfiguration) context.createUnmarshaller().unmarshal(input);
-	}
-	
-	public void marshal(OutputStream output) throws JAXBException {
-		JAXBContext context = JAXBContext.newInstance(BrokerConfiguration.class);
-		context.createMarshaller().marshal(this, output);
 	}
 }
