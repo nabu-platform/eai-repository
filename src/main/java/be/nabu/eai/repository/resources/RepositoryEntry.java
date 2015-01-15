@@ -151,7 +151,12 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 	public Node getNode() {
 		Resource resource = container.getChild("node.xml");
 		if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
-			repository.getEventDispatcher().fire(new NodeEvent(getId(), State.LOAD, false), this);
+			if (node != null) {
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.UNLOAD, false), this);
+				node = null;
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.UNLOAD, true), this);
+			}
+			repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
 			XMLBinding binding = new XMLBinding(new BeanType<EAINode>(EAINode.class), repository.getCharset());
 			try {
 				ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
@@ -162,7 +167,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 				finally {
 					readable.close();
 				}
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), State.LOAD, true), this);
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.LOAD, true), this);
 			}
 			catch (IOException e) {
 				logger.error("Could not load node " + getId(), e);

@@ -56,12 +56,7 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) resource);
 		try {
 			artifact.getConfig().store(IOUtils.toOutputStream(writable), null);
-			List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
-			// restart with updated config
-			if (artifact.isStarted()) {
-				messages.addAll(artifact.start());
-			}
-			return messages;
+			return new ArrayList<ValidationMessage>();
 		}
 		finally {
 			writable.close();

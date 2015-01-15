@@ -10,12 +10,14 @@ import java.security.UnrecoverableKeyException;
 import be.nabu.eai.broker.client.BrokerClient;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
+import be.nabu.libs.artifacts.api.StartableArtifact;
+import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.tasks.TaskUtils;
 import be.nabu.utils.security.KeyStoreHandler;
 import be.nabu.utils.security.SSLContextType;
 
-public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> {
+public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> implements StartableArtifact, StoppableArtifact {
 
 	private static final String BROKER_CONNECTION_TIMEOUT = "be.nabu.eai.broker.connectionTimeout";
 	private static final String BROKER_SOCKET_TIMEOUT = "be.nabu.eai.broker.socketTimeout";
@@ -66,5 +68,15 @@ public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> {
 			}
 		}
 		return brokerClient;
+	}
+
+	@Override
+	public void stop() throws IOException {
+		getBrokerClient().close();
+	}
+
+	@Override
+	public void start() throws IOException {
+		getBrokerClient().start();
 	}
 }

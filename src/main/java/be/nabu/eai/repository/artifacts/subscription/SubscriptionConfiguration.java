@@ -8,22 +8,22 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 import be.nabu.eai.repository.artifacts.broker.DefinedBrokerClient;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "trigger")
-@XmlType(propOrder = { "brokerClient", "subscriptionId", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax" })
+@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel" })
 public class SubscriptionConfiguration {
 	
 	private DefinedBrokerClient brokerClient;
 	private DefinedService service;
+	private DefinedType queue;
+	private String query;
 	private Integer priority, amountOfSubscribers;
 	private Long delayInitial, delayDelta, delayMax;
 	private Boolean bestEffort, dedicated;
 	private String userId;
-
-	/**
-	 * The subscription you are polling. This should match a subscription on the target server
-	 */
-	private String subscriptionId;
+	private Selector selector;
+	private Integer maxParallel;
 	
 	@NotNull
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
@@ -65,13 +65,6 @@ public class SubscriptionConfiguration {
 	public void setDedicated(Boolean dedicated) {
 		this.dedicated = dedicated;
 	}
-	@NotNull
-	public String getSubscriptionId() {
-		return subscriptionId;
-	}
-	public void setSubscriptionId(String subscriptionId) {
-		this.subscriptionId = subscriptionId;
-	}
 	public Long getDelayInitial() {
 		return delayInitial;
 	}
@@ -96,5 +89,38 @@ public class SubscriptionConfiguration {
 	}
 	public void setUserId(String userId) {
 		this.userId = userId;
+	}
+	@NotNull
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public DefinedType getQueue() {
+		return queue;
+	}
+	public void setQueue(DefinedType queue) {
+		this.queue = queue;
+	}
+	public String getQuery() {
+		return query;
+	}
+	public void setQuery(String query) {
+		this.query = query;
+	}
+	@NotNull
+	public Selector getSelector() {
+		return selector;
+	}
+	public void setSelector(Selector selector) {
+		this.selector = selector;
+	}
+	public Integer getMaxParallel() {
+		return maxParallel;
+	}
+	public void setMaxParallel(Integer maxParallel) {
+		this.maxParallel = maxParallel;
+	}
+
+
+	public enum Selector {
+		PARALLEL,
+		SERIAL
 	}
 }
