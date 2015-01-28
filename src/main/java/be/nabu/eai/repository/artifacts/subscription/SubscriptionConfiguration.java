@@ -11,7 +11,7 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "trigger")
-@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel" })
+@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel", "disabled" })
 public class SubscriptionConfiguration {
 	
 	private DefinedBrokerClient brokerClient;
@@ -24,6 +24,7 @@ public class SubscriptionConfiguration {
 	private String userId;
 	private Selector selector;
 	private Integer maxParallel;
+	private Boolean disabled;
 	
 	@NotNull
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
@@ -116,6 +117,12 @@ public class SubscriptionConfiguration {
 	}
 	public void setMaxParallel(Integer maxParallel) {
 		this.maxParallel = maxParallel;
+	}
+	public Boolean getDisabled() {
+		return disabled;
+	}
+	public void setDisabled(Boolean disabled) {
+		this.disabled = disabled;
 	}
 
 

@@ -28,10 +28,11 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
-import be.nabu.libs.types.java.BeanType;
+import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -85,6 +86,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 
 	@Override
 	public Entry getChild(String name) {
+		// some elements have an id with upper camelcase for the artifact but the entry has lowercase camelcase
+		// this fixes that
+		// note that this is in sync with the creation policy set by the server where the artifact name must begin with a small letter
+		name = name.substring(0, 1).toLowerCase() + name.substring(1);
 		return getChildren().get(name);
 	}
 	
@@ -130,7 +135,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			EAINode node = new EAINode();
 			node.setArtifactManager(manager.getClass());
 			node.setLeaf(true);
-			XMLBinding binding = new XMLBinding(new BeanType<EAINode>(EAINode.class), repository.getCharset());
+			XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(EAINode.class), repository.getCharset());
 			Resource target = nodeContainer.create("node.xml", "application/xml");
 			WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
 			try {
@@ -151,13 +156,16 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 	public Node getNode() {
 		Resource resource = container.getChild("node.xml");
 		if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
+			boolean isReload = false;
 			if (node != null) {
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.UNLOAD, false), this);
+				isReload = true;
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
 				node = null;
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.UNLOAD, true), this);
 			}
-			repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
-			XMLBinding binding = new XMLBinding(new BeanType<EAINode>(EAINode.class), repository.getCharset());
+			else {
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
+			}
+			XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(EAINode.class), repository.getCharset());
 			try {
 				ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 				try {
@@ -167,7 +175,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 				finally {
 					readable.close();
 				}
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.LOAD, true), this);
+				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
 			}
 			catch (IOException e) {
 				logger.error("Could not load node " + getId(), e);

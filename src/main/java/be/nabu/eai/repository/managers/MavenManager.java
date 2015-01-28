@@ -31,9 +31,13 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		this.definedTypeResolver = definedTypeResolver;	
 	}
 	
-	public MavenArtifact load(DomainRepository repository, Artifact artifact) {
+	public MavenArtifact load(DomainRepository repository, Artifact artifact, URI mavenServer, boolean updateSnapshots) {
 		try {
-			return new MavenArtifact(definedTypeResolver, new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2")), repository, artifact.getGroupId() + "." + artifact.getArtifactId(), artifact);
+			DependencyResolver dependencyResolver = mavenServer == null 
+				? new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2"))
+				: new DependencyResolver(mavenServer, new URI("http://mirrors.ibiblio.org/maven2"));
+			dependencyResolver.setUpdateSnapshots(updateSnapshots);
+			return new MavenArtifact(definedTypeResolver, dependencyResolver, repository, artifact.getGroupId() + "." + artifact.getArtifactId(), artifact);
 		}
 		catch (URISyntaxException e) {
 			throw new RuntimeException(e);
@@ -77,13 +81,13 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 
 	@Override
-	public void addChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+	public List<Entry> addChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
 		// if you are adding it to the actual repository root, first create an entry for the groupId
 		// this allows you to define maven repositories in other places than the groupId
 		if (root.getParent() == null) {
 			root = getParent(root, artifact.getArtifact().getGroupId(), true);
 		}
-
 		List<String> keys = new ArrayList<String>(artifact.getChildren().keySet());
 		Collections.sort(keys);
 		for (String childId : keys) {
@@ -95,9 +99,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			node.setLeaf(true);
 			MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
 			node.setEntry(child);
-			node.setEntry(parent);
+//			node.setEntry(parent);
 			parent.addChildren(child);
 		}
+		return entries;
 	}
 	
 	private ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
@@ -107,7 +112,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			Entry entry = root.getChild(prettify(path.getName()));
 			// if it's null, create a new entry
 			if (entry == null) {
-				entry = new MemoryEntry(root.getRepository(), root, null, root.getId() + "." + prettify(path.getName()), prettify(path.getName()));
+				entry = new MemoryEntry(root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
 				root.addChildren(entry);
 			}
 			else if (entry.isNode()) {
@@ -123,11 +128,12 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		return name.substring(0, 1).toLowerCase() + name.substring(1);
 	}
 
-	public void remove(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+	@Override
+	public List<Entry> removeChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
 		if (root.getParent() == null) {
 			root = getParent(root, artifact.getArtifact().getGroupId(), true);
 		}
-		
 		for (String id : artifact.getChildren().keySet()) {
 			int index = id.lastIndexOf('.');
 			ModifiableEntry parent = index < 0 ? root : getParent(root, id, false);
@@ -136,9 +142,11 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			// if no children are remaining, remove parent as well
 			if (!parent.iterator().hasNext()) {
 				if (parent.getParent() instanceof ModifiableEntry) {
+					entries.add(parent);
 					((ModifiableEntry) parent.getParent()).removeChildren(parent.getName());
 				}
 			}
 		}
+		return entries;
 	}	
 }

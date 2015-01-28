@@ -110,7 +110,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	}
 
 	@Override
-	public void addChildren(ModifiableEntry parent, JDBCService artifact) throws IOException {
+	public List<Entry> addChildren(ModifiableEntry parent, JDBCService artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
 		((EAINode) parent.getNode()).setLeaf(false);
 		
 		EAINode node = new EAINode();
@@ -122,6 +123,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		artifact.getParameters().setId(parameters.getId());
 		node.setEntry(parameters);
 		parent.addChildren(parameters);
+		entries.add(parameters);
 		
 		node = new EAINode();
 		node.setArtifactClass(DefinedType.class);
@@ -131,5 +133,23 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		artifact.getResults().setId(results.getId());
 		node.setEntry(results);
 		parent.addChildren(results);
+		entries.add(results);
+		return entries;
+	}
+
+	@Override
+	public List<Entry> removeChildren(ModifiableEntry parent, JDBCService artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
+		Entry parameters = parent.getChild(JDBCService.PARAMETERS);
+		if (parameters != null) {
+			((ModifiableEntry) parent).removeChildren(parameters.getName());
+			entries.add(parameters);
+		}
+		Entry results = parent.getChild(JDBCService.RESULTS);
+		if (results != null) {
+			((ModifiableEntry) parent).removeChildren(results.getName());
+			entries.add(results);
+		}
+		return entries;
 	}
 }

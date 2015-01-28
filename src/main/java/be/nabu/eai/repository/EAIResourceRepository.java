@@ -26,11 +26,8 @@ import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
-import be.nabu.libs.events.api.EventHandler;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
-import be.nabu.libs.maven.CreateResourceRepositoryEvent;
-import be.nabu.libs.maven.DeleteResourceRepositoryEvent;
-import be.nabu.libs.maven.MavenListener;
+import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -39,20 +36,17 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.libs.resources.api.ResourceRoot;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
+import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
-import be.nabu.utils.http.api.HTTPRequest;
-import be.nabu.utils.http.api.server.HTTPServer;
-import be.nabu.utils.http.server.DefaultHTTPServer;
 import be.nabu.utils.io.ContentTypeMap;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -64,7 +58,7 @@ import be.nabu.utils.io.api.WritableContainer;
  */
 public class EAIResourceRepository implements ResourceRepository {
 	
-	private ManageableContainer<?> resourceRoot;
+	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	
@@ -79,46 +73,28 @@ public class EAIResourceRepository implements ResourceRepository {
 	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC });
 	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, "class", "package", "import", "for", "while", "if", "do", "else" });
 	private Charset charset = Charset.forName("UTF-8");
-	private be.nabu.libs.maven.api.DomainRepository mavenRepository;
+	private DomainRepository mavenRepository;
+	private ServiceRunner serviceRunner;
+	private ResourceContainer<?> mavenRoot;
+	private URI localMavenServer;
+	private boolean updateMavenSnapshots = false;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
-		this((ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", "file:/" + System.getProperty("user.home") + "/repository")), null));
+		this(
+			(ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", "file:/" + System.getProperty("user.home") + "/repository")), null),
+			(ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", "file:/" + System.getProperty("user.home") + "/maven")), null)
+		);
 	}
 	
-	public EAIResourceRepository(ManageableContainer<?> root) throws IOException, URISyntaxException {
-		this.resourceRoot = root;
-		this.repositoryRoot = new RepositoryEntry(this, root, null, "/");
+	public EAIResourceRepository(ResourceContainer<?> repositoryRoot, ResourceContainer<?> mavenRoot) throws IOException {
+		this.resourceRoot = repositoryRoot;
+		this.mavenRoot = mavenRoot;
+		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
 		ArtifactResolverFactory.getInstance().addResolver(this);
 		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
-		
-		load(repositoryRoot);
-		
-		// TODO: allow configuration of port
-		Thread mavenThread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				try {
-					URI uri = new URI(System.getProperty("maven.repository.uri", "file:" + System.getProperty("user.home") + "/maven"));
-					logger.info("Starting maven repository at " + uri + " (TODO: add to settings)");
-					ResourceRoot mavenRoot = ResourceFactory.getInstance().resolve(uri, null);
-					if (mavenRoot == null) {
-						throw new RuntimeException("Can not find the maven root, currently hardcoded as: file:" + System.getProperty("user.home") + "/maven");
-					}
-					startMavenListener(5555, (ResourceContainer<?>) mavenRoot);
-				}
-				catch (URISyntaxException e) {
-					throw new RuntimeException(e);
-				}
-				catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-			}
-		});
-		mavenThread.setDaemon(true);
-		mavenThread.start();
 	}
 	
 	public ManageableContainer<?> getResourceContainer(String id) throws IOException {
@@ -172,11 +148,8 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	@Override
 	public Node getNode(String id) {
-		return nodes.get(id);
-	}
-	
-	public void load() {
-		load(repositoryRoot);
+		Entry entry = getEntry(id);
+		return entry != null && entry.isNode() ? entry.getNode() : null;
 	}
 	
 	private void buildReferenceMap(String id, List<String> references) {
@@ -189,19 +162,21 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void load(Entry entry) {
+		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
+		nodesByType = null;
 		for (Entry child : entry) {
 			if (child.isNode()) {
 				logger.info("Loading entry: " + child.getId());
 				buildReferenceMap(child.getId(), child.getNode().getReferences());
-				Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
-				if (!nodesByType.containsKey(artifactClass)) {
-					nodesByType.put(artifactClass, new HashMap<String, Node>());
-				}
-				nodesByType.get(artifactClass).put(child.getId(), child.getNode());
 				nodes.put(child.getId(), child.getNode());
-				if (child instanceof ModifiableEntry && ArtifactRepositoryManager.class.isAssignableFrom(child.getNode().getArtifactManager())) {
+				if (child instanceof ModifiableEntry && child.isNode() && ArtifactRepositoryManager.class.isAssignableFrom(child.getNode().getArtifactManager())) {
 					try {
-						((ArtifactRepositoryManager) child.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) child, child.getNode().getArtifact());
+						List<Entry> addedChildren = ((ArtifactRepositoryManager) child.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) child, child.getNode().getArtifact());
+						if (addedChildren != null) {
+							for (Entry addedChild : addedChildren) {
+								nodes.put(addedChild.getId(), addedChild.getNode());
+							}
+						}
 					}
 					catch (InstantiationException e) {
 						throw new RuntimeException(e);
@@ -223,14 +198,19 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 
-	@Override
-	public Artifact resolve(String id) {
+	private Entry getEntry(String id) {
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		Entry entry = getRoot();
 		while (entry != null && path != null) {
 			entry = entry.getChild(path.getName());
 			path = path.getChildPath();
 		}
+		return entry;
+	}
+	
+	@Override
+	public Artifact resolve(String id) {
+		Entry entry = getEntry(id);
 		try {
 			return entry != null && entry.isNode() ? entry.getNode().getArtifact() : null;
 		}
@@ -279,11 +259,11 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public boolean isValidName(ResourceContainer<?> parent, String name) {
-		return name.matches("^[\\w]+$") && !RESERVED.contains(name);
+		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
-	private void startMavenListener(int port, ResourceContainer<?> target) throws IOException {
-		HTTPServer server = new DefaultHTTPServer(port, 10, getEventDispatcher());
+	private void startMavenRepository(ResourceContainer<?> target) throws IOException {
+		logger.info("Starting maven repository located at: " + ResourceUtils.getURI(target));
 		mavenRepository = new be.nabu.libs.maven.ResourceRepository(target, getEventDispatcher());
 		// everything in the "nabu" domain is considered internal
 		// TODO: allow configurable entries
@@ -294,54 +274,11 @@ public class EAIResourceRepository implements ResourceRepository {
 		for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
 			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
 			MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
-			MavenArtifact artifact = manager.load(mavenRepository, internal);
+			MavenArtifact artifact = manager.load(mavenRepository, internal, localMavenServer, updateMavenSnapshots);
 			manager.addChildren(getRoot(), artifact);
 		}
-		
-		getEventDispatcher().subscribe(DeleteResourceRepositoryEvent.class, new EventHandler<DeleteResourceRepositoryEvent, Void>() {
-			@Override
-			public Void handle(DeleteResourceRepositoryEvent event) {
-				logger.info("Deleting maven artifact " + event.getArtifact().getArtifactId());
-				MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
-				try {
-					manager.remove(getRoot(), manager.load(mavenRepository, event.getArtifact()));
-				}
-				catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-				return null;
-			}
-		}).filter(new EventHandler<DeleteResourceRepositoryEvent, Boolean>() {
-			@Override
-			public Boolean handle(DeleteResourceRepositoryEvent event) {
-				return !event.isInternal();
-			}
-		});
-		getEventDispatcher().subscribe(CreateResourceRepositoryEvent.class, new EventHandler<CreateResourceRepositoryEvent, Void>() {
-			@Override
-			public Void handle(CreateResourceRepositoryEvent event) {
-				logger.info("Installing maven artifact " + event.getArtifact().getArtifactId());
-				MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
-				MavenArtifact artifact = manager.load(getMavenRepository(), event.getArtifact());
-				try {
-					manager.addChildren(getRoot(), artifact);
-				}
-				catch (IOException e) {
-					throw new RuntimeException(e);
-				}
-				return null;
-			}
-		}).filter(new EventHandler<CreateResourceRepositoryEvent, Boolean>() {
-			@Override
-			public Boolean handle(CreateResourceRepositoryEvent event) {
-				return !event.isInternal();
-			}
-		});
-		// no support for non-root calls atm!
-		server.getEventDispatcher().subscribe(HTTPRequest.class, new MavenListener(mavenRepository));
-		server.start();
 	}
-
+	
 	public be.nabu.libs.maven.api.DomainRepository getMavenRepository() {
 		return mavenRepository;
 	}
@@ -363,6 +300,9 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public List<Node> getNodes(Class<Artifact> artifactClazz) {
+		if (nodesByType == null) {
+			scanForTypes();
+		}
 		List<Node> nodes = new ArrayList<Node>();
 		for (String id : this.nodes.keySet()) {
 			Node node = this.nodes.get(id);
@@ -379,5 +319,75 @@ public class EAIResourceRepository implements ResourceRepository {
 			}
 		}
 		return nodes;
+	}
+	
+	private void scanForTypes() {
+		if (nodesByType == null) {
+			synchronized(this) {
+				nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+			}
+		}
+		synchronized(nodesByType) {
+			nodesByType.clear();
+			scanForTypes(repositoryRoot);
+		}
+	}
+	
+	private void scanForTypes(Entry entry) {
+		synchronized(nodesByType) {
+			for (Entry child : entry) {
+				if (child.isNode()) {
+					Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
+					if (!nodesByType.containsKey(artifactClass)) {
+						nodesByType.put(artifactClass, new HashMap<String, Node>());
+					}
+					nodesByType.get(artifactClass).put(child.getId(), child.getNode());
+				}
+				if (!child.isLeaf()) {
+					scanForTypes(child);
+				}
+			}
+		}
+	}
+
+	@Override
+	public ServiceRunner getServiceRunner() {
+		return serviceRunner;
+	}
+
+	public void setServiceRunner(ServiceRunner serviceRunner) {
+		this.serviceRunner = serviceRunner;
+	}
+
+	@Override
+	public void start() {
+		load(repositoryRoot);
+		// start the maven repository stuff
+		try {
+			startMavenRepository(mavenRoot);
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public ResourceContainer<?> getMavenRoot() {
+		return mavenRoot;
+	}
+
+	public URI getLocalMavenServer() {
+		return localMavenServer;
+	}
+
+	public void setLocalMavenServer(URI localMavenServer) {
+		this.localMavenServer = localMavenServer;
+	}
+
+	public boolean isUpdateMavenSnapshots() {
+		return updateMavenSnapshots;
+	}
+
+	public void setUpdateMavenSnapshots(boolean updateMavenSnapshots) {
+		this.updateMavenSnapshots = updateMavenSnapshots;
 	}
 }

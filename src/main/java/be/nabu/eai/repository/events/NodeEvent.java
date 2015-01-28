@@ -9,7 +9,8 @@ public class NodeEvent {
 		SAVE,
 		CREATE,
 		EXECUTE,
-		DELETE
+		DELETE,
+		RELOAD
 	}
 	
 	private State state;

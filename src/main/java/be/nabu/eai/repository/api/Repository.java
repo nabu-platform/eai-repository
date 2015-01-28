@@ -9,6 +9,7 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ServiceRunner;
 
 public interface Repository extends ArtifactResolver<Artifact> {
 	public RepositoryEntry getRoot();
@@ -17,4 +18,9 @@ public interface Repository extends ArtifactResolver<Artifact> {
 	public Node getNode(String id);
 	public List<Node> getNodes(Class<Artifact> artifactClazz);
 	public ExecutionContext newExecutionContext(Principal principal);
+	public ServiceRunner getServiceRunner();
+	/**
+	 * Start the repository, it will start loading all the nodes
+	 */
+	public void start();
 }

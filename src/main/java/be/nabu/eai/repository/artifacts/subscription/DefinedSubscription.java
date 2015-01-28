@@ -3,17 +3,19 @@ package be.nabu.eai.repository.artifacts.subscription;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.broker.client.SubscriptionException;
 import be.nabu.eai.repository.InternalPrincipal;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.artifacts.subscription.SubscriptionConfiguration.Selector;
-import be.nabu.libs.artifacts.api.StartableArtifact;
-import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.artifacts.api.RestartableArtifact;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.libs.services.ServiceRuntime;
-import be.nabu.libs.services.api.ServiceException;
+import be.nabu.libs.services.api.ServiceResult;
 import be.nabu.libs.tasks.TaskUtils;
 import be.nabu.libs.tasks.api.ExecutionException;
 import be.nabu.libs.tasks.api.TaskExecutor;
@@ -22,7 +24,7 @@ import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Element;
 
-public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration> implements StartableArtifact, StoppableArtifact {
+public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration> implements RestartableArtifact {
 
 	private static final String AMOUNT_OF_SUBSCRIBERS = "be.nabu.eai.broker.amountOfSubscribers";
 	private static final String PRIORITY = "be.nabu.eai.broker.priority";
@@ -31,15 +33,17 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 	private static final String DELAY_MAX = "be.nabu.eai.broker.delayMax";
 	private Repository repository;
 	
+	private Logger logger = LoggerFactory.getLogger(getClass());
+	
 	public DefinedSubscription(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, "subscription.xml", SubscriptionConfiguration.class);
 		this.repository = repository;
 	}
-		
+	
 	@Override
 	public void start() throws IOException {
 		final SubscriptionConfiguration configuration = getConfiguration();
-		if (configuration.getBrokerClient() != null && configuration.getService() != null) {
+		if (repository.getServiceRunner() != null && notNull(configuration.getBrokerClient(), configuration.getService(), configuration.getSelector()) && !Boolean.TRUE.equals(configuration.getDisabled())) {
 			try {
 				String selector = configuration.getSelector().toString().toLowerCase();
 				if (Selector.PARALLEL.equals(configuration.getSelector()) && configuration.getMaxParallel() != null && configuration.getMaxParallel() >= 0) {
@@ -72,13 +76,22 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 							if (!inputFields.containsKey(typeId)) {
 								throw new RuntimeException("There is no matching input variable in the service " + configuration.getService().getId() + " for the type: " + typeId);
 							}
-							ServiceRuntime runtime = new ServiceRuntime(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())));
 							ComplexContent input = configuration.getService().getServiceInterface().getInputDefinition().newInstance();
 							input.set(inputFields.get(typeId), content);
+							// the interface allows both sync and async execution, the server is currently implemented as sync
+							// but even if it is async, we need to send back information so this thread will hang until the server one is done
+							Future<ServiceResult> result = repository.getServiceRunner().run(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())), input);
 							try {
-								runtime.run(input);
+								ServiceResult serviceResult = result.get();
+								if (serviceResult.getException() != null) {
+									throw new ExecutionException(serviceResult.getException());
+								}
+								// TODO: currently we do nothing with the service result, do we want the ability to republish it or something?
 							}
-							catch (ServiceException e) {
+							catch (InterruptedException e) {
+								throw new ExecutionException(e);
+							}
+							catch (java.util.concurrent.ExecutionException e) {
 								throw new ExecutionException(e);
 							}
 						}
@@ -100,10 +113,26 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 				throw new IOException(e);
 			}
 		}
+		else {
+			logger.error("Can not start subscription " + getId() + " because the configuration is incomplete");
+			stop();
+		}
+	}
+	
+	@Override
+	public void stop() {
+		try {
+			if (getConfiguration().getBrokerClient() != null) {
+				getConfiguration().getBrokerClient().getBrokerClient().unsubscribe(getId());
+			}
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
-	public void stop() {
-		// TODO: remove remote subscription?
+	public void restart() throws IOException {
+		start();
 	}
 }

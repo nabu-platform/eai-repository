@@ -30,9 +30,10 @@ public class MemoryEntry implements ModifiableEntry {
 	}
 	
 	@Override
-	public Entry getChild(String arg0) {
+	public Entry getChild(String name) {
+		name = name.substring(0, 1).toLowerCase() + name.substring(1);
 		for (Entry child : children) {
-			if (child.getName().equals(arg0)) {
+			if (child.getName().equals(name)) {
 				return child;
 			}
 		}

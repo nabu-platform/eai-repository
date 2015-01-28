@@ -39,7 +39,6 @@ public class JAXBArtifact<T> implements Artifact {
 	public String getId() {
 		return id;
 	}
-	
 
 	@SuppressWarnings("unchecked")
 	public T unmarshal(InputStream input) throws JAXBException {
@@ -104,4 +103,15 @@ public class JAXBArtifact<T> implements Artifact {
 		}
 	}
 
+	public static boolean notNull(Object...objects) {
+		if (objects == null) {
+			return false;
+		}
+		for (Object object : objects) {
+			if (object == null) {
+				return false;
+			}
+		}
+		return true;
+	}
 }

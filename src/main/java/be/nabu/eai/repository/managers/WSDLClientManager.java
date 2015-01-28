@@ -5,12 +5,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.xml.sax.SAXException;
 
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.managers.util.WSDLClient;
@@ -105,7 +107,8 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 	}
 
 	@Override
-	public void addChildren(ModifiableEntry parent, WSDLClient artifact) throws IOException {
+	public List<Entry> addChildren(ModifiableEntry parent, WSDLClient artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
 		((EAINode) parent.getNode()).setLeaf(false);
 		
 		MemoryEntry services = new MemoryEntry(parent.getRepository(), parent, null, parent.getId() + ".services", "services");
@@ -117,7 +120,24 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 			MemoryEntry entry = new MemoryEntry(services.getRepository(), services, node, services.getId() + "." + operation.getName(), operation.getName());
 			node.setEntry(entry);
 			services.addChildren(entry);
+			entries.add(entry);
 		}
+		// TODO: add documents!
 		parent.addChildren(services);
+		return entries;
+	}
+
+	@Override
+	public List<Entry> removeChildren(ModifiableEntry parent, WSDLClient artifact) throws IOException {
+		List<Entry> entries = new ArrayList<Entry>();
+		Entry services = parent.getChild("services");
+		if (services != null) {
+			for (Entry service : services) {
+				entries.add(service);
+			}
+			parent.removeChildren("services");
+		}
+		// TODO: add documents!
+		return entries;
 	}
 }
