@@ -10,7 +10,7 @@ import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 
 @XmlRootElement(name = "broker")
-@XmlType(propOrder = { "endpoint", "keystore", "username", "password", "clientId", "encoding", "processingPoolSize", "connectionPoolSize", "connectionTimeout", "socketTimeout", "pollInterval", "deviation" })
+@XmlType(propOrder = { "endpoint", "keystore", "username", "password", "clientId", "encoding", "processingPoolSize", "connectionPoolSize", "connectionTimeout", "socketTimeout", "deviation" })
 public class BrokerConfiguration {
 	
 	private DefinedKeyStore keystore;
@@ -18,7 +18,6 @@ public class BrokerConfiguration {
 	private URI endpoint;
 	private String encoding;
 	private Integer processingPoolSize, connectionPoolSize, connectionTimeout, socketTimeout;
-	private Long pollInterval;
 	private Double deviation;
 	
 	public String getClientId() {
@@ -74,12 +73,6 @@ public class BrokerConfiguration {
 	}
 	public void setSocketTimeout(Integer socketTimeout) {
 		this.socketTimeout = socketTimeout;
-	}
-	public Long getPollInterval() {
-		return pollInterval;
-	}
-	public void setPollInterval(Long pollInterval) {
-		this.pollInterval = pollInterval;
 	}
 	public Double getDeviation() {
 		return deviation;
