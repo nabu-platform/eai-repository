@@ -66,7 +66,6 @@ public class EAIResourceRepository implements ResourceRepository {
 	public static final String PUBLIC = "public";
 	
 	private Map<Class<? extends Artifact>, Map<String, Node>> nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
-	private Map<String, Node> nodes = new HashMap<String, Node>();
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -159,6 +158,52 @@ public class EAIResourceRepository implements ResourceRepository {
 	public Charset getCharset() {
 		return charset;
 	}
+	
+	public void unload(String id) {
+		Entry entry = getEntry(id);
+		if (entry != null) {
+			unload(entry);
+			entry.getParent().refresh();
+		}
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void unload(Entry entry) {
+		nodesByType = null;
+		if (entry.isNode()) {
+			if (ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+				try {
+					((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+				}
+				catch (InstantiationException e) {
+					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+				}
+				catch (IllegalAccessException e) {
+					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+				}
+				catch (IOException e) {
+					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+				}
+				catch (ParseException e) {
+					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+				}
+			}
+			// TODO: remove from reference map?
+		}
+		if (!entry.isLeaf()) {
+			for (Entry child : entry) {
+				unload(child);
+			}
+		}
+	}
+	
+	public void reload(String id) {
+		Entry entry = getEntry(id);
+		if (entry != null) {
+			unload(entry);
+			load(entry);
+		}
+	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void load(Entry entry) {
@@ -168,27 +213,26 @@ public class EAIResourceRepository implements ResourceRepository {
 			if (child.isNode()) {
 				logger.info("Loading entry: " + child.getId());
 				buildReferenceMap(child.getId(), child.getNode().getReferences());
-				nodes.put(child.getId(), child.getNode());
 				if (child instanceof ModifiableEntry && child.isNode() && ArtifactRepositoryManager.class.isAssignableFrom(child.getNode().getArtifactManager())) {
 					try {
 						List<Entry> addedChildren = ((ArtifactRepositoryManager) child.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) child, child.getNode().getArtifact());
 						if (addedChildren != null) {
 							for (Entry addedChild : addedChildren) {
-								nodes.put(addedChild.getId(), addedChild.getNode());
+								buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
 							}
 						}
 					}
 					catch (InstantiationException e) {
-						throw new RuntimeException(e);
+						logger.error("Could not finish loading generated children for " + child.getId(), e);
 					}
 					catch (IllegalAccessException e) {
-						throw new RuntimeException(e);
+						logger.error("Could not finish loading generated children for " + child.getId(), e);
 					}
 					catch (IOException e) {
-						throw new RuntimeException(e);
+						logger.error("Could not finish loading generated children for " + child.getId(), e);
 					}
 					catch (ParseException e) {
-						throw new RuntimeException(e);
+						logger.error("Could not finish loading generated children for " + child.getId(), e);
 					}
 				}
 			}
@@ -303,22 +347,9 @@ public class EAIResourceRepository implements ResourceRepository {
 		if (nodesByType == null) {
 			scanForTypes();
 		}
-		List<Node> nodes = new ArrayList<Node>();
-		for (String id : this.nodes.keySet()) {
-			Node node = this.nodes.get(id);
-			try {
-				if (artifactClazz.isAssignableFrom(node.getArtifact().getClass())) {
-					nodes.add(node);
-				}
-			}
-			catch (IOException e) {
-				logger.error("Can not parse node: " + id, e);
-			}
-			catch (ParseException e) {
-				logger.error("Can not parse node: " + id, e);
-			}
-		}
-		return nodes;
+		return nodesByType.containsKey(artifactClazz)
+			? new ArrayList<Node>(nodesByType.get(artifactClazz).values())
+			: new ArrayList<Node>();
 	}
 	
 	private void scanForTypes() {

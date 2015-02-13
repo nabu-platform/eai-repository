@@ -11,7 +11,7 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "trigger")
-@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel", "disabled" })
+@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "groupQuery", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel", "disabled" })
 public class SubscriptionConfiguration {
 	
 	private DefinedBrokerClient brokerClient;

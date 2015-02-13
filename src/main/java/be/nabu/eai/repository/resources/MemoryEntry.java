@@ -107,4 +107,9 @@ public class MemoryEntry implements ModifiableEntry {
 			}
 		}
 	}
+
+	@Override
+	public void refresh() {
+		// do nothing
+	}
 }

@@ -14,6 +14,7 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.DefinedStructure;
@@ -56,7 +57,7 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 		return format(entry, artifact, "structure.xml");
 	}
 
-	public static List<ValidationMessage> format(ResourceEntry entry, Structure artifact, String name) throws IOException {
+	public static List<ValidationMessage> format(ResourceEntry entry, ComplexType artifact, String name) throws IOException {
 		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");

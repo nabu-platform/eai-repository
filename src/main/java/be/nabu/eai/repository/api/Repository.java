@@ -16,6 +16,8 @@ public interface Repository extends ArtifactResolver<Artifact> {
 	public Charset getCharset();
 	public EventDispatcher getEventDispatcher();
 	public Node getNode(String id);
+	public void reload(String id);
+	public void unload(String id);
 	public List<Node> getNodes(Class<Artifact> artifactClazz);
 	public ExecutionContext newExecutionContext(Principal principal);
 	public ServiceRunner getServiceRunner();
