@@ -49,6 +49,13 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 				if (Selector.PARALLEL.equals(configuration.getSelector()) && configuration.getMaxParallel() != null && configuration.getMaxParallel() >= 0) {
 					selector += ":" + configuration.getMaxParallel();
 				}
+				else if (Selector.GROUPED.equals(configuration.getSelector())) {
+					if (configuration.getGroupQuery() == null || configuration.getGroupQuery().isEmpty()) {
+						logger.error("Can not start subscription " + getId() + " because a grouped subscription requires a group query");
+						return;
+					}
+					selector += ":" + configuration.getGroupQuery();
+				}
 				configuration.getBrokerClient().getBrokerClient().subscribe(
 					getId(),
 					configuration.getQueue().getId(),

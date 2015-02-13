@@ -23,6 +23,7 @@ public class SubscriptionConfiguration {
 	private Boolean bestEffort, dedicated;
 	private String userId;
 	private Selector selector;
+	private String groupQuery;
 	private Integer maxParallel;
 	private Boolean disabled;
 	
@@ -124,10 +125,16 @@ public class SubscriptionConfiguration {
 	public void setDisabled(Boolean disabled) {
 		this.disabled = disabled;
 	}
-
+	public String getGroupQuery() {
+		return groupQuery;
+	}
+	public void setGroupQuery(String groupQuery) {
+		this.groupQuery = groupQuery;
+	}
 
 	public enum Selector {
 		PARALLEL,
+		GROUPED,
 		SERIAL
 	}
 }
