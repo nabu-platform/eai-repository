@@ -96,6 +96,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 	@Override
 	public void refresh() {
 		children = null;
+		node = null;
 	}
 	
 	private Map<String, Entry> getChildren() {

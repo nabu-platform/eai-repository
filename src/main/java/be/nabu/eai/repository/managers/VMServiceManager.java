@@ -16,16 +16,17 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
 import be.nabu.libs.services.vm.Pipeline;
-import be.nabu.libs.services.vm.Sequence;
+import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
-import be.nabu.libs.services.vm.VMService;
+import be.nabu.libs.services.vm.api.VMService;
 import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.java.BeanInstance;
-import be.nabu.libs.types.java.BeanType;
+import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
@@ -58,7 +59,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 			readable.close();
 		}
 		// next we load the root sequence
-		XMLBinding sequenceBinding = new XMLBinding(new BeanType<Sequence>(Sequence.class), Charset.forName("UTF-8"));
+		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
 		readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false));
 		Sequence sequence = null;
 		try {
@@ -86,7 +87,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		}
 		
 		// next we load the root sequence
-		XMLBinding sequenceBinding = new XMLBinding(new BeanType<Sequence>(Sequence.class), Charset.forName("UTF-8"));
+		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
 		writable = new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true));
 		try {
 			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(artifact.getRoot()));

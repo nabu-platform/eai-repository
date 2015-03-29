@@ -30,7 +30,7 @@ import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
-import be.nabu.libs.types.java.BeanType;
+import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.types.structure.DefinedStructure;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.utils.io.IOUtils;
@@ -47,7 +47,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find jdbcpool.properties");
 		}
-		XMLBinding binding = new XMLBinding(new BeanType<JDBCServiceConfig>(JDBCServiceConfig.class), Charset.forName("UTF-8"));
+		XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(JDBCServiceConfig.class), Charset.forName("UTF-8"));
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 		try {
 			JDBCServiceConfig config = TypeUtils.getAsBean(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), JDBCServiceConfig.class);
@@ -105,7 +105,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create("jdbcservice.xml", "application/xml");
 		}
-		XMLBinding binding = new XMLBinding(new BeanType<JDBCServiceConfig>(JDBCServiceConfig.class), Charset.forName("UTF-8"));
+		XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(JDBCServiceConfig.class), Charset.forName("UTF-8"));
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) resource);
 		try {
 			binding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<JDBCServiceConfig>(config));
@@ -163,8 +163,9 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	public List<Entry> addChildren(ModifiableEntry parent, JDBCService artifact) {
 		List<Entry> entries = new ArrayList<Entry>();
 		if (artifact.isInputGenerated() || artifact.isOutputGenerated()) {
-			((EAINode) parent.getNode()).setLeaf(false);
-			if (artifact.isInputGenerated()) {
+			boolean isLeaf = true;
+			if (artifact.isInputGenerated() && TypeUtils.getAllChildren(artifact.getParameters()).size() > 0) {
+				isLeaf = false;
 				EAINode node = new EAINode();
 				node.setArtifactClass(DefinedType.class);
 				node.setArtifact((DefinedType) artifact.getParameters());
@@ -176,7 +177,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 				parent.addChildren(parameters);
 				entries.add(parameters);
 			}
-			if (artifact.isOutputGenerated()) {
+			if (artifact.isOutputGenerated() && TypeUtils.getAllChildren(artifact.getResults()).size() > 0) {
+				isLeaf = false;
 				EAINode node = new EAINode();
 				node.setArtifactClass(DefinedType.class);
 				node.setArtifact((DefinedType) artifact.getResults());
@@ -187,6 +189,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 				parent.addChildren(results);
 				entries.add(results);
 			}
+			((EAINode) parent.getNode()).setLeaf(isLeaf);
 		}
 		return entries;
 	}

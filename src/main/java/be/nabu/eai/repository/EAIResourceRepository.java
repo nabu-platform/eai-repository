@@ -169,9 +169,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
+		logger.info("Unloading: " + entry.getId());
 		nodesByType = null;
 		if (entry.isNode()) {
-			if (ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+			// if there is an artifact manager and it maintains a repository, remove it all
+			if (entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
 					((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
 				}
@@ -198,9 +200,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public void reload(String id) {
+		logger.info("Reloading: " + id);
 		Entry entry = getEntry(id);
 		if (entry != null) {
 			unload(entry);
+			entry.refresh();
 			load(entry);
 		}
 	}
@@ -209,34 +213,37 @@ public class EAIResourceRepository implements ResourceRepository {
 	private void load(Entry entry) {
 		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
 		nodesByType = null;
-		for (Entry child : entry) {
-			if (child.isNode()) {
-				logger.info("Loading entry: " + child.getId());
-				buildReferenceMap(child.getId(), child.getNode().getReferences());
-				if (child instanceof ModifiableEntry && child.isNode() && ArtifactRepositoryManager.class.isAssignableFrom(child.getNode().getArtifactManager())) {
-					try {
-						List<Entry> addedChildren = ((ArtifactRepositoryManager) child.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) child, child.getNode().getArtifact());
-						if (addedChildren != null) {
-							for (Entry addedChild : addedChildren) {
-								buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
-							}
+		if (entry.isNode()) {
+			logger.info("Loading entry: " + entry.getId());
+			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
+			if (entry instanceof ModifiableEntry && entry.isNode() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+				try {
+					List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+					if (addedChildren != null) {
+						for (Entry addedChild : addedChildren) {
+							buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
 						}
 					}
-					catch (InstantiationException e) {
-						logger.error("Could not finish loading generated children for " + child.getId(), e);
-					}
-					catch (IllegalAccessException e) {
-						logger.error("Could not finish loading generated children for " + child.getId(), e);
-					}
-					catch (IOException e) {
-						logger.error("Could not finish loading generated children for " + child.getId(), e);
-					}
-					catch (ParseException e) {
-						logger.error("Could not finish loading generated children for " + child.getId(), e);
-					}
+				}
+				catch(RuntimeException e) {
+					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				}
+				catch (InstantiationException e) {
+					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				}
+				catch (IllegalAccessException e) {
+					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				}
+				catch (IOException e) {
+					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				}
+				catch (ParseException e) {
+					logger.error("Could not finish loading generated children for " + entry.getId(), e);
 				}
 			}
-			else if (!child.isLeaf()) {
+		}
+		if (!entry.isLeaf()) {
+			for (Entry child : entry) {
 				load(child);
 			}
 		}
@@ -392,7 +399,6 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public void start() {
-		load(repositoryRoot);
 		// start the maven repository stuff
 		try {
 			startMavenRepository(mavenRoot);
@@ -400,6 +406,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		load(repositoryRoot);
 	}
 
 	public ResourceContainer<?> getMavenRoot() {
