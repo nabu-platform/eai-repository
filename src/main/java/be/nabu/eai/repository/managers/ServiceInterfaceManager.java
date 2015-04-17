@@ -7,13 +7,13 @@ import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.api.DefinedServiceInterface;
+import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.PipelineInterfaceProperty;
 import be.nabu.libs.types.api.ComplexType;
@@ -23,7 +23,6 @@ import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.SuperTypeProperty;
 import be.nabu.libs.validator.api.ValidationMessage;
-import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -42,21 +41,11 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 		finally {
 			readable.close();
 		}
-		String value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), pipeline.getProperties());
+		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), pipeline.getProperties());
 		// if we have an interface
 		if (value != null) {
-			Artifact artifact = entry.getRepository().getNode(value).getArtifact();
-			// unset it
-			if (!(artifact instanceof DefinedServiceInterface)) {
-				messages.add(new ValidationMessage(Severity.ERROR, "The id '" + value + "' does not point to a service interface"));
-				pipeline.setProperty(new ValueImpl<String>(PipelineInterfaceProperty.getInstance(), null));
-			}
-			// set the extensions
-			else {
-				DefinedServiceInterface iface = (DefinedServiceInterface) artifact;
-				pipeline.get(Pipeline.INPUT).setProperty(new ValueImpl<Type>(SuperTypeProperty.getInstance(), iface.getInputDefinition()));
-				pipeline.get(Pipeline.OUTPUT).setProperty(new ValueImpl<Type>(SuperTypeProperty.getInstance(), iface.getOutputDefinition()));
-			}
+			pipeline.get(Pipeline.INPUT).setProperty(new ValueImpl<Type>(SuperTypeProperty.getInstance(), value.getInputDefinition()));
+			pipeline.get(Pipeline.OUTPUT).setProperty(new ValueImpl<Type>(SuperTypeProperty.getInstance(), value.getOutputDefinition()));
 		}
 		return pipeline;
 	}
@@ -116,6 +105,11 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 		@Override
 		public String getId() {
 			return id;
+		}
+
+		@Override
+		public ServiceInterface getParent() {
+			return ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), pipeline.getProperties());
 		}
 		
 	}
