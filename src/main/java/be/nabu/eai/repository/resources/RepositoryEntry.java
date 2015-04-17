@@ -1,11 +1,13 @@
 package be.nabu.eai.repository.resources;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,12 +29,6 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
-import be.nabu.libs.types.TypeUtils;
-import be.nabu.libs.types.api.ComplexType;
-import be.nabu.libs.types.binding.api.Window;
-import be.nabu.libs.types.binding.xml.XMLBinding;
-import be.nabu.libs.types.java.BeanInstance;
-import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -104,7 +100,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			children = new LinkedHashMap<String, Entry>();
 			if (!isLeaf()) {
 				for (Resource child : container) {
-					if (child instanceof ResourceContainer && !repository.isInternal(container)) {
+					if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
 						children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
 					}
 				}
@@ -141,11 +137,13 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			EAINode node = new EAINode();
 			node.setArtifactManager(manager.getClass());
 			node.setLeaf(true);
-			XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(EAINode.class), repository.getCharset());
 			Resource target = nodeContainer.create("node.xml", "application/xml");
 			WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
 			try {
-				binding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<EAINode>(node));
+				getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
+			}
+			catch (JAXBException e) {
+				throw new IOException(e);
 			}
 			finally {
 				writable.close();
@@ -171,12 +169,14 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			else {
 				repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
 			}
-			XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(EAINode.class), repository.getCharset());
 			try {
 				ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 				try {
-					node = TypeUtils.getAsBean(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), EAINode.class);
+					node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
 					node.setEntry(this);
+				}
+				catch (JAXBException e) {
+					throw new IOException(e);
 				}
 				finally {
 					readable.close();
@@ -185,9 +185,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			}
 			catch (IOException e) {
 				logger.error("Could not load node " + getId(), e);
-			}
-			catch (ParseException e) {
-				logger.error("Could not parse node " + getId(), e);
 			}
 
 			if (resource instanceof TimestampedResource) {
@@ -240,4 +237,21 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 		}
 	}
 
+	private static JAXBContext jaxbContext;
+	
+	public static JAXBContext getJAXBContext() {
+		if (jaxbContext == null) {
+			synchronized(EAINode.class) {
+				if (jaxbContext == null) {
+					try {
+						jaxbContext = JAXBContext.newInstance(EAINode.class);
+					}
+					catch (JAXBException e) {
+						throw new RuntimeException(e);
+					}
+				}
+			}
+		}
+		return jaxbContext;
+	}
 }

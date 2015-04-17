@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.managers;
 
 import java.io.IOException;
+import java.lang.annotation.Annotation;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
@@ -8,6 +9,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import be.nabu.eai.api.Cache;
+import be.nabu.eai.api.Eager;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
@@ -15,6 +18,7 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.MemoryEntry;
+import be.nabu.eai.repository.util.NodeUtils;
 import be.nabu.libs.maven.api.Artifact;
 import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.services.maven.DependencyResolver;
@@ -96,6 +100,18 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
 			EAINode node = new EAINode();
 			node.setArtifact(artifact.getChildren().get(childId));
+			Annotation[] annotations = artifact.getAnnotations(childId);
+			for (Annotation annotation : annotations) {
+				if (annotation instanceof Cache) {
+					Long timeout = ((Cache) annotation).timeout();
+					Boolean refresh = ((Cache) annotation).refresh();
+					node.getProperties().put(NodeUtils.CACHE_TIMEOUT, timeout.toString());
+					node.getProperties().put(NodeUtils.CACHE_REFRESH, refresh.toString());
+				}
+				else if (annotation instanceof Eager) {
+					node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
+				}
+			}
 			node.setLeaf(true);
 			MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
 			node.setEntry(child);

@@ -16,15 +16,13 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
 import be.nabu.libs.services.vm.Pipeline;
-import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
 import be.nabu.libs.services.vm.api.VMService;
+import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
-import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
-import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.validator.api.ValidationMessage;
@@ -35,7 +33,7 @@ import be.nabu.utils.io.api.WritableContainer;
 
 public class VMServiceManager implements ArtifactManager<VMService> {
 
-	private Resource getResource(ResourceEntry entry, String name, boolean create) throws IOException {
+	public static Resource getResource(ResourceEntry entry, String name, boolean create) throws IOException {
 		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null && create) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
@@ -48,19 +46,10 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	
 	@Override
 	public VMService load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
-		// we need to load the pipeline which is basically a structure
-		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
-		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "pipeline.xml", false));
-		Pipeline pipeline = new Pipeline(null, null);
-		try {
-			unmarshaller.unmarshal(IOUtils.toInputStream(readable), pipeline);
-		}
-		finally {
-			readable.close();
-		}
+		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
 		// next we load the root sequence
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
-		readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false));
+		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false));
 		Sequence sequence = null;
 		try {
 			sequence = TypeUtils.getAsBean(sequenceBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Sequence.class);
@@ -77,18 +66,11 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 
 	@Override
 	public List<ValidationMessage> save(ResourceEntry entry, VMService artifact) throws IOException {
-		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) getResource(entry, "pipeline.xml", true));
-		try {
-			XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
-			marshaller.marshal(IOUtils.toOutputStream(writable), artifact.getPipeline());
-		}
-		finally {
-			writable.close();
-		}
+		new ServiceInterfaceManager().savePipeline(entry, artifact.getPipeline());
 		
 		// next we load the root sequence
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
-		writable = new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true));
+		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true));
 		try {
 			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(artifact.getRoot()));
 		}

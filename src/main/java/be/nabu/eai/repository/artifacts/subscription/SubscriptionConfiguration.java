@@ -11,13 +11,13 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "trigger")
-@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "groupQuery", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel", "disabled" })
+@XmlType(propOrder = { "brokerClient", "queue", "selector", "query", "externalIdQuery", "groupQuery", "service", "userId", "priority", "bestEffort", "amountOfSubscribers", "dedicated", "delayInitial", "delayDelta", "delayMax", "maxParallel", "disabled" })
 public class SubscriptionConfiguration {
 	
 	private DefinedBrokerClient brokerClient;
 	private DefinedService service;
 	private DefinedType queue;
-	private String query;
+	private String query, externalIdQuery;
 	private Integer priority, amountOfSubscribers;
 	private Long delayInitial, delayDelta, delayMax;
 	private Boolean bestEffort, dedicated;
@@ -130,6 +130,12 @@ public class SubscriptionConfiguration {
 	}
 	public void setGroupQuery(String groupQuery) {
 		this.groupQuery = groupQuery;
+	}
+	public String getExternalIdQuery() {
+		return externalIdQuery;
+	}
+	public void setExternalIdQuery(String externalIdQuery) {
+		this.externalIdQuery = externalIdQuery;
 	}
 
 	public enum Selector {

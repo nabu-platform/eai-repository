@@ -202,6 +202,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	public void reload(String id) {
 		logger.info("Reloading: " + id);
 		Entry entry = getEntry(id);
+		while (entry == null && id.contains(".")) {
+			int index = id.lastIndexOf('.');
+			id = id.substring(0, index);
+			entry = getEntry(id);
+		}
 		if (entry != null) {
 			unload(entry);
 			entry.refresh();
@@ -350,7 +355,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 
 	@Override
-	public List<Node> getNodes(Class<Artifact> artifactClazz) {
+	public List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
 		if (nodesByType == null) {
 			scanForTypes();
 		}

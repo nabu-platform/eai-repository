@@ -262,6 +262,12 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
+		<dependency>
+			<groupId>be.nabu.eai</groupId>
+			<artifactId>eai-api</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+
 		<!-- logging -->
 		<dependency>
 			<groupId>org.slf4j</groupId>

@@ -3,29 +3,35 @@ package be.nabu.eai.repository;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.util.ClassAdapter;
+import be.nabu.eai.repository.util.KeyValueMapAdapter;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.validator.api.ValidationMessage;
 
 @XmlRootElement(name = "node")
 @SuppressWarnings("rawtypes")
 public class EAINode implements Node {
-	
+
 	private Class<? extends ArtifactManager> artifactManager;
 	private Class<? extends Artifact> artifactClass;
 	private Artifact artifact;
 	private List<String> references;
 	private Entry entry;
 	private List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	
 	/**
 	 * By default all nodes are leafs
@@ -62,6 +68,7 @@ public class EAINode implements Node {
 
 	@Override
 	@XmlAttribute
+	@XmlJavaTypeAdapter(ClassAdapter.class)
 	public Class<? extends ArtifactManager> getArtifactManager() {
 		return artifactManager;
 	}
@@ -107,5 +114,13 @@ public class EAINode implements Node {
 	}
 	public void setArtifactClass(Class<? extends Artifact> artifactClass) {
 		this.artifactClass = artifactClass;
+	}
+
+	@XmlJavaTypeAdapter(KeyValueMapAdapter.class)
+	public Map<String, String> getProperties() {
+		return properties;
+	}
+	public void setProperties(Map<String, String> properties) {
+		this.properties = properties;
 	}
 }

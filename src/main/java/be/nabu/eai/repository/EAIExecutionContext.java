@@ -3,7 +3,6 @@ package be.nabu.eai.repository;
 import java.security.Principal;
 
 import be.nabu.libs.services.SimpleSecurityContext;
-import be.nabu.libs.services.SimpleTransactionContext;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.SecurityContext;
 import be.nabu.libs.services.api.ServiceContext;
@@ -11,7 +10,7 @@ import be.nabu.libs.services.api.TransactionContext;
 
 public class EAIExecutionContext implements ExecutionContext {
 
-	private TransactionContext transactionContext = new SimpleTransactionContext();
+	private TransactionContext transactionContext = new EAITransactionContext();
 	private SecurityContext securityContext;
 	private EAIResourceRepository repository;
 	

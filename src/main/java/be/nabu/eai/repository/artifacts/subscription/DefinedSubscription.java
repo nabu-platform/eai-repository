@@ -61,6 +61,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 					configuration.getQueue().getId(),
 					selector,
 					configuration.getQuery(),
+					configuration.getExternalIdQuery(),
 					TaskUtils.always(new TaskExecutor<ComplexContent>(){
 						private Map<String, String> inputFields = new HashMap<String, String>();
 						@Override

@@ -3,6 +3,7 @@ package be.nabu.eai.repository.api;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.List;
+import java.util.Map;
 
 import be.nabu.libs.artifacts.api.Artifact;
 
@@ -14,4 +15,5 @@ public interface Node {
 	
 	@SuppressWarnings("rawtypes")
 	public Class<? extends ArtifactManager> getArtifactManager();
+	public Map<String, String> getProperties();
 }
