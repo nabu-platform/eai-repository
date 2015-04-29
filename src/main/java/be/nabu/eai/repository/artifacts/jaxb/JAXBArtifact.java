@@ -114,4 +114,8 @@ public class JAXBArtifact<T> implements Artifact {
 		}
 		return true;
 	}
+
+	public ResourceContainer<?> getDirectory() {
+		return directory;
+	}
 }

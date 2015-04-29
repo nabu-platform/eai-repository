@@ -20,6 +20,8 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.events.RepositoryEvent;
+import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
@@ -404,6 +406,7 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public void start() {
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, false), this);
 		// start the maven repository stuff
 		try {
 			startMavenRepository(mavenRoot);
@@ -412,6 +415,7 @@ public class EAIResourceRepository implements ResourceRepository {
 			throw new RuntimeException(e);
 		}
 		load(repositoryRoot);
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);
 	}
 
 	public ResourceContainer<?> getMavenRoot() {
@@ -432,5 +436,9 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	public void setUpdateMavenSnapshots(boolean updateMavenSnapshots) {
 		this.updateMavenSnapshots = updateMavenSnapshots;
+	}
+	
+	public static boolean isDevelopment() {
+		return Boolean.TRUE.equals(System.getProperty("development", "false"));
 	}
 }

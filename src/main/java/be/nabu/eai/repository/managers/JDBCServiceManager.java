@@ -14,6 +14,7 @@ import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.MemoryEntry;
@@ -113,7 +114,9 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		finally {
 			writable.close();
 		}
-		
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
+		}
 		return new ArrayList<ValidationMessage>();
 	}
 
@@ -215,5 +218,27 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	public void refreshChildren(ModifiableEntry parent, JDBCService artifact) {
 		removeChildren((ModifiableEntry) parent, artifact);
 		addChildren((ModifiableEntry) parent, artifact);
+	}
+
+	@Override
+	public List<String> getReferences(JDBCService artifact) throws IOException {
+		List<String> references = new ArrayList<String>();
+		if (artifact.getConnectionId() != null) {
+			references.add(artifact.getConnectionId());
+		}
+		references.addAll(StructureManager.getComplexReferences(artifact.getParameters()));
+		references.addAll(StructureManager.getComplexReferences(artifact.getResults()));
+		return references;
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(JDBCService artifact, String from, String to) throws IOException {
+		if (from.equals(artifact.getConnectionId())) {
+			artifact.setConnectionId(to);
+		}
+		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+		messages.addAll(StructureManager.updateReferences(artifact.getParameters(), from, to));
+		messages.addAll(StructureManager.updateReferences(artifact.getResults(), from, to));
+		return messages;
 	}
 }

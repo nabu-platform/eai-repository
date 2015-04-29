@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Properties;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.artifacts.jdbc.JDBCPool;
 import be.nabu.libs.resources.ResourceReadableContainer;
@@ -28,6 +29,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * System wide setting or constructor setting or something?
  */
 public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
+	
 	@Override
 	public JDBCPool load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
 		Resource resource = entry.getContainer().getChild("jdbcpool.properties");
@@ -56,15 +58,37 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) resource);
 		try {
 			artifact.getConfig().store(IOUtils.toOutputStream(writable), null);
-			return new ArrayList<ValidationMessage>();
 		}
 		finally {
 			writable.close();
 		}
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
+		}
+		return new ArrayList<ValidationMessage>();
+	}
+
+	@Override
+	public List<String> getReferences(JDBCPool artifact) {
+		List<String> references = new ArrayList<String>();
+		// the reference is to an external system: the database
+		Object object = artifact.getConfig().get("jdbcUrl");
+		if (object != null) {
+			references.add(object.toString());
+		}
+		return references;
 	}
 
 	@Override
 	public Class<JDBCPool> getArtifactClass() {
 		return JDBCPool.class;
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(JDBCPool artifact, String from, String to) {
+		if (from.equals(artifact.getConfig().get("jdbcUrl"))) {
+			artifact.getConfig().put("jdbcUrl", to);
+		}
+		return null;
 	}
 }

@@ -4,9 +4,11 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -17,7 +19,10 @@ import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
+import be.nabu.libs.services.vm.api.Step;
+import be.nabu.libs.services.vm.api.StepGroup;
 import be.nabu.libs.services.vm.api.VMService;
+import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
@@ -77,12 +82,62 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		finally {
 			writable.close();
 		}
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
+		}
 		return artifact.getRoot().validate(new SimpleServiceContext());		
 	}
 
 	@Override
 	public Class<VMService> getArtifactClass() {
 		return VMService.class;
+	}
+
+	@Override
+	public List<String> getReferences(VMService artifact) throws IOException {
+		List<String> references = new ArrayList<String>();
+		// all the type references (including input and output) are in the pipeline
+		references.addAll(StructureManager.getComplexReferences(artifact.getPipeline()));
+		// another reference are all the services that are invoked
+		references.addAll(getReferencesForStep(artifact.getRoot()));
+		return references;
+	}
+	
+	public static List<String> getReferencesForStep(StepGroup steps) {
+		List<String> references = new ArrayList<String>();
+		for (Step step : steps.getChildren()) {
+			if (step instanceof Invoke) {
+				String id = ((Invoke) step).getServiceId();
+				if (!references.contains(id)) {
+					references.add(id);
+				}
+			}
+			if (step instanceof StepGroup) {
+				references.addAll(getReferencesForStep((StepGroup) step));
+			}
+		}
+		return references;
+	}
+	
+	public static void updateReferences(StepGroup steps, String from, String to) {
+		for (Step step : steps.getChildren()) {
+			if (step instanceof Invoke) {
+				if (from.equals(((Invoke) step).getServiceId())) {
+					((Invoke) step).setServiceId(to);
+				}
+			}
+			if (step instanceof StepGroup) {
+				updateReferences((StepGroup) step, from, to);
+			}
+		}
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(VMService artifact, String from, String to) throws IOException {
+		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+		messages.addAll(StructureManager.updateReferences(artifact.getPipeline(), from, to));
+		updateReferences(artifact.getRoot(), from, to);
+		return messages;
 	}
 
 }

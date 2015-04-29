@@ -140,4 +140,14 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 		// TODO: add documents!
 		return entries;
 	}
+
+	@Override
+	public List<String> getReferences(WSDLClient artifact) throws IOException {
+		return null;
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(WSDLClient artifact, String from, String to) throws IOException {
+		return null;
+	}
 }

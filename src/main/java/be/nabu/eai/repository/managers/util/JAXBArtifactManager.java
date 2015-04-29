@@ -6,6 +6,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
@@ -35,6 +36,9 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 		}
 		catch (IOException e) {
 			return Arrays.asList(new ValidationMessage(Severity.ERROR, "Could not save " + artifactClass.getSimpleName() + ": " + e.getMessage()));
+		}
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
 		return null;
 	}

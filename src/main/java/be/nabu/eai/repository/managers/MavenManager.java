@@ -164,5 +164,15 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			}
 		}
 		return entries;
+	}
+
+	@Override
+	public List<String> getReferences(MavenArtifact artifact) throws IOException {
+		return null;
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(MavenArtifact artifact, String from, String to) throws IOException {
+		return null;
 	}	
 }

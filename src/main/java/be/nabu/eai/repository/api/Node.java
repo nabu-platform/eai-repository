@@ -8,6 +8,7 @@ import java.util.Map;
 import be.nabu.libs.artifacts.api.Artifact;
 
 public interface Node {
+	public long getVersion();
 	public List<String> getReferences();
 	public Artifact getArtifact() throws IOException, ParseException;
 	public Class<? extends Artifact> getArtifactClass();

@@ -14,4 +14,6 @@ public interface ArtifactManager<T extends Artifact> {
 	public T load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException;
 	public List<ValidationMessage> save(ResourceEntry entry, T artifact) throws IOException;
 	public Class<T> getArtifactClass();
+	public List<String> getReferences(T artifact) throws IOException;
+	public List<ValidationMessage> updateReference(T artifact, String from, String to) throws IOException;
 }

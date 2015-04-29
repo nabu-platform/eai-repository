@@ -32,6 +32,7 @@ public class EAINode implements Node {
 	private Entry entry;
 	private List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
+	private long version;
 	
 	/**
 	 * By default all nodes are leafs
@@ -122,5 +123,14 @@ public class EAINode implements Node {
 	}
 	public void setProperties(Map<String, String> properties) {
 		this.properties = properties;
+	}
+
+	@XmlAttribute
+	@Override
+	public long getVersion() {
+		return version;
+	}
+	public void setVersion(long version) {
+		this.version = version;
 	}
 }

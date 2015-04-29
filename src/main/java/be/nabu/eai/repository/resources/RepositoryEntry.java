@@ -1,9 +1,11 @@
 package be.nabu.eai.repository.resources;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
@@ -16,6 +18,7 @@ import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
@@ -38,7 +41,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * A repository entry is basically a container that can either contain a node, child entries or both
  * In the simplest case this maps to a "folder" on the file system
  */
-public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
+public class RepositoryEntry implements ResourceEntry, ModifiableEntry, ModifiableNodeEntry {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -137,17 +140,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 			EAINode node = new EAINode();
 			node.setArtifactManager(manager.getClass());
 			node.setLeaf(true);
-			Resource target = nodeContainer.create("node.xml", "application/xml");
-			WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
-			try {
-				getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
-			}
-			catch (JAXBException e) {
-				throw new IOException(e);
-			}
-			finally {
-				writable.close();
-			}
+			writeNode(nodeContainer, node);
 			RepositoryEntry entry = new RepositoryEntry(getRepository(), nodeContainer, this, name);
 			children.put(name, entry);
 			return entry;
@@ -155,6 +148,31 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry {
 		else {
 			throw new IOException("Invalid name: " + name);
 		}
+	}
+
+	private void writeNode(ResourceContainer<?> nodeContainer, EAINode node) throws IOException {
+		Resource target = nodeContainer.getChild("node.xml");
+		if (target == null) {
+			target = ((ManageableContainer<?>) nodeContainer).create("node.xml", "application/xml");
+		}
+		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
+		try {
+			getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
+		}
+		catch (JAXBException e) {
+			throw new IOException(e);
+		}
+		finally {
+			writable.close();
+		}
+	}
+	
+	@Override
+	public void updateNode(List<String> references) throws IOException {
+		EAINode node = (EAINode) getNode();
+		node.setReferences(references == null ? new ArrayList<String>() : references);
+		node.setVersion(node.getVersion() + 1);
+		writeNode(getContainer(), node);
 	}
 	
 	public Node getNode() {

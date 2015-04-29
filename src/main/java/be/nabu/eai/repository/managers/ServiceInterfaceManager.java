@@ -6,13 +6,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.libs.artifacts.ArtifactResolverFactory;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.api.DefinedServiceInterface;
+import be.nabu.libs.services.api.ModifiableServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.PipelineInterfaceProperty;
@@ -23,6 +27,7 @@ import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.SuperTypeProperty;
 import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -62,6 +67,9 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 			? ((DefinedServiceInterfaceImpl) artifact).pipeline
 			: new Pipeline(artifact.getInputDefinition(), artifact.getOutputDefinition());
 		savePipeline(entry, pipeline);
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
+		}
 		return new ArrayList<ValidationMessage>();
 	}
 
@@ -112,5 +120,49 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 			return ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), pipeline.getProperties());
 		}
 		
+	}
+
+	@Override
+	public List<String> getReferences(DefinedServiceInterface artifact) throws IOException {
+		return getReferencesForInterface(artifact);
+	}
+
+	public static List<String> getReferencesForInterface(ServiceInterface artifact) {
+		List<String> references = new ArrayList<String>();
+		if (artifact.getParent() instanceof Artifact) {
+			references.add(((Artifact) artifact.getParent()).getId());
+		}
+		references.addAll(StructureManager.getComplexReferences(artifact.getInputDefinition()));
+		references.addAll(StructureManager.getComplexReferences(artifact.getOutputDefinition()));
+		return references;
+	}
+
+	@Override
+	public List<ValidationMessage> updateReference(DefinedServiceInterface artifact, String from, String to) throws IOException {
+		return updateReferences(artifact, from, to);
+	}
+
+	public static List<ValidationMessage> updateReferences(ServiceInterface artifact, String from, String to) {
+		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+		if (artifact.getParent() instanceof Artifact) {
+			String id = ((Artifact) artifact.getParent()).getId();
+			if (from.equals(id)) {
+				if (!(artifact instanceof ModifiableServiceInterface)) {
+					messages.add(new ValidationMessage(Severity.ERROR, "The service interface is not modifiable"));
+				}
+				else {
+					Artifact newParent = ArtifactResolverFactory.getInstance().getResolver().resolve(to);
+					if (!(newParent instanceof DefinedServiceInterface)) {
+						messages.add(new ValidationMessage(Severity.ERROR, "Not a service interface: " + to));	
+					}
+					else {
+						((ModifiableServiceInterface) artifact).setParent((DefinedServiceInterface) newParent);
+					}
+				}
+			}
+		}
+		messages.addAll(StructureManager.updateReferences(artifact.getInputDefinition(), from, to));
+		messages.addAll(StructureManager.updateReferences(artifact.getOutputDefinition(), from, to));
+		return messages;
 	}
 }
