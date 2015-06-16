@@ -19,6 +19,7 @@ import be.nabu.utils.security.SSLContextType;
 public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfiguration> implements StartableArtifact, StoppableArtifact {
 
 	private static final String HTTP_CONNECTION_POOL_SIZE = "be.nabu.eai.http.connectionPoolSize";
+	private Thread thread;
 	
 	public DefinedHTTPServer(String id, ResourceContainer<?> directory) {
 		super(id, directory, "httpServer.xml", DefinedHTTPServerConfiguration.class);
@@ -33,7 +34,18 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 
 	@Override
 	public void start() throws IOException {
-		getServer().start();
+		thread = new Thread(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					getServer().start();
+				}
+				catch (IOException e) {
+					throw new RuntimeException(e);
+				}
+			}
+		});
+		thread.start();
 	}
 	
 	public HTTPServer getServer() {

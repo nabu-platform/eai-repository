@@ -57,6 +57,9 @@ import be.nabu.utils.io.api.WritableContainer;
 /**
  * Ideally at some point I want to plug in the higher level VFS api instead of the low level resource API
  * To make this easier, I have tried to encapsulate as much resource-related stuff here as possible
+ * 
+ * TODO: add a node event listener for rename, move, delete etc node events to update reference?
+ * 		> currently they are static
  */
 public class EAIResourceRepository implements ResourceRepository {
 	
@@ -153,9 +156,28 @@ public class EAIResourceRepository implements ResourceRepository {
 		return entry != null && entry.isNode() ? entry.getNode() : null;
 	}
 	
+	private Map<String, List<String>> references = new HashMap<String, List<String>>(), dependencies = new HashMap<String, List<String>>();
+	
 	private void buildReferenceMap(String id, List<String> references) {
-		// TODO
-	}	
+		logger.info("Loading references for '" + id + "': " + references);
+		if (references != null) {
+			this.references.put(id, references);
+			for (String reference : references) {
+				if (!dependencies.containsKey(reference)) {
+					dependencies.put(reference, new ArrayList<String>());
+				}
+				dependencies.get(reference).add(id);
+			}
+		}
+	}
+	
+	public List<String> getDependencies(String id) {
+		return dependencies.get(id);
+	}
+	
+	public List<String> getReferences(String id) {
+		return references.get(id);
+	}
 	
 	public Charset getCharset() {
 		return charset;
