@@ -121,7 +121,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		return entries;
 	}
 	
-	private ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
+	public static ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		// resolve a parent path
 		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
@@ -140,7 +140,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		return root;
 	}
 	
-	private String prettify(String name) {
+	public static String prettify(String name) {
 		return name.substring(0, 1).toLowerCase() + name.substring(1);
 	}
 

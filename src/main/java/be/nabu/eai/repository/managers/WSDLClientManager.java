@@ -75,13 +75,13 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 		}
 		
 		@Override
-		public InputStream resolve(URI uri) throws ParseException, IOException {
+		public InputStream resolve(URI uri) throws IOException {
 			if (uri.getScheme() != null) {
-				throw new ParseException("The uri for the managed client wsdl should be local", 0);
+				throw new IOException("The uri for the managed client wsdl should be local");
 			}
 			String path = uri.getPath();
 			if (path.startsWith("/")) {
-				throw new ParseException("The uri for the managed client wsdl should be relative", 0);
+				throw new IOException("The uri for the managed client wsdl should be relative");
 			}
 			ParsedPath parsed = new ParsedPath(path);
 			ResourceEntry entry = root;
