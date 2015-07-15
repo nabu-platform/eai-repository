@@ -5,7 +5,6 @@ import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.util.NodeUtils;
 import be.nabu.libs.services.api.CacheDecider;
 import be.nabu.libs.services.api.DefinedService;
-import be.nabu.libs.services.api.Service;
 
 public class RepositoryCacheDecider implements CacheDecider {
 
@@ -16,24 +15,24 @@ public class RepositoryCacheDecider implements CacheDecider {
 	}
 	
 	@Override
-	public long getCacheTimeout(Service arg0) {
-		Node node = getNode(arg0);
+	public long getCacheTimeout(DefinedService service) {
+		Node node = getNode(service);
 		return node != null && NodeUtils.getCacheTimeout(node) != null ? NodeUtils.getCacheTimeout(node) : 0;
 	}
 
 	@Override
-	public boolean shouldCache(Service arg0) {
-		Node node = getNode(arg0);
+	public boolean shouldCache(DefinedService service) {
+		Node node = getNode(service);
 		return node != null && NodeUtils.getCacheTimeout(node) != null;
 	}
 
 	@Override
-	public boolean shouldRefresh(Service arg0) {
-		Node node = getNode(arg0);
+	public boolean shouldRefresh(DefinedService service) {
+		Node node = getNode(service);
 		return node != null && NodeUtils.shouldRefreshCache(node);
 	}
 
-	private Node getNode(Service service) {
-		return service instanceof DefinedService ? repository.getNode(((DefinedService) service).getId()) : null;
+	private Node getNode(DefinedService service) {
+		return repository.getNode(service.getId());
 	}
 }
