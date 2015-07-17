@@ -4,12 +4,14 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
+import be.nabu.utils.io.SSLServerMode;
 
 @XmlRootElement(name = "httpServer")
 @XmlType(propOrder = { "keystore", "port", "poolSize", "socketTimeout" })
 public class DefinedHTTPServerConfiguration {
 	private int port;
 	private DefinedKeyStore keystore;
+	private SSLServerMode sslServerMode;
 	private Integer poolSize, socketTimeout;
 
 	public int getPort() {
@@ -35,5 +37,11 @@ public class DefinedHTTPServerConfiguration {
 	}
 	public void setSocketTimeout(Integer socketTimeout) {
 		this.socketTimeout = socketTimeout;
+	}
+	public SSLServerMode getSslServerMode() {
+		return sslServerMode;
+	}
+	public void setSslServerMode(SSLServerMode sslServerMode) {
+		this.sslServerMode = sslServerMode;
 	}
 }
