@@ -7,11 +7,11 @@ import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.events.api.EventSubscription;
+import be.nabu.libs.http.api.HTTPRequest;
+import be.nabu.libs.http.api.HTTPResponse;
+import be.nabu.libs.http.server.HTTPServerUtils;
+import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.utils.http.api.HTTPRequest;
-import be.nabu.utils.http.api.HTTPResponse;
-import be.nabu.utils.http.server.PathFilter;
-import be.nabu.utils.http.server.ResourceHandler;
 
 public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact {
 
@@ -50,7 +50,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (publicDirectory != null) {
 				ResourceHandler handler = new ResourceHandler(publicDirectory, path, !EAIResourceRepository.isDevelopment());
 				subscription = getConfiguration().getHttpServer().getServer().getEventDispatcher().subscribe(HTTPRequest.class, handler);
-				subscription.filter(new PathFilter(path));
+				subscription.filter(HTTPServerUtils.filterPath(path));
 			}
 		}
 	}
