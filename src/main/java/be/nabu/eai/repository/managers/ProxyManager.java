@@ -8,6 +8,7 @@ import be.nabu.eai.repository.artifacts.proxy.DefinedProxy;
 import be.nabu.eai.repository.artifacts.proxy.ProxyConfiguration;
 import be.nabu.eai.repository.managers.util.JAXBArtifactManager;
 import be.nabu.libs.resources.api.ResourceContainer;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 
 public class ProxyManager extends JAXBArtifactManager<ProxyConfiguration, DefinedProxy> {
@@ -27,7 +28,7 @@ public class ProxyManager extends JAXBArtifactManager<ProxyConfiguration, Define
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedProxy artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(DefinedProxy artifact, String from, String to) throws IOException {
 		return null;
 	}
 

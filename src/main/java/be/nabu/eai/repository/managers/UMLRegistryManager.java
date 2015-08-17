@@ -17,7 +17,7 @@ import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.types.uml.UMLRegistry;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -30,7 +30,7 @@ public class UMLRegistryManager extends TypeRegistryManager<UMLRegistry> {
 	}
 
 	@Override
-	public UMLRegistry load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public UMLRegistry load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		try {
 			UMLRegistry registry = new UMLRegistry(entry.getId());
 			registry.setResourceResolver(new EntryResourceResolver(entry));

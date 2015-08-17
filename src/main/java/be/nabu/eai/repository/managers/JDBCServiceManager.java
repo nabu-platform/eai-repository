@@ -33,7 +33,7 @@ import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.types.structure.DefinedStructure;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -42,7 +42,7 @@ import be.nabu.utils.io.api.WritableContainer;
 public class JDBCServiceManager implements ArtifactManager<JDBCService>, ArtifactRepositoryManager<JDBCService> {
 
 	@Override
-	public JDBCService load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public JDBCService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		JDBCService service = new JDBCService(entry.getId());
 		Resource resource = entry.getContainer().getChild("jdbcservice.xml");
 		if (resource == null) {
@@ -84,7 +84,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, JDBCService artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, JDBCService artifact) throws IOException {
 		JDBCServiceConfig config = new JDBCServiceConfig();
 		config.setConnectionId(artifact.getConnectionId());
 		config.setSql(artifact.getSql());
@@ -117,7 +117,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
-		return new ArrayList<ValidationMessage>();
+		return new ArrayList<Validation<?>>();
 	}
 
 	@Override
@@ -232,11 +232,11 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(JDBCService artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(JDBCService artifact, String from, String to) throws IOException {
 		if (from.equals(artifact.getConnectionId())) {
 			artifact.setConnectionId(to);
 		}
-		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		messages.addAll(StructureManager.updateReferences(artifact.getParameters(), from, to));
 		messages.addAll(StructureManager.updateReferences(artifact.getResults(), from, to));
 		return messages;

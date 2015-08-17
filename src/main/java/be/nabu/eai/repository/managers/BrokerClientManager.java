@@ -14,13 +14,14 @@ import be.nabu.eai.repository.artifacts.broker.DefinedBrokerClient;
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.resources.URIUtils;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 public class BrokerClientManager implements ArtifactManager<DefinedBrokerClient> {
 
 	@Override
-	public DefinedBrokerClient load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public DefinedBrokerClient load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		return new DefinedBrokerClient(
 			entry.getId(), 
 			entry.getContainer() 
@@ -28,7 +29,7 @@ public class BrokerClientManager implements ArtifactManager<DefinedBrokerClient>
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, DefinedBrokerClient artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, DefinedBrokerClient artifact) throws IOException {
 		artifact.save(entry.getContainer());
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
@@ -54,8 +55,8 @@ public class BrokerClientManager implements ArtifactManager<DefinedBrokerClient>
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedBrokerClient artifact, String from, String to) throws IOException {
-		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	public List<Validation<?>> updateReference(DefinedBrokerClient artifact, String from, String to) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		if (from.equals(artifact.getConfiguration().getKeystore().getId())) {
 			artifact.getConfiguration().setKeystore((DefinedKeyStore) (to == null ? null : ArtifactResolverFactory.getInstance().getResolver().resolve(to)));
 		}

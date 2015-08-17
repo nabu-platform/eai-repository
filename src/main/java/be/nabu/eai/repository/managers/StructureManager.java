@@ -28,6 +28,7 @@ import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.DefinedStructure;
 import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.types.structure.SuperTypeProperty;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
@@ -38,7 +39,7 @@ import be.nabu.utils.io.api.WritableContainer;
 public class StructureManager implements ArtifactManager<DefinedStructure> {
 
 	@Override
-	public DefinedStructure load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public DefinedStructure load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		DefinedStructure structure = (DefinedStructure) parse(entry, "structure.xml");
 		structure.setId(entry.getId());
 		return structure;
@@ -63,15 +64,15 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, DefinedStructure artifact) throws IOException {
-		List<ValidationMessage> messages = format(entry, artifact, "structure.xml");
+	public List<Validation<?>> save(ResourceEntry entry, DefinedStructure artifact) throws IOException {
+		List<Validation<?>> messages = format(entry, artifact, "structure.xml");
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
 		return messages;
 	}
 
-	public static List<ValidationMessage> format(ResourceEntry entry, ComplexType artifact, String name) throws IOException {
+	public static List<Validation<?>> format(ResourceEntry entry, ComplexType artifact, String name) throws IOException {
 		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
@@ -80,7 +81,7 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 		try {
 			XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
 			marshaller.marshal(IOUtils.toOutputStream(writable), artifact);
-			return new ArrayList<ValidationMessage>();
+			return new ArrayList<Validation<?>>();
 		}
 		finally {
 			writable.close();
@@ -125,8 +126,8 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 		}
 	}
 	
-	public static List<ValidationMessage> updateReferences(ComplexType type, String from, String to) {
-		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	public static List<Validation<?>> updateReferences(ComplexType type, String from, String to) {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		if (type.getSuperType() != null && type.getSuperType() instanceof Artifact) {
 			String id = ((Artifact) type.getSuperType()).getId();
 			if (from.equals(id)) {
@@ -170,7 +171,7 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedStructure artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(DefinedStructure artifact, String from, String to) throws IOException {
 		return updateReferences(artifact, from, to);
 	}
 

@@ -17,7 +17,7 @@ import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -31,7 +31,7 @@ import be.nabu.utils.io.api.WritableContainer;
 public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 	
 	@Override
-	public JDBCPool load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public JDBCPool load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Resource resource = entry.getContainer().getChild("jdbcpool.properties");
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find jdbcpool.properties");
@@ -50,7 +50,7 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, JDBCPool artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, JDBCPool artifact) throws IOException {
 		Resource resource = entry.getContainer().getChild("jdbcpool.properties");
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create("jdbcpool.properties", "text/plain");
@@ -65,7 +65,7 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
-		return new ArrayList<ValidationMessage>();
+		return new ArrayList<Validation<?>>();
 	}
 
 	@Override
@@ -85,7 +85,7 @@ public class JDBCPoolManager implements ArtifactManager<JDBCPool> {
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(JDBCPool artifact, String from, String to) {
+	public List<Validation<?>> updateReference(JDBCPool artifact, String from, String to) {
 		if (from.equals(artifact.getConfig().get("jdbcUrl"))) {
 			artifact.getConfig().put("jdbcUrl", to);
 		}

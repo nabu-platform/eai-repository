@@ -30,7 +30,7 @@ import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -50,7 +50,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 	
 	@Override
-	public VMService load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
 		// next we load the root sequence
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
@@ -70,7 +70,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, VMService artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, VMService artifact) throws IOException {
 		new ServiceInterfaceManager().savePipeline(entry, artifact.getPipeline());
 		
 		// next we load the root sequence
@@ -133,8 +133,8 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(VMService artifact, String from, String to) throws IOException {
-		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	public List<Validation<?>> updateReference(VMService artifact, String from, String to) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		messages.addAll(StructureManager.updateReferences(artifact.getPipeline(), from, to));
 		updateReferences(artifact.getRoot(), from, to);
 		return messages;

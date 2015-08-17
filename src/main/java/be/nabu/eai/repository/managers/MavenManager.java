@@ -25,7 +25,7 @@ import be.nabu.libs.services.maven.DependencyResolver;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.DefinedTypeResolver;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 
 public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
@@ -49,7 +49,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 	
 	@Override
-	public MavenArtifact load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public MavenArtifact load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		String id = entry.getId();
 		int index = id.lastIndexOf('.');
 		if (index < 0) {
@@ -75,7 +75,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, MavenArtifact artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, MavenArtifact artifact) throws IOException {
 		throw new IOException("Can not update a maven repository this way, please use the maven endpoint");
 	}
 
@@ -172,7 +172,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(MavenArtifact artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(MavenArtifact artifact, String from, String to) throws IOException {
 		return null;
 	}	
 }

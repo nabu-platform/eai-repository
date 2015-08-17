@@ -8,12 +8,12 @@ import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.artifacts.http.DefinedHTTPServer;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 
 public class DefinedHTTPServerManager implements ArtifactManager<DefinedHTTPServer> {
 
 	@Override
-	public DefinedHTTPServer load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public DefinedHTTPServer load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		return new DefinedHTTPServer(
 			entry.getId(), 
 			entry.getContainer() 
@@ -21,7 +21,7 @@ public class DefinedHTTPServerManager implements ArtifactManager<DefinedHTTPServ
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, DefinedHTTPServer artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, DefinedHTTPServer artifact) throws IOException {
 		artifact.save(entry.getContainer());
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
@@ -40,7 +40,7 @@ public class DefinedHTTPServerManager implements ArtifactManager<DefinedHTTPServ
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedHTTPServer artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(DefinedHTTPServer artifact, String from, String to) throws IOException {
 		return null;
 	}
 }

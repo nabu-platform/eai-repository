@@ -26,7 +26,7 @@ import be.nabu.libs.services.wsdl.WSDLWrapper;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.TypeRegistry;
 import be.nabu.libs.types.xml.ResourceResolver;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -34,7 +34,7 @@ import be.nabu.utils.io.api.ReadableContainer;
 public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> {
 
 	@Override
-	public WSDLClient load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public WSDLClient load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Resource resource = entry.getContainer().getChild("interface.wsdl");
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find interface.wsdl");
@@ -57,7 +57,7 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, WSDLClient artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, WSDLClient artifact) throws IOException {
 		throw new IOException("Can not update a client wsdl this way");
 	}
 
@@ -147,7 +147,7 @@ public class WSDLClientManager implements ArtifactRepositoryManager<WSDLClient> 
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(WSDLClient artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(WSDLClient artifact, String from, String to) throws IOException {
 		return null;
 	}
 }

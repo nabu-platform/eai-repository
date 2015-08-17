@@ -26,6 +26,7 @@ import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.SuperTypeProperty;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
@@ -35,7 +36,7 @@ import be.nabu.utils.io.api.WritableContainer;
 
 public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceInterface> {
 
-	public Pipeline loadPipeline(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public Pipeline loadPipeline(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
 		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) VMServiceManager.getResource(entry, "pipeline.xml", false));
@@ -56,13 +57,13 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 	}
 	
 	@Override
-	public DefinedServiceInterface load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public DefinedServiceInterface load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Pipeline pipeline = loadPipeline(entry, messages);
 		return new DefinedServiceInterfaceImpl(entry.getId(), pipeline);
 	}
 
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, DefinedServiceInterface artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, DefinedServiceInterface artifact) throws IOException {
 		Pipeline pipeline = artifact instanceof DefinedServiceInterfaceImpl 
 			? ((DefinedServiceInterfaceImpl) artifact).pipeline
 			: new Pipeline(artifact.getInputDefinition(), artifact.getOutputDefinition());
@@ -70,7 +71,7 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
-		return new ArrayList<ValidationMessage>();
+		return new ArrayList<Validation<?>>();
 	}
 
 	public void savePipeline(ResourceEntry entry, Pipeline pipeline) throws IOException {
@@ -138,12 +139,12 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedServiceInterface artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(DefinedServiceInterface artifact, String from, String to) throws IOException {
 		return updateReferences(artifact, from, to);
 	}
 
-	public static List<ValidationMessage> updateReferences(ServiceInterface artifact, String from, String to) {
-		List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	public static List<Validation<?>> updateReferences(ServiceInterface artifact, String from, String to) {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		if (artifact.getParent() instanceof Artifact) {
 			String id = ((Artifact) artifact.getParent()).getId();
 			if (from.equals(id)) {

@@ -14,7 +14,7 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.TypeRegistry;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 
 abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> implements ArtifactRepositoryManager<T> {
 
@@ -25,7 +25,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 	}
 	
 	@Override
-	public List<ValidationMessage> save(ResourceEntry entry, T artifact) throws IOException {
+	public List<Validation<?>> save(ResourceEntry entry, T artifact) throws IOException {
 		return null;
 	}
 
@@ -40,7 +40,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(T artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(T artifact, String from, String to) throws IOException {
 		return null;
 	}
 

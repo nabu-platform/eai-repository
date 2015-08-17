@@ -13,7 +13,7 @@ import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.types.xml.XMLSchema;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -25,7 +25,7 @@ public class XMLSchemaRegistryManager extends TypeRegistryManager<XMLSchema> {
 	}
 
 	@Override
-	public XMLSchema load(ResourceEntry entry, List<ValidationMessage> messages) throws IOException, ParseException {
+	public XMLSchema load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Resource resource = entry.getContainer().getChild("schema.xsd");
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find schema.xsd");

@@ -13,6 +13,7 @@ import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
+import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 
 public class SubscriptionManager extends JAXBArtifactManager<SubscriptionConfiguration, DefinedSubscription> {
@@ -42,7 +43,7 @@ public class SubscriptionManager extends JAXBArtifactManager<SubscriptionConfigu
 	}
 
 	@Override
-	public List<ValidationMessage> updateReference(DefinedSubscription artifact, String from, String to) throws IOException {
+	public List<Validation<?>> updateReference(DefinedSubscription artifact, String from, String to) throws IOException {
 		if (artifact.getConfiguration().getBrokerClient() != null) {
 			if (from.equals(artifact.getConfiguration().getBrokerClient().getId())) {
 				artifact.getConfiguration().setBrokerClient((DefinedBrokerClient) ArtifactResolverFactory.getInstance().getResolver().resolve(to));

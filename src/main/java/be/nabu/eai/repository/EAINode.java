@@ -19,7 +19,7 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.util.ClassAdapter;
 import be.nabu.eai.repository.util.KeyValueMapAdapter;
 import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.Validation;
 
 @XmlRootElement(name = "node")
 @SuppressWarnings("rawtypes")
@@ -30,7 +30,7 @@ public class EAINode implements Node {
 	private Artifact artifact;
 	private List<String> references;
 	private Entry entry;
-	private List<ValidationMessage> messages = new ArrayList<ValidationMessage>();
+	private List<Validation<?>> messages = new ArrayList<Validation<?>>();
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	private long version;
 	
