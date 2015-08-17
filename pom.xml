@@ -28,6 +28,19 @@
 	</build>
 
 	<dependencies>
+		<!-- Environment-dependent -->
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<version>9.3-1102-jdbc41</version>
+		</dependency>
+
+		<!-- General dependencies -->
+		<dependency>
+			<groupId>be.nabu.eai</groupId>
+			<artifactId>eai-api</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
 		<dependency>
 			<groupId>be.nabu.utils</groupId>
 			<artifactId>utils-security</artifactId>
@@ -44,6 +57,25 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
+			<groupId>be.nabu.libs.resources</groupId>
+			<artifactId>resources-file</artifactId>
+			<version>1.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.events</groupId>
+			<artifactId>events-impl</artifactId>
+			<version>1.1-SNAPSHOT</version>
+		</dependency>
+
+		<!-- General artifacts -->
+		<dependency>
+			<groupId>be.nabu.libs.artifacts</groupId>
+			<artifactId>artifacts-jdbc</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+
+		<!-- Maven dependencies -->
+		<dependency>
 			<groupId>be.nabu.libs.maven</groupId>
 			<artifactId>maven-repository</artifactId>
 			<version>1.2-SNAPSHOT</version>
@@ -59,22 +91,7 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
-		<dependency>
-			<groupId>be.nabu.libs.types</groupId>
-			<artifactId>types-binding-xml</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.types</groupId>
-			<artifactId>types-binding-flat</artifactId>
-			<version>1.2-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.types</groupId>
-			<artifactId>types-binding-json</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
+		<!-- The different type implementations -->
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-java</artifactId>
@@ -91,12 +108,31 @@
 			<version>1.1-SNAPSHOT</version>
 		</dependency>
 
+		<!-- Type data bindings -->
+		<dependency>
+			<groupId>be.nabu.libs.types</groupId>
+			<artifactId>types-binding-xml</artifactId>
+			<version>1.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.types</groupId>
+			<artifactId>types-binding-flat</artifactId>
+			<version>1.2-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.types</groupId>
+			<artifactId>types-binding-json</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+
+		<!-- Type definition bindings -->
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-definition-xsd</artifactId>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
+		<!-- Service implementations -->
 		<dependency>
 			<groupId>be.nabu.libs.services</groupId>
 			<artifactId>services-pojo</artifactId>
@@ -118,30 +154,6 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
-		<dependency>
-			<groupId>be.nabu.libs.resources</groupId>
-			<artifactId>resources-file</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-
-		<dependency>
-			<groupId>be.nabu.libs.events</groupId>
-			<artifactId>events-impl</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.postgresql</groupId>
-			<artifactId>postgresql</artifactId>
-			<version>9.3-1102-jdbc41</version>
-		</dependency>
-
-		<dependency>
-			<groupId>be.nabu.libs.artifacts</groupId>
-			<artifactId>artifacts-jdbc</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
 		<!-- Broker -->
 		<dependency>
 			<groupId>be.nabu.eai</groupId>
@@ -149,6 +161,7 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
+		<!-- Frameworks -->
 		<dependency>
 			<groupId>be.nabu.libs.datastore</groupId>
 			<artifactId>datastore-urn-database</artifactId>
@@ -170,12 +183,7 @@
 			<version>1.1-SNAPSHOT</version>
 		</dependency>
 
-		<dependency>
-			<groupId>be.nabu.eai</groupId>
-			<artifactId>eai-api</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
+		<!-- Glue dependencies -->
 		<dependency>
 			<groupId>be.nabu.glue</groupId>
 			<artifactId>glue</artifactId>
@@ -197,7 +205,7 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
-		<!-- logging -->
+		<!-- Logging -->
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-api</artifactId>
