@@ -8,8 +8,10 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 
 @XmlRootElement(name = "webArtifact")
 public class WebArtifactConfiguration {
+	
 	private DefinedHTTPServer httpServer;
 	private String path;
+	private String charset;
 
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedHTTPServer getHttpServer() {
@@ -26,5 +28,13 @@ public class WebArtifactConfiguration {
 
 	public void setPath(String path) {
 		this.path = path;
+	}
+
+	public String getCharset() {
+		return charset;
+	}
+
+	public void setCharset(String charset) {
+		this.charset = charset;
 	}
 }

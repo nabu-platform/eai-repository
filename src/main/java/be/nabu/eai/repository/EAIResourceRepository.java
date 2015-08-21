@@ -67,6 +67,8 @@ public class EAIResourceRepository implements ResourceRepository {
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	
+	private static EAIResourceRepository instance;
+	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
 	
@@ -99,6 +101,11 @@ public class EAIResourceRepository implements ResourceRepository {
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
+		instance = this;
+	}
+	
+	public static EAIResourceRepository getInstance() {
+		return instance;
 	}
 	
 	public ManageableContainer<?> getResourceContainer(String id) throws IOException {
@@ -179,6 +186,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		return references.get(id);
 	}
 	
+	@Override
 	public Charset getCharset() {
 		return charset;
 	}
@@ -461,6 +469,6 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public static boolean isDevelopment() {
-		return Boolean.TRUE.equals(System.getProperty("development", "false"));
+		return Boolean.TRUE.equals(Boolean.parseBoolean(System.getProperty("development", "false")));
 	}
 }
