@@ -40,6 +40,7 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
+import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceRunner;
@@ -391,9 +392,13 @@ public class EAIResourceRepository implements ResourceRepository {
 		if (nodesByType == null) {
 			scanForTypes();
 		}
-		return nodesByType.containsKey(artifactClazz)
-			? new ArrayList<Node>(nodesByType.get(artifactClazz).values())
-			: new ArrayList<Node>();
+		List<Node> nodes = new ArrayList<Node>();
+		for (Class<?> clazz : nodesByType.keySet()) {
+			if (artifactClazz.isAssignableFrom(clazz)) {
+				nodes.addAll(nodesByType.get(clazz).values());
+			}
+		}
+		return nodes;
 	}
 	
 	private void scanForTypes() {
@@ -470,5 +475,23 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	public static boolean isDevelopment() {
 		return Boolean.TRUE.equals(Boolean.parseBoolean(System.getProperty("development", "false")));
+	}
+
+	@Override
+	public List<DefinedService> getServices() {
+		List<Node> nodes = getNodes(DefinedService.class);
+		List<DefinedService> services = new ArrayList<DefinedService>(nodes.size());
+		for (Node node : nodes) {
+			try {
+				services.add((DefinedService) node.getArtifact());
+			}
+			catch (IOException e) {
+				logger.error("Could not load " + node, e);
+			}
+			catch (ParseException e) {
+				logger.error("Could not load " + node, e);
+			}
+		}
+		return services;
 	}
 }

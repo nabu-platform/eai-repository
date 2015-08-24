@@ -67,7 +67,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (privateDirectory != null) {
 				GlueListener listener = new GlueListener(
 					new SessionProviderImpl(1000*60*30), 
-					new ScannableScriptRepository(null, privateDirectory, new GlueParserProvider(new ServiceMethodProvider(EAIResourceRepository.getInstance(), null)), getConfiguration().getCharset() == null ? Charset.forName("UTF-8") : Charset.forName(getConfiguration().getCharset()), true), 
+					new ScannableScriptRepository(null, privateDirectory, new GlueParserProvider(new ServiceMethodProvider(EAIResourceRepository.getInstance(), EAIResourceRepository.getInstance(), null)), getConfiguration().getCharset() == null ? Charset.forName("UTF-8") : Charset.forName(getConfiguration().getCharset()), true), 
 					new SimpleExecutionEnvironment("local"),
 					path
 				);

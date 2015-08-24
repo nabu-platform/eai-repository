@@ -7,10 +7,11 @@ import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
+import be.nabu.libs.services.api.DefinedServiceLister;
 import be.nabu.libs.services.api.ExecutionContextProvider;
 import be.nabu.libs.services.api.ServiceRunner;
 
-public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider {
+public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister {
 	public RepositoryEntry getRoot();
 	public Charset getCharset();
 	public EventDispatcher getEventDispatcher();
