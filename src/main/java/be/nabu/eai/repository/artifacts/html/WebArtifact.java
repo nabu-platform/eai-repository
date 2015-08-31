@@ -13,6 +13,10 @@ import be.nabu.glue.repositories.ScannableScriptRepository;
 import be.nabu.glue.services.ServiceMethodProvider;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.authentication.api.Authenticator;
+import be.nabu.libs.authentication.api.PermissionHandler;
+import be.nabu.libs.authentication.api.RoleHandler;
+import be.nabu.libs.authentication.api.TokenValidator;
 import be.nabu.libs.events.api.EventSubscription;
 import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
@@ -21,6 +25,8 @@ import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.http.server.SessionProviderImpl;
 import be.nabu.libs.resources.api.ResourceContainer;
+import be.nabu.libs.services.EmptyServiceRuntimeTracker;
+import be.nabu.libs.services.pojo.POJOUtils;
 
 /**
  * TODO: integrate session provider to use same cache as service cache 
@@ -71,7 +77,18 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					new SimpleExecutionEnvironment("local"),
 					path
 				);
-				System.out.println("IS DEVELOPMENT: " + EAIResourceRepository.isDevelopment());
+				if (getConfiguration().getAuthenticationService() != null) {
+					listener.setAuthenticator(POJOUtils.newProxy(Authenticator.class, getConfiguration().getAuthenticationService(), new EmptyServiceRuntimeTracker()));
+				}
+				if (getConfiguration().getPermissionService() != null) {
+					listener.setPermissionHandler(POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), new EmptyServiceRuntimeTracker()));
+				}
+				if (getConfiguration().getRoleService() != null) {
+					listener.setRoleHandler(POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), new EmptyServiceRuntimeTracker()));
+				}
+				if (getConfiguration().getTokenValidatorService() != null) {
+					listener.setTokenValidator(POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), new EmptyServiceRuntimeTracker()));
+				}
 				listener.setRefreshScripts(EAIResourceRepository.isDevelopment());
 				EventSubscription<HTTPRequest, HTTPResponse> subscription = getConfiguration().getHttpServer().getServer().getEventDispatcher().subscribe(HTTPRequest.class, listener);
 				subscription.filter(HTTPServerUtils.limitToPath(path));

@@ -39,7 +39,9 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
+import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
@@ -102,6 +104,9 @@ public class EAIResourceRepository implements ResourceRepository {
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
+		// service interface resolvers
+		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceInterfaceResolver(this));
+		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new SPIDefinedServiceInterfaceResolver());
 		instance = this;
 	}
 	
