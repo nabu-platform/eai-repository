@@ -1,4 +1,4 @@
-package be.nabu.eai.repository.artifacts.html;
+package be.nabu.eai.repository.artifacts.web;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;

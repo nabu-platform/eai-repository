@@ -1,4 +1,4 @@
-package be.nabu.eai.repository.artifacts.html;
+package be.nabu.eai.repository.artifacts.web;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -34,6 +34,7 @@ import be.nabu.libs.services.pojo.POJOUtils;
 public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact {
 
 	private List<EventSubscription<HTTPRequest, HTTPResponse>> subscriptions = new ArrayList<EventSubscription<HTTPRequest, HTTPResponse>>();
+	private GlueListener listener;
 	
 	public WebArtifact(String id, ResourceContainer<?> directory) {
 		super(id, directory, "webartifact.xml", WebArtifactConfiguration.class);
@@ -71,7 +72,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
 			// the private directory houses the scripts
 			if (privateDirectory != null) {
-				GlueListener listener = new GlueListener(
+				listener = new GlueListener(
 					new SessionProviderImpl(1000*60*30), 
 					new ScannableScriptRepository(null, privateDirectory, new GlueParserProvider(new ServiceMethodProvider(EAIResourceRepository.getInstance(), EAIResourceRepository.getInstance(), null)), getConfiguration().getCharset() == null ? Charset.forName("UTF-8") : Charset.forName(getConfiguration().getCharset()), true), 
 					new SimpleExecutionEnvironment("local"),
@@ -95,6 +96,10 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(subscription);
 			}
 		}
+	}
+
+	public GlueListener getListener() {
+		return listener;
 	}
 
 }
