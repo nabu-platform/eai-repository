@@ -1,27 +1,23 @@
 package be.nabu.eai.repository.artifacts.web.rest;
 
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
-import be.nabu.eai.repository.artifacts.web.WebArtifact;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webRestArtifact")
+@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "role",
+			"preferredResponseType", "asynchronous", "input", "output" })
 public class WebRestArtifactConfiguration {
 
 	private DefinedType input, output;
-	private WebArtifact webArtifact;
 	private String path, queryParameters, cookieParameters, sessionParameters, headerParameters;
+	private WebMethod method;
 	private String role;
-
-	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	public WebArtifact getWebArtifact() {
-		return webArtifact;
-	}
-	public void setWebArtifact(WebArtifact webArtifact) {
-		this.webArtifact = webArtifact;
-	}
+	private Boolean asynchronous;
+	private WebResponseType preferredResponseType;
 
 	public String getPath() {
 		return path;
@@ -73,5 +69,23 @@ public class WebRestArtifactConfiguration {
 	}
 	public void setOutput(DefinedType output) {
 		this.output = output;
+	}
+	public Boolean getAsynchronous() {
+		return asynchronous;
+	}
+	public void setAsynchronous(Boolean asynchronous) {
+		this.asynchronous = asynchronous;
+	}
+	public WebResponseType getPreferredResponseType() {
+		return preferredResponseType;
+	}
+	public void setPreferredResponseType(WebResponseType preferredResponseType) {
+		this.preferredResponseType = preferredResponseType;
+	}
+	public WebMethod getMethod() {
+		return method;
+	}
+	public void setMethod(WebMethod method) {
+		this.method = method;
 	}
 }

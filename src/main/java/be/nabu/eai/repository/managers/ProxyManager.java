@@ -9,7 +9,6 @@ import be.nabu.eai.repository.artifacts.proxy.ProxyConfiguration;
 import be.nabu.eai.repository.managers.util.JAXBArtifactManager;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.validator.api.Validation;
-import be.nabu.libs.validator.api.ValidationMessage;
 
 public class ProxyManager extends JAXBArtifactManager<ProxyConfiguration, DefinedProxy> {
 

@@ -1,14 +1,19 @@
 package be.nabu.eai.repository.artifacts.web;
 
+import java.util.List;
+
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.api.InterfaceFilter;
+import be.nabu.eai.api.RestServiceFilter;
 import be.nabu.eai.repository.artifacts.http.DefinedHTTPServer;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
+@XmlType(propOrder = { "httpServer", "path", "charset", "authenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
@@ -19,7 +24,8 @@ public class WebArtifactConfiguration {
 	private DefinedService permissionService;
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
-
+	private List<DefinedService> restServices;
+	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedHTTPServer getHttpServer() {
 		return httpServer;
@@ -79,5 +85,14 @@ public class WebArtifactConfiguration {
 	}
 	public void setTokenValidatorService(DefinedService tokenValidatorService) {
 		this.tokenValidatorService = tokenValidatorService;
+	}
+
+	@RestServiceFilter
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public List<DefinedService> getRestServices() {
+		return restServices;
+	}
+	public void setRestServices(List<DefinedService> restServices) {
+		this.restServices = restServices;
 	}
 }

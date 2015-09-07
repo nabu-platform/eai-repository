@@ -14,7 +14,6 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.validator.api.Validation;
-import be.nabu.libs.validator.api.ValidationMessage;
 
 public class SubscriptionManager extends JAXBArtifactManager<SubscriptionConfiguration, DefinedSubscription> {
 

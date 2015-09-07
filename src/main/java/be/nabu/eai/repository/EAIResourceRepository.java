@@ -20,7 +20,9 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.RepositoryEvent;
+import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
@@ -42,6 +44,7 @@ import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
+import be.nabu.libs.services.ServiceRunnerFactory;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
@@ -83,7 +86,6 @@ public class EAIResourceRepository implements ResourceRepository {
 	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, "class", "package", "import", "for", "while", "if", "do", "else" });
 	private Charset charset = Charset.forName("UTF-8");
 	private DomainRepository mavenRepository;
-	private ServiceRunner serviceRunner;
 	private ResourceContainer<?> mavenRoot;
 	private URI localMavenServer;
 	private boolean updateMavenSnapshots = false;
@@ -210,6 +212,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		logger.info("Unloading: " + entry.getId());
 		nodesByType = null;
 		if (entry.isNode()) {
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, false), this);
 			// if there is an artifact manager and it maintains a repository, remove it all
 			if (entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
@@ -228,6 +231,7 @@ public class EAIResourceRepository implements ResourceRepository {
 					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
 				}
 			}
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, true), this);
 			// TODO: remove from reference map?
 		}
 		if (!entry.isLeaf()) {
@@ -437,11 +441,11 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public ServiceRunner getServiceRunner() {
-		return serviceRunner;
+		return ServiceRunnerFactory.getInstance().getServiceRunner();
 	}
 
 	public void setServiceRunner(ServiceRunner serviceRunner) {
-		this.serviceRunner = serviceRunner;
+		ServiceRunnerFactory.getInstance().setServiceRunner(serviceRunner);
 	}
 
 	@Override

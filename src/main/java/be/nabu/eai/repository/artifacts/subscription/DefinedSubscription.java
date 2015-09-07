@@ -88,7 +88,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 							input.set(inputFields.get(typeId), content);
 							// the interface allows both sync and async execution, the server is currently implemented as sync
 							// but even if it is async, we need to send back information so this thread will hang until the server one is done
-							Future<ServiceResult> result = repository.getServiceRunner().run(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())), input);
+							Future<ServiceResult> result = repository.getServiceRunner().run(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())), input, null);
 							try {
 								ServiceResult serviceResult = result.get();
 								if (serviceResult.getException() != null) {

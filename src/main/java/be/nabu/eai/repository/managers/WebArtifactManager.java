@@ -20,7 +20,8 @@ public class WebArtifactManager implements ArtifactManager<WebArtifact> {
 	public WebArtifact load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		return new WebArtifact(
 			entry.getId(), 
-			entry.getContainer() 
+			entry.getContainer(),
+			entry.getRepository()
 		);
 	}
 
