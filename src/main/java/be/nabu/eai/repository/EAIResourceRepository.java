@@ -15,10 +15,12 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
+import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
@@ -53,6 +55,9 @@ import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
+import be.nabu.libs.validator.api.Validation;
+import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.ContentTypeMap;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -315,6 +320,83 @@ public class EAIResourceRepository implements ResourceRepository {
 			throw new RuntimeException(e);
 		}
 	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public List<Validation<?>> move(String originalId, String newId, boolean delete) throws IOException {
+		Entry sourceEntry = getEntry(originalId);
+		Entry targetEntry = getEntry(newId);
+		Entry targetParent = newId.contains(".") ? getEntry(newId.replaceAll("\\.[^.]+$", "")) : getRoot();
+		String targetName = newId.contains(".") ? newId.replaceAll(".*\\.([^.]+)$", "$1") : newId;
+		if (targetEntry != null) {
+			throw new IOException("A node with the name '" + newId + "' already exists");
+		}
+		if (!(sourceEntry instanceof ResourceEntry)) {
+			throw new IOException("The entry '" + originalId + "' is not a resource-based entry, it can not be moved");
+		}
+		if (targetParent == null) {
+			throw new IOException("The parent for '" + newId + "' does not exist, can not move there");
+		}
+		if (!(targetParent instanceof ResourceEntry)) {
+			throw new IOException("The parent entry '" + targetParent.getId() + "' is not resource-based");
+		}
+		if (!(((ResourceEntry) targetParent).getContainer() instanceof ManageableContainer)) {
+			throw new IOException("The target is not manageable: " + targetParent.getId());
+		}
+		if (!(((ResourceEntry) sourceEntry).getContainer().getParent() instanceof ManageableContainer) && delete) {
+			throw new IOException("The source parent is not manageable: " + sourceEntry.getId());
+		}
+		ResourceEntry parent = (ResourceEntry) targetParent;
+		if (!isValidName(parent.getContainer(), targetName)) {
+			throw new IOException("The name is not valid: " + targetName);
+		}
+		ResourceEntry entry = (ResourceEntry) sourceEntry;
+		List<String> dependencies = getDependencies(entry.getId());
+		// copy the contents to the new location
+		ResourceUtils.copy(entry.getContainer(), (ManageableContainer<?>) parent.getContainer(), targetName);
+		// we need to refresh the parent entry as it can cache the children and not see the new addition
+		targetParent.refresh();
+		// load the new node
+		Entry newEntry = getEntry(newId);
+		if (newEntry == null) {
+			throw new IOException("Could not load new entry: " + newId);
+		}
+		load(newEntry);
+		List<Validation<?>> validations = new ArrayList<Validation<?>>();
+		// remove the contents from the old location if necessary
+		if (delete) {
+			// move the dependencies
+			if (dependencies != null) {
+				for (String dependency : dependencies) {
+					Entry dependencyEntry = getEntry(dependency);
+					if (dependencyEntry instanceof ResourceEntry) {
+						Node node = dependencyEntry.getNode();
+						if (node != null) {
+							try {
+								ArtifactManager newInstance = node.getArtifactManager().newInstance();
+								// update the references
+								validations.addAll(newInstance.updateReference(node.getArtifact(), entry.getId(), newId));
+								// save the updated references
+								newInstance.save((ResourceEntry) dependencyEntry, node.getArtifact());
+								// reload the new artifact
+								reload(dependency);
+							}
+							catch (Exception e) {
+								logger.error("Could not update reference for dependency '" + dependency + "' from '" + entry.getId() + "' to '" + newId + "'");
+							}
+						}
+					}
+					else {
+						validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependency + "' as it is not a resource entry"));
+					}
+				}
+			}
+			// unload the node
+			unload(entry.getId());
+			// delete the original contents
+			((ManageableContainer<?>) entry.getContainer().getParent()).delete(entry.getName());
+		}
+		return validations;
+	}
 	
 	public String getId(ResourceContainer<?> container) {
 		String id = "";
@@ -353,6 +435,9 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@Override
 	public boolean isValidName(ResourceContainer<?> parent, String name) {
+		if (parent.getChild(name) != null) {
+			return false;
+		}
 		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
