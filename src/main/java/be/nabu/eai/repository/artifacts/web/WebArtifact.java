@@ -12,11 +12,14 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.authentication.api.PasswordAuthenticator;
+import be.nabu.eai.authentication.api.SecretAuthenticator;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestArtifact;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestListener;
+import be.nabu.eai.repository.util.CombinedAuthenticator;
 import be.nabu.glue.MultipleRepository;
 import be.nabu.glue.impl.SimpleExecutionEnvironment;
 import be.nabu.glue.impl.parsers.GlueParserProvider;
@@ -65,6 +68,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 
 	@Override
 	public void stop() throws IOException {
+		logger.info("Stopping " + subscriptions.size() + " subscriptions");
 		for (EventSubscription<HTTPRequest, HTTPResponse> subscription : subscriptions) {
 			subscription.unsubscribe();
 		}
@@ -75,7 +79,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
 		if (subscriptions.isEmpty()) {
-			getConfiguration();
 			String serverPath = getConfiguration().getPath();
 			if (serverPath == null) {
 				serverPath = "/";
@@ -95,6 +98,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				// check if there is a resource directory
 				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
 				if (resources != null) {
+					logger.debug("Adding resource listener for folder: " + resources);
 					String resourcePath = serverPath.equals("/") ? "/resources" : serverPath + "/resources";
 					ResourceHandler handler = new ResourceHandler(resources, resourcePath, !isDevelopment);
 					EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, handler);
@@ -102,12 +106,14 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					subscriptions.add(subscription);
 					// add optimizations if it is not development
 					if (!isDevelopment) {
+						logger.debug("Adding javascript merger");
 						JavascriptMerger javascriptMerger = new JavascriptMerger(resources, resourcePath);
 						EventSubscription<HTTPRequest, HTTPResponse> javascriptMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, javascriptMerger);
 						subscriptions.add(javascriptMergerSubscription);
 						javascriptMergerSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
 						rewriters.add(javascriptMerger);
 						
+						logger.debug("Adding javascript merger");
 						CSSMerger cssMerger = new CSSMerger(resources, resourcePath);
 						EventSubscription<HTTPRequest, HTTPResponse> cssMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, cssMerger);
 						subscriptions.add(cssMergerSubscription);
@@ -117,6 +123,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				}
 				ResourceContainer<?> pages = (ResourceContainer<?>) publicDirectory.getChild("pages");
 				if (pages != null) {
+					logger.debug("Adding public scripts found in: " + pages);
 					hasPages = true;
 					// the configured charset is for the end user, NOT for the local glue scripts, that should be the system default
 					ScannableScriptRepository scannableScriptRepository = new ScannableScriptRepository(repository, pages, new GlueParserProvider(), Charset.defaultCharset());
@@ -130,6 +137,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				// currently only a scripts folder, but we may want to add more private folders later on
 				ResourceContainer<?> scripts = (ResourceContainer<?>) privateDirectory.getChild("scripts");
 				if (scripts != null) {
+					logger.debug("Adding private scripts found in: " + scripts);
 					repository.add(new ScannableScriptRepository(repository, scripts, new GlueParserProvider(), Charset.defaultCharset()));
 				}
 			}
@@ -138,6 +146,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (hasPages) {
 				Properties properties = new Properties();
 				if (getDirectory().getChild(".properties") instanceof ReadableResource) {
+					logger.debug("Adding properties found in: " + getDirectory().getChild(".properties"));
 					InputStream input = IOUtils.toInputStream(new ResourceReadableContainer((ReadableResource) getDirectory().getChild(".properties")));
 					try {
 						properties.load(input);
@@ -196,6 +205,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 						}
 					}
 					if (serviceInterface instanceof WebRestArtifact) {
+						logger.debug("Adding rest handler for service: " + service.getId());
 						WebRestListener listener = new WebRestListener(
 							this.repository, 
 							serverPath, 
@@ -215,14 +225,20 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					}
 				}
 			}
+			logger.info("Started " + subscriptions.size() + " subscriptions");
 		}
 	}
 	
 	public Authenticator getAuthenticator() throws IOException {
-		if (getConfiguration().getAuthenticationService() != null) {
-			return POJOUtils.newProxy(Authenticator.class, getConfiguration().getAuthenticationService(), new EmptyServiceRuntimeTracker());
+		PasswordAuthenticator passwordAuthenticator = null;
+		if (getConfiguration().getPasswordAuthenticationService() != null) {
+			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), new EmptyServiceRuntimeTracker());
 		}
-		return null;
+		SecretAuthenticator sharedSecretAuthenticator = null;
+		if (getConfiguration().getSecretAuthenticationService() != null) {
+			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), new EmptyServiceRuntimeTracker());
+		}
+		return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 	}
 	public RoleHandler getRoleHandler() throws IOException {
 		if (getConfiguration().getRoleService() != null) {

@@ -95,7 +95,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	@Override
 	public void refresh() {
 		children = null;
-		node = null;
+		lastLoaded = null;
 	}
 	
 	private Map<String, Entry> getChildren() {

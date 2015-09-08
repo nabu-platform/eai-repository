@@ -13,14 +13,14 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "path", "charset", "authenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices" })
+@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
 	private String path;
 	private String charset;
 	
-	private DefinedService authenticationService;
+	private DefinedService passwordAuthenticationService, secretAuthenticationService;
 	private DefinedService permissionService;
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
@@ -52,12 +52,23 @@ public class WebArtifactConfiguration {
 	}
 
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	@InterfaceFilter(implement = "be.nabu.libs.authentication.api.Authenticator.authenticate")
-	public DefinedService getAuthenticationService() {
-		return authenticationService;
+	@InterfaceFilter(implement = "be.nabu.eai.authentication.api.PasswordAuthenticator.authenticate")
+	public DefinedService getPasswordAuthenticationService() {
+		return passwordAuthenticationService;
 	}
-	public void setAuthenticationService(DefinedService authenticationService) {
-		this.authenticationService = authenticationService;
+	public void setPasswordAuthenticationService(
+			DefinedService passwordAuthenticationService) {
+		this.passwordAuthenticationService = passwordAuthenticationService;
+	}
+
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	@InterfaceFilter(implement = "be.nabu.eai.authentication.api.SecretAuthenticator.authenticate")
+	public DefinedService getSecretAuthenticationService() {
+		return secretAuthenticationService;
+	}
+	public void setSecretAuthenticationService(
+			DefinedService secretAuthenticationService) {
+		this.secretAuthenticationService = secretAuthenticationService;
 	}
 
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)

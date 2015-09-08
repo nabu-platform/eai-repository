@@ -45,8 +45,11 @@ public class WebArtifactManager implements ArtifactManager<WebArtifact> {
 		if (artifact.getConfiguration().getHttpServer() != null) {
 			references.add(artifact.getConfiguration().getHttpServer().getId());
 		}
-		if (artifact.getConfiguration().getAuthenticationService() != null) {
-			references.add(artifact.getConfiguration().getAuthenticationService().getId());
+		if (artifact.getConfiguration().getPasswordAuthenticationService() != null) {
+			references.add(artifact.getConfiguration().getPasswordAuthenticationService().getId());
+		}
+		if (artifact.getConfiguration().getSecretAuthenticationService() != null) {
+			references.add(artifact.getConfiguration().getSecretAuthenticationService().getId());
 		}
 		if (artifact.getConfiguration().getTokenValidatorService() != null) {
 			references.add(artifact.getConfiguration().getTokenValidatorService().getId());
@@ -67,9 +70,14 @@ public class WebArtifactManager implements ArtifactManager<WebArtifact> {
 				artifact.getConfiguration().setHttpServer((DefinedHTTPServer) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
 			}
 		}
-		if (artifact.getConfiguration().getAuthenticationService() != null) {
-			if (from.equals(artifact.getConfiguration().getAuthenticationService().getId())) {
-				artifact.getConfiguration().setAuthenticationService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
+		if (artifact.getConfiguration().getPasswordAuthenticationService() != null) {
+			if (from.equals(artifact.getConfiguration().getPasswordAuthenticationService().getId())) {
+				artifact.getConfiguration().setPasswordAuthenticationService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
+			}
+		}
+		if (artifact.getConfiguration().getSecretAuthenticationService() != null) {
+			if (from.equals(artifact.getConfiguration().getSecretAuthenticationService().getId())) {
+				artifact.getConfiguration().setSecretAuthenticationService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
 			}
 		}
 		if (artifact.getConfiguration().getPermissionService() != null) {
