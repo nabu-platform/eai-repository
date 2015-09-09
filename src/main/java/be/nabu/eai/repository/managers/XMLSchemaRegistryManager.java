@@ -8,7 +8,8 @@ import java.util.List;
 import org.xml.sax.SAXException;
 
 import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.eai.repository.managers.WSDLClientManager.EntryResourceResolver;
+import be.nabu.eai.repository.managers.base.TypeRegistryManager;
+import be.nabu.eai.repository.util.EntryResourceResolver;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;

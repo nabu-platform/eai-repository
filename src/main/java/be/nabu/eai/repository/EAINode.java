@@ -79,6 +79,9 @@ public class EAINode implements Node {
 
 	@Override
 	public List<String> getReferences() {
+		if (references == null) {
+			references = new ArrayList<String>();
+		}
 		return references;
 	}
 	public void setReferences(List<String> references) {
@@ -95,6 +98,9 @@ public class EAINode implements Node {
 	}
 	
 	private ArtifactManager<?> newArtifactManager() {
+		if (getArtifactManager() == null) {
+			throw new NullPointerException("No artifact manager configured");
+		}
 		try {
 			return getArtifactManager().newInstance();
 		}

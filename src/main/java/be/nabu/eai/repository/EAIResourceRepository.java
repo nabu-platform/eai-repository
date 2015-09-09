@@ -19,6 +19,7 @@ import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
@@ -189,6 +190,15 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 	
+	private void unbuildReferenceMap(String id) {
+		this.references.remove(id);
+		for (String dependency : dependencies.keySet()) {
+			if (dependencies.get(dependency).contains(id)) {
+				dependencies.get(dependency).remove(id);
+			}
+		}
+	}
+	
 	public List<String> getDependencies(String id) {
 		return dependencies.get(id);
 	}
@@ -215,6 +225,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		logger.info("Unloading: " + entry.getId());
 		nodesByType = null;
 		if (entry.isNode()) {
+			unbuildReferenceMap(entry.getId());
 			// if there is an artifact manager and it maintains a repository, remove it all
 			if (entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
@@ -318,6 +329,45 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 		catch (ParseException e) {
 			throw new RuntimeException(e);
+		}
+	}
+	
+	public List<String> rebuildReferences(String id, boolean recursive) {
+		Entry entry = id == null ? getRoot() : getEntry(id);
+		if (entry == null) {
+			throw new IllegalArgumentException("Can not find node with id: " + id);
+		}
+		List<String> updatedArtifacts = new ArrayList<String>();
+		rebuildReferences(entry, recursive, updatedArtifacts);
+		return updatedArtifacts;
+	}
+	
+	@SuppressWarnings("unchecked")
+	private void rebuildReferences(Entry entry, boolean recursive, List<String> updatedArtifacts) {
+		// some nodes (mostly auto-generated ones) don't have managers
+		if (entry.isNode() && entry instanceof ModifiableEntry && entry.getNode().getArtifactManager() != null) {
+			try {
+				List<String> currentReferences = entry.getNode().getReferences();
+				List<String> newReferences = entry.getNode().getArtifactManager().newInstance().getReferences(entry.getNode().getArtifact());
+				if (newReferences == null) {
+					newReferences = new ArrayList<String>();
+				}
+				if (!newReferences.equals(currentReferences)) {
+					((ModifiableNodeEntry) entry).updateNode(newReferences);
+					updatedArtifacts.add(entry.getId());
+					// rebuild references for this node
+					unbuildReferenceMap(entry.getId());
+					buildReferenceMap(entry.getId(), newReferences);
+				}
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		if (recursive && !entry.isLeaf()) {
+			for (Entry child : entry) {
+				rebuildReferences(child, recursive, updatedArtifacts);
+			}
 		}
 	}
 

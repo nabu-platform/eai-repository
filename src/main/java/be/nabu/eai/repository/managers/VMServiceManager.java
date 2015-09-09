@@ -5,19 +5,24 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
+import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.vm.Pipeline;
+import be.nabu.libs.services.vm.PipelineInterfaceProperty;
 import be.nabu.libs.services.vm.SimpleVMServiceDefinition;
 import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.StepGroup;
@@ -26,6 +31,7 @@ import be.nabu.libs.services.vm.step.Invoke;
 import be.nabu.libs.services.vm.step.Sequence;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
@@ -96,11 +102,21 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	@Override
 	public List<String> getReferences(VMService artifact) throws IOException {
 		List<String> references = new ArrayList<String>();
+		// add the dependent interface (if any)
+		references.addAll(getInterfaceReferences(artifact));
 		// all the type references (including input and output) are in the pipeline
 		references.addAll(StructureManager.getComplexReferences(artifact.getPipeline()));
 		// another reference are all the services that are invoked
 		references.addAll(getReferencesForStep(artifact.getRoot()));
 		return references;
+	}
+
+	private static List<String> getInterfaceReferences(VMService artifact) {
+		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), artifact.getPipeline().getProperties());
+		if (value != null) {
+			return Arrays.asList(value.getId());
+		}
+		return new ArrayList<String>();
 	}
 	
 	public static List<String> getReferencesForStep(StepGroup steps) {
@@ -119,6 +135,14 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		return references;
 	}
 	
+	public static void updateInterfaceReferences(VMService artifact, String from, String to) {
+		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), artifact.getPipeline().getProperties());
+		// update the interface property
+		if (value != null && value.getId().equals(from)) {
+			artifact.getPipeline().setProperty(new ValueImpl<DefinedServiceInterface>(PipelineInterfaceProperty.getInstance(), DefinedServiceInterfaceResolverFactory.getInstance().getResolver().resolve(to)));
+		}
+	}
+	
 	public static void updateReferences(StepGroup steps, String from, String to) {
 		for (Step step : steps.getChildren()) {
 			if (step instanceof Invoke) {
@@ -135,6 +159,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	@Override
 	public List<Validation<?>> updateReference(VMService artifact, String from, String to) throws IOException {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
+		updateInterfaceReferences(artifact, from, to);
 		messages.addAll(StructureManager.updateReferences(artifact.getPipeline(), from, to));
 		updateReferences(artifact.getRoot(), from, to);
 		return messages;

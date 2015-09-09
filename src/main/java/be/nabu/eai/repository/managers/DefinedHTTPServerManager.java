@@ -1,46 +1,20 @@
 package be.nabu.eai.repository.managers;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.List;
-
-import be.nabu.eai.repository.api.ArtifactManager;
-import be.nabu.eai.repository.api.ModifiableNodeEntry;
-import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.http.DefinedHTTPServer;
-import be.nabu.libs.validator.api.Validation;
+import be.nabu.eai.repository.artifacts.http.DefinedHTTPServerConfiguration;
+import be.nabu.eai.repository.managers.base.JAXBArtifactManager;
+import be.nabu.libs.resources.api.ResourceContainer;
 
-public class DefinedHTTPServerManager implements ArtifactManager<DefinedHTTPServer> {
+public class DefinedHTTPServerManager extends JAXBArtifactManager<DefinedHTTPServerConfiguration, DefinedHTTPServer> {
 
-	@Override
-	public DefinedHTTPServer load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
-		return new DefinedHTTPServer(
-			entry.getId(), 
-			entry.getContainer() 
-		);
+	public DefinedHTTPServerManager() {
+		super(DefinedHTTPServer.class);
 	}
 
 	@Override
-	public List<Validation<?>> save(ResourceEntry entry, DefinedHTTPServer artifact) throws IOException {
-		artifact.save(entry.getContainer());
-		if (entry instanceof ModifiableNodeEntry) {
-			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
-		}
-		return null;
+	protected DefinedHTTPServer newInstance(String id, ResourceContainer<?> container, Repository repository) {
+		return new DefinedHTTPServer(id, container);
 	}
 
-	@Override
-	public Class<DefinedHTTPServer> getArtifactClass() {
-		return DefinedHTTPServer.class;
-	}
-
-	@Override
-	public List<String> getReferences(DefinedHTTPServer artifact) throws IOException {
-		return null;
-	}
-
-	@Override
-	public List<Validation<?>> updateReference(DefinedHTTPServer artifact, String from, String to) throws IOException {
-		return null;
-	}
 }

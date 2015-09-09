@@ -1,4 +1,4 @@
-package be.nabu.eai.repository.managers;
+package be.nabu.eai.repository.managers.base;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -9,6 +9,7 @@ import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.api.ComplexType;
@@ -20,7 +21,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 
 	private Class<T> clazz;
 
-	TypeRegistryManager(Class<T> clazz) {
+	public TypeRegistryManager(Class<T> clazz) {
 		this.clazz = clazz;
 	}
 	

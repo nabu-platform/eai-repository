@@ -1,100 +1,20 @@
 package be.nabu.eai.repository.managers;
 
-import java.io.IOException;
-import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.List;
-
-import be.nabu.eai.repository.api.ArtifactManager;
-import be.nabu.eai.repository.api.ModifiableNodeEntry;
-import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.eai.repository.artifacts.http.DefinedHTTPServer;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.web.WebArtifact;
-import be.nabu.libs.artifacts.ArtifactResolverFactory;
-import be.nabu.libs.services.api.DefinedService;
-import be.nabu.libs.validator.api.Validation;
+import be.nabu.eai.repository.artifacts.web.WebArtifactConfiguration;
+import be.nabu.eai.repository.managers.base.JAXBArtifactManager;
+import be.nabu.libs.resources.api.ResourceContainer;
 
-public class WebArtifactManager implements ArtifactManager<WebArtifact> {
+public class WebArtifactManager extends JAXBArtifactManager<WebArtifactConfiguration, WebArtifact> {
 
-	@Override
-	public WebArtifact load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
-		return new WebArtifact(
-			entry.getId(), 
-			entry.getContainer(),
-			entry.getRepository()
-		);
+	public WebArtifactManager() {
+		super(WebArtifact.class);
 	}
 
 	@Override
-	public List<Validation<?>> save(ResourceEntry entry, WebArtifact artifact) throws IOException {
-		artifact.save(entry.getContainer());
-		if (entry instanceof ModifiableNodeEntry) {
-			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
-		}
-		return null;
+	protected WebArtifact newInstance(String id, ResourceContainer<?> container, Repository repository) {
+		return new WebArtifact(id, container, repository);
 	}
 
-	@Override
-	public Class<WebArtifact> getArtifactClass() {
-		return WebArtifact.class;
-	}
-
-	@Override
-	public List<String> getReferences(WebArtifact artifact) throws IOException {
-		List<String> references = new ArrayList<String>();
-		if (artifact.getConfiguration().getHttpServer() != null) {
-			references.add(artifact.getConfiguration().getHttpServer().getId());
-		}
-		if (artifact.getConfiguration().getPasswordAuthenticationService() != null) {
-			references.add(artifact.getConfiguration().getPasswordAuthenticationService().getId());
-		}
-		if (artifact.getConfiguration().getSecretAuthenticationService() != null) {
-			references.add(artifact.getConfiguration().getSecretAuthenticationService().getId());
-		}
-		if (artifact.getConfiguration().getTokenValidatorService() != null) {
-			references.add(artifact.getConfiguration().getTokenValidatorService().getId());
-		}
-		if (artifact.getConfiguration().getRoleService() != null) {
-			references.add(artifact.getConfiguration().getRoleService().getId());
-		}
-		if (artifact.getConfiguration().getPermissionService() != null) {
-			references.add(artifact.getConfiguration().getPermissionService().getId());
-		}
-		return references;
-	}
-
-	@Override
-	public List<Validation<?>> updateReference(WebArtifact artifact, String from, String to) throws IOException {
-		if (artifact.getConfiguration().getHttpServer() != null) {
-			if (from.equals(artifact.getConfiguration().getHttpServer().getId())) {
-				artifact.getConfiguration().setHttpServer((DefinedHTTPServer) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		if (artifact.getConfiguration().getPasswordAuthenticationService() != null) {
-			if (from.equals(artifact.getConfiguration().getPasswordAuthenticationService().getId())) {
-				artifact.getConfiguration().setPasswordAuthenticationService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		if (artifact.getConfiguration().getSecretAuthenticationService() != null) {
-			if (from.equals(artifact.getConfiguration().getSecretAuthenticationService().getId())) {
-				artifact.getConfiguration().setSecretAuthenticationService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		if (artifact.getConfiguration().getPermissionService() != null) {
-			if (from.equals(artifact.getConfiguration().getPermissionService().getId())) {
-				artifact.getConfiguration().setPermissionService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		if (artifact.getConfiguration().getRoleService() != null) {
-			if (from.equals(artifact.getConfiguration().getRoleService().getId())) {
-				artifact.getConfiguration().setRoleService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		if (artifact.getConfiguration().getTokenValidatorService() != null) {
-			if (from.equals(artifact.getConfiguration().getTokenValidatorService().getId())) {
-				artifact.getConfiguration().setTokenValidatorService((DefinedService) ArtifactResolverFactory.getInstance().getResolver().resolve(to));
-			}
-		}
-		return null;
-	}
 }

@@ -1,4 +1,4 @@
-package be.nabu.eai.repository.managers.util;
+package be.nabu.eai.repository.managers.base;
 
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.services.wsdl.WSDLWrapper;
