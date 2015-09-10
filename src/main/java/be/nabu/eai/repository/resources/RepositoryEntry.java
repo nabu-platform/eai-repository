@@ -32,6 +32,7 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.resources.api.features.CacheableResource;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -96,6 +97,14 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	public void refresh() {
 		children = null;
 		lastLoaded = null;
+		if (container instanceof CacheableResource) {
+			try {
+				((CacheableResource) container).resetCache();
+			}
+			catch (IOException e) {
+				logger.error("Could not refresh resource: " + container, e);
+			}
+		}
 	}
 	
 	private Map<String, Entry> getChildren() {

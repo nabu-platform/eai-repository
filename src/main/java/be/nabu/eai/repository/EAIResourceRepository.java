@@ -263,6 +263,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 		if (entry != null) {
 			unload(entry);
+			// TODO: put the refresh in load?
 			entry.refresh();
 			load(entry);
 		}
@@ -400,7 +401,7 @@ public class EAIResourceRepository implements ResourceRepository {
 			throw new IOException("The name is not valid: " + targetName);
 		}
 		ResourceEntry entry = (ResourceEntry) sourceEntry;
-		List<String> dependencies = getDependencies(entry.getId());
+		List<String> dependencies = new ArrayList<String>(getDependencies(entry.getId()));
 		// copy the contents to the new location
 		ResourceUtils.copy(entry.getContainer(), (ManageableContainer<?>) parent.getContainer(), targetName);
 		// we need to refresh the parent entry as it can cache the children and not see the new addition
