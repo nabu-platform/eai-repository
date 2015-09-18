@@ -11,7 +11,9 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
+import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.base.SimpleElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
@@ -21,7 +23,7 @@ import be.nabu.libs.types.structure.Structure;
 public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> implements DefinedServiceInterface {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
-	private ComplexType input, output;
+	private Structure input, output;
 	
 	public WebRestArtifact(String id, ResourceContainer<?> directory) {
 		super(id, directory, "webrestartifact.xml", WebRestArtifactConfiguration.class);
@@ -65,8 +67,9 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 	}
 	
 	private void rebuildInterface() {
-		Structure input = new Structure();
-		Structure output = new Structure();
+		// reuse references so everything gets auto-updated
+		Structure input = this.input == null ? new Structure() : clean(this.input);
+		Structure output = this.output == null ? new Structure() : clean(this.output);
 		Structure query = new Structure();
 		Structure header = new Structure();
 		Structure session = new Structure();
@@ -115,5 +118,12 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 		catch (IOException e) {
 			logger.error("Can not rebuild interface", e);
 		}
+	}
+
+	private static Structure clean(Structure input) {
+		for (Element<?> element : TypeUtils.getAllChildren(input)) {
+			input.remove(element);
+		}
+		return input;
 	}
 }

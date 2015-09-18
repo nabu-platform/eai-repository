@@ -19,7 +19,6 @@ import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
-import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.NodeEvent;
@@ -109,16 +108,20 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	
 	private Map<String, Entry> getChildren() {
 		if (children == null) {
-			children = new LinkedHashMap<String, Entry>();
-			if (!isLeaf()) {
-				for (Resource child : container) {
-					if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
-						children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
-					}
+			rescan();
+		}
+		return children;
+	}
+
+	private void rescan() {
+		children = new LinkedHashMap<String, Entry>();
+		if (!isLeaf()) {
+			for (Resource child : container) {
+				if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
+					children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
 				}
 			}
 		}
-		return children;
 	}
 
 	@Override
@@ -184,7 +187,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		writeNode(getContainer(), node);
 	}
 	
-	public Node getNode() {
+	public EAINode getNode() {
 		Resource resource = container.getChild("node.xml");
 		if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
 			boolean isReload = false;

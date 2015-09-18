@@ -13,9 +13,11 @@ public class EAIExecutionContext implements ExecutionContext {
 	private TransactionContext transactionContext = new EAITransactionContext();
 	private SecurityContext securityContext;
 	private EAIResourceRepository repository;
+	private boolean isDebug;
 	
-	public EAIExecutionContext(EAIResourceRepository repository, Principal principal) {
+	public EAIExecutionContext(EAIResourceRepository repository, Principal principal, boolean isDebug) {
 		this.repository = repository;
+		this.isDebug = isDebug;
 		this.securityContext = new SimpleSecurityContext(principal);
 	}
 	
@@ -33,6 +35,11 @@ public class EAIExecutionContext implements ExecutionContext {
 	@Override
 	public TransactionContext getTransactionContext() {
 		return transactionContext;
+	}
+
+	@Override
+	public boolean isDebug() {
+		return isDebug;
 	}
 	
 }

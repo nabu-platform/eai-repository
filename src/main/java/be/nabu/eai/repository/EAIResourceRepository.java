@@ -263,20 +263,22 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 		if (entry != null) {
 			unload(entry);
-			// TODO: put the refresh in load?
-			entry.refresh();
 			load(entry);
 		}
+		reloadMavenRepository();
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void load(Entry entry) {
+		// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
+		entry.refresh();
 		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
 		nodesByType = null;
 		if (entry.isNode()) {
 			logger.info("Loading entry: " + entry.getId());
 			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
 			if (entry instanceof ModifiableEntry && entry.isNode() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+				logger.debug("Loading children of: " + entry.getId());
 				try {
 					List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
 					if (addedChildren != null) {
@@ -500,12 +502,27 @@ public class EAIResourceRepository implements ResourceRepository {
 		mavenRepository.getDomains().add("nabu");
 		mavenRepository.scan();
 		
-		// do an initial load of all internal artifacts
-		for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
-			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
-			MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
-			MavenArtifact artifact = manager.load(mavenRepository, internal, localMavenServer, updateMavenSnapshots);
-			manager.addChildren(getRoot(), artifact);
+		reloadMavenRepository();
+	}
+
+	private void reloadMavenRepository() {
+		try {
+			// )do an initial load of all internal artifacts
+			for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
+				try {
+					logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
+					MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
+					MavenArtifact artifact = manager.load(mavenRepository, internal, localMavenServer, updateMavenSnapshots);
+					manager.removeChildren(getRoot(), artifact);
+					manager.addChildren(getRoot(), artifact);
+				}
+				catch (IOException e) {
+					logger.error("Could not load artifact: " + internal.getGroupId() + " > " + internal.getArtifactId(), e);
+				}
+			}
+		}
+		catch (IOException e) {
+			logger.error("Could not load artifacts from maven repository", e);
 		}
 	}
 	
@@ -525,7 +542,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	@Override
 	public ExecutionContext newExecutionContext(Principal principal) {
-		return new EAIExecutionContext(this, principal);
+		return new EAIExecutionContext(this, principal, isDevelopment());
 	}
 
 	@Override
@@ -583,6 +600,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	@Override
 	public void start() {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, false), this);
+		load(repositoryRoot);
 		// start the maven repository stuff
 		try {
 			startMavenRepository(mavenRoot);
@@ -590,7 +608,6 @@ public class EAIResourceRepository implements ResourceRepository {
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
-		load(repositoryRoot);
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);
 	}
 

@@ -17,13 +17,16 @@ import be.nabu.eai.authentication.api.SecretAuthenticator;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
+import be.nabu.eai.repository.artifacts.web.WebArtifactDebugger.AnyThreadTracker;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestArtifact;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestListener;
 import be.nabu.eai.repository.util.CombinedAuthenticator;
+import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.glue.MultipleRepository;
 import be.nabu.glue.impl.SimpleExecutionEnvironment;
 import be.nabu.glue.impl.parsers.GlueParserProvider;
 import be.nabu.glue.repositories.ScannableScriptRepository;
+import be.nabu.glue.services.ServiceMethodProvider;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.authentication.api.Authenticator;
@@ -48,15 +51,16 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.EmptyServiceRuntimeTracker;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ServiceInterface;
+import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.utils.io.IOUtils;
 
 /**
- * TODO: integrate session provider to use same cache as service cache 
+ * TODO: integrate session provider to use same cache as service cache
  */
 public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact {
 
-	private List<EventSubscription<HTTPRequest, HTTPResponse>> subscriptions = new ArrayList<EventSubscription<HTTPRequest, HTTPResponse>>();
+	private List<EventSubscription<?, ?>> subscriptions = new ArrayList<EventSubscription<?, ?>>();
 	private GlueListener listener;
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Repository repository;
@@ -69,7 +73,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	@Override
 	public void stop() throws IOException {
 		logger.info("Stopping " + subscriptions.size() + " subscriptions");
-		for (EventSubscription<HTTPRequest, HTTPResponse> subscription : subscriptions) {
+		for (EventSubscription<?, ?> subscription : subscriptions) {
 			subscription.unsubscribe();
 		}
 		subscriptions.clear();
@@ -93,7 +97,21 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 			List<ContentRewriter> rewriters = new ArrayList<ContentRewriter>();
 			HTTPServer server = getConfiguration().getHttpServer().getServer();
+			// only set up a glue listener if there are any public pages
+			SessionProvider sessionProvider = new SessionProviderImpl(1000*60*30);
+			
+			WebArtifactDebugger debugger = null;
+			if (isDevelopment) {
+				debugger = new WebArtifactDebugger(serverPath, sessionProvider);
+				// the request listener
+				EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, debugger.getRequestListener());
+				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
+				subscriptions.add(subscription);
+				// the response listener
+				subscriptions.add(server.getEventDispatcher().subscribe(HTTPResponse.class, debugger.getResponseListener()));
+			}
 			boolean hasPages = false;
+			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, SystemPrincipal.ROOT, new AnyThreadTracker());
 			if (publicDirectory != null) {
 				// check if there is a resource directory
 				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
@@ -126,7 +144,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					logger.debug("Adding public scripts found in: " + pages);
 					hasPages = true;
 					// the configured charset is for the end user, NOT for the local glue scripts, that should be the system default
-					ScannableScriptRepository scannableScriptRepository = new ScannableScriptRepository(repository, pages, new GlueParserProvider(), Charset.defaultCharset());
+					ScannableScriptRepository scannableScriptRepository = new ScannableScriptRepository(repository, pages, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset());
 					scannableScriptRepository.setGroup(GlueListener.PUBLIC);
 					repository.add(scannableScriptRepository);
 				}
@@ -138,11 +156,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				ResourceContainer<?> scripts = (ResourceContainer<?>) privateDirectory.getChild("scripts");
 				if (scripts != null) {
 					logger.debug("Adding private scripts found in: " + scripts);
-					repository.add(new ScannableScriptRepository(repository, scripts, new GlueParserProvider(), Charset.defaultCharset()));
+					repository.add(new ScannableScriptRepository(repository, scripts, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset()));
 				}
 			}
-			// only set up a glue listener if there are any public pages
-			SessionProvider sessionProvider = new SessionProviderImpl(1000*60*30);
 			if (hasPages) {
 				Properties properties = new Properties();
 				if (getDirectory().getChild(".properties") instanceof ReadableResource) {
@@ -165,6 +181,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 						environment.put(key.toString().trim(), properties.getProperty(key.toString()).trim());
 					}
 				}
+				if (isDevelopment) {
+					environment.put("development", "true");
+				}
 				
 				String environmentName = serverPath;
 				if (environmentName.startsWith("/")) {
@@ -173,6 +192,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				if (environmentName.isEmpty()) {
 					environmentName = "root";
 				}
+				
 				
 				listener = new GlueListener(
 					sessionProvider, 
@@ -207,6 +227,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					if (serviceInterface instanceof WebRestArtifact) {
 						logger.debug("Adding rest handler for service: " + service.getId());
 						WebRestListener listener = new WebRestListener(
+							getServiceTracker(),
 							this.repository, 
 							serverPath, 
 							getId(), 
@@ -229,32 +250,48 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		}
 	}
 	
+	public ServiceRuntimeTracker getServiceTracker() throws IOException {//FlowServiceTracker
+		// TODO: multi with the actual service tracker if there is one
+		if (WebArtifactDebugger.getCurrentThreadTracker() != null) {
+			return WebArtifactDebugger.getCurrentThreadTracker();
+		}
+		else {
+			return new EmptyServiceRuntimeTracker();
+		}
+//		if (getConfiguration().getServiceTrackerService() == null) {
+//		}
+//		else {
+//			return new FlowServiceTracker()
+//		}
+//		return null;
+	}
+	
 	public Authenticator getAuthenticator() throws IOException {
 		PasswordAuthenticator passwordAuthenticator = null;
 		if (getConfiguration().getPasswordAuthenticationService() != null) {
-			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), new EmptyServiceRuntimeTracker());
+			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
 		}
 		SecretAuthenticator sharedSecretAuthenticator = null;
 		if (getConfiguration().getSecretAuthenticationService() != null) {
-			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), new EmptyServiceRuntimeTracker());
+			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
 		}
 		return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 	}
 	public RoleHandler getRoleHandler() throws IOException {
 		if (getConfiguration().getRoleService() != null) {
-			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), new EmptyServiceRuntimeTracker());
+			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public PermissionHandler getPermissionHandler() throws IOException {
 		if (getConfiguration().getPermissionService() != null) {
-			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), new EmptyServiceRuntimeTracker());
+			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public TokenValidator getTokenValidator() throws IOException {
 		if (getConfiguration().getTokenValidatorService() != null) {
-			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), new EmptyServiceRuntimeTracker());
+			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}

@@ -32,8 +32,8 @@ import be.nabu.libs.http.glue.GlueListener.PathAnalysis;
 import be.nabu.libs.http.glue.impl.ResponseMethods;
 import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.services.api.DefinedService;
-import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceResult;
+import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
@@ -65,8 +65,10 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 	private boolean allowEncoding;
 	private Repository repository;
 	private WebRestArtifact webArtifact;
+	private ServiceRuntimeTracker tracker;
 
-	public WebRestListener(Repository repository, String serverPath, String realm, SessionProvider sessionProvider, PermissionHandler permissionHandler, RoleHandler roleHandler, TokenValidator tokenValidator, WebRestArtifact webArtifact, DefinedService service, Charset charset, boolean allowEncoding) throws IOException {
+	public WebRestListener(ServiceRuntimeTracker tracker, Repository repository, String serverPath, String realm, SessionProvider sessionProvider, PermissionHandler permissionHandler, RoleHandler roleHandler, TokenValidator tokenValidator, WebRestArtifact webArtifact, DefinedService service, Charset charset, boolean allowEncoding) throws IOException {
+		this.tracker = tracker;
 		this.repository = repository;
 		this.serverPath = serverPath;
 		this.realm = realm;
@@ -123,7 +125,6 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				session.set(GlueListener.buildTokenName(realm), token);
 			}
 			
-			ExecutionContext.CONTEXT.set(repository.newExecutionContext(token));
 			// check validity of token
 			if (tokenValidator != null) {
 				if (token != null && !tokenValidator.isValid(token)) {
@@ -131,7 +132,6 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					originalSessionId = null;
 					session = null;
 					token = null;
-					ExecutionContext.CONTEXT.set(repository.newExecutionContext(null));
 				}
 			}
 			// check permissions
@@ -202,7 +202,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 			}
 			
-			Future<ServiceResult> run = repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, null);
+			Future<ServiceResult> run = repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, tracker);
 			if (webArtifact.getConfiguration().getAsynchronous() != null && webArtifact.getConfiguration().getAsynchronous()) {
 				return HTTPUtils.newEmptyResponse();
 			}
@@ -259,9 +259,6 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 		}
 		catch (IOException e) {
 			throw new HTTPException(500, e);
-		}
-		finally {
-			ExecutionContext.CONTEXT.remove();
 		}
 	}
 

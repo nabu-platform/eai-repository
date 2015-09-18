@@ -8,7 +8,6 @@ import be.nabu.libs.services.vm.api.Step;
 import be.nabu.libs.services.vm.api.VMServiceRuntimeTracker;
 
 // TODO: finish implementation
-// TODO: need "multiple" tracker that just calls all other trackers
 public class LoggingRuntimeTracker implements VMServiceRuntimeTracker {
 
 	@Override
@@ -63,4 +62,8 @@ public class LoggingRuntimeTracker implements VMServiceRuntimeTracker {
 		
 	}
 
+	@Override
+	public void report(Object arg0) {
+		// do nothing atm, could format everything to the log as well?
+	}
 }

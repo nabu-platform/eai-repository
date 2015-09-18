@@ -9,6 +9,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.api.Cache;
 import be.nabu.eai.api.Eager;
 import be.nabu.eai.repository.EAINode;
@@ -30,6 +33,8 @@ import be.nabu.libs.validator.api.Validation;
 public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	private DefinedTypeResolver definedTypeResolver;
+	
+	private Logger logger = LoggerFactory.getLogger(getClass());
 
 	public MavenManager(DefinedTypeResolver definedTypeResolver) {
 		this.definedTypeResolver = definedTypeResolver;	
@@ -70,6 +75,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			return new MavenArtifact(definedTypeResolver, new DependencyResolver(new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
 		}
 		catch (URISyntaxException e) {
+			logger.error("Could not load: " + id, e);
 			throw new IOException(e);
 		}
 	}
@@ -94,29 +100,37 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		}
 		List<String> keys = new ArrayList<String>(artifact.getChildren().keySet());
 		Collections.sort(keys);
+		
 		for (String childId : keys) {
-			ModifiableEntry parent = getParent(root, childId, false);
-			int index = childId.lastIndexOf('.');
-			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
-			EAINode node = new EAINode();
-			node.setArtifact(artifact.getChildren().get(childId));
-			Annotation[] annotations = artifact.getAnnotations(childId);
-			for (Annotation annotation : annotations) {
-				if (annotation instanceof Cache) {
-					Long timeout = ((Cache) annotation).timeout();
-					Boolean refresh = ((Cache) annotation).refresh();
-					node.getProperties().put(NodeUtils.CACHE_TIMEOUT, timeout.toString());
-					node.getProperties().put(NodeUtils.CACHE_REFRESH, refresh.toString());
+			try {
+				ModifiableEntry parent = getParent(root, childId, false);
+				int index = childId.lastIndexOf('.');
+				String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
+				EAINode node = new EAINode();
+				node.setArtifact(artifact.getChildren().get(childId));
+				Annotation[] annotations = artifact.getAnnotations(childId);
+				for (Annotation annotation : annotations) {
+					if (annotation instanceof Cache) {
+						Long timeout = ((Cache) annotation).timeout();
+						Boolean refresh = ((Cache) annotation).refresh();
+						node.getProperties().put(NodeUtils.CACHE_TIMEOUT, timeout.toString());
+						node.getProperties().put(NodeUtils.CACHE_REFRESH, refresh.toString());
+					}
+					else if (annotation instanceof Eager) {
+						node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
+					}
 				}
-				else if (annotation instanceof Eager) {
-					node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
-				}
+				node.setLeaf(true);
+				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
+				node.setEntry(child);
+	//			node.setEntry(parent);
+				System.out.println("*** ADDING " + child.getId() + " to " + parent.getId());
+				parent.addChildren(child);
 			}
-			node.setLeaf(true);
-			MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
-			node.setEntry(child);
-//			node.setEntry(parent);
-			parent.addChildren(child);
+			catch (IOException e) {
+				logger.error("Could not load: " + childId, e);
+				throw e;
+			}
 		}
 		return entries;
 	}

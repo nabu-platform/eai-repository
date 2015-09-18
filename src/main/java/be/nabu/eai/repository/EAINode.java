@@ -97,7 +97,7 @@ public class EAINode implements Node {
 		return artifactClass;
 	}
 	
-	private ArtifactManager<?> newArtifactManager() {
+	public ArtifactManager<?> newArtifactManager() {
 		if (getArtifactManager() == null) {
 			throw new NullPointerException("No artifact manager configured");
 		}

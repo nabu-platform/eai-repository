@@ -13,7 +13,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices" })
+@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "serviceTrackerService" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
@@ -24,6 +24,7 @@ public class WebArtifactConfiguration {
 	private DefinedService permissionService;
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
+	private DefinedService serviceTrackerService;
 	private List<DefinedService> restServices;
 	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
@@ -105,5 +106,14 @@ public class WebArtifactConfiguration {
 	}
 	public void setRestServices(List<DefinedService> restServices) {
 		this.restServices = restServices;
+	}
+
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	@InterfaceFilter(implement = "nabu.interfaces.Services.track")
+	public DefinedService getServiceTrackerService() {
+		return serviceTrackerService;
+	}
+	public void setServiceTrackerService(DefinedService serviceTrackerService) {
+		this.serviceTrackerService = serviceTrackerService;
 	}
 }
