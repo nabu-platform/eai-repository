@@ -200,11 +200,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public List<String> getDependencies(String id) {
-		return dependencies.get(id);
+		return dependencies.containsKey(id) ? dependencies.get(id) : new ArrayList<String>();
 	}
 	
 	public List<String> getReferences(String id) {
-		return references.get(id);
+		return references.containsKey(id) ? references.get(id) : new ArrayList<String>();
 	}
 	
 	@Override
@@ -374,7 +374,6 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	public List<Validation<?>> move(String originalId, String newId, boolean delete) throws IOException {
 		Entry sourceEntry = getEntry(originalId);
 		Entry targetEntry = getEntry(newId);
@@ -403,7 +402,6 @@ public class EAIResourceRepository implements ResourceRepository {
 			throw new IOException("The name is not valid: " + targetName);
 		}
 		ResourceEntry entry = (ResourceEntry) sourceEntry;
-		List<String> dependencies = new ArrayList<String>(getDependencies(entry.getId()));
 		// copy the contents to the new location
 		ResourceUtils.copy(entry.getContainer(), (ManageableContainer<?>) parent.getContainer(), targetName);
 		// we need to refresh the parent entry as it can cache the children and not see the new addition
@@ -418,37 +416,55 @@ public class EAIResourceRepository implements ResourceRepository {
 		// remove the contents from the old location if necessary
 		if (delete) {
 			// move the dependencies
-			if (dependencies != null) {
-				for (String dependency : dependencies) {
-					Entry dependencyEntry = getEntry(dependency);
-					if (dependencyEntry instanceof ResourceEntry) {
-						Node node = dependencyEntry.getNode();
-						if (node != null) {
-							try {
-								ArtifactManager newInstance = node.getArtifactManager().newInstance();
-								// update the references
-								validations.addAll(newInstance.updateReference(node.getArtifact(), entry.getId(), newId));
-								// save the updated references
-								newInstance.save((ResourceEntry) dependencyEntry, node.getArtifact());
-								// reload the new artifact
-								reload(dependency);
-							}
-							catch (Exception e) {
-								logger.error("Could not update reference for dependency '" + dependency + "' from '" + entry.getId() + "' to '" + newId + "'");
-							}
-						}
-					}
-					else {
-						validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependency + "' as it is not a resource entry"));
-					}
-				}
-			}
+			relink(entry, newEntry, validations);
 			// unload the node
 			unload(entry.getId());
 			// delete the original contents
 			((ManageableContainer<?>) entry.getContainer().getParent()).delete(entry.getName());
 		}
 		return validations;
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void relink(Entry from, Entry to, List<Validation<?>> validations) {
+		List<String> dependencies = new ArrayList<String>(getDependencies(from.getId()));
+		if (dependencies != null) {
+			for (String dependency : dependencies) {
+				Entry dependencyEntry = getEntry(dependency);
+				if (dependencyEntry instanceof ResourceEntry) {
+					Node node = dependencyEntry.getNode();
+					if (node != null) {
+						try {
+							ArtifactManager artifactManager = node.getArtifactManager().newInstance();
+							// update the references
+							validations.addAll(artifactManager.updateReference(node.getArtifact(), from.getId(), to.getId()));
+							// save the updated references
+							artifactManager.save((ResourceEntry) dependencyEntry, node.getArtifact());
+							// reload the new artifact
+							reload(dependency);
+						}
+						catch (Exception e) {
+							logger.error("Could not update reference for dependency '" + dependency + "' from '" + from.getId() + "' to '" + to.getId() + "'");
+						}
+					}
+				}
+				else {
+					validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependency + "' as it is not a resource entry"));
+				}
+			}
+		}
+		// recurse!
+		if (!from.isLeaf()) {
+			for (Entry child : from) {
+				Entry target = to.getChild(child.getName());
+				if (target == null) {
+					validations.add(new ValidationMessage(Severity.ERROR, "Can not find moved copy of " + child.getId() + " in " + to.getId()));
+				}
+				else {
+					relink(child, target, validations);
+				}
+			}
+		}
 	}
 	
 	public String getId(ResourceContainer<?> container) {
