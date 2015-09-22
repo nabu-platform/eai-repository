@@ -57,17 +57,10 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
+		System.out.println("loading: " + entry.getId());
 		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
 		// next we load the root sequence
-		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
-		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false));
-		Sequence sequence = null;
-		try {
-			sequence = TypeUtils.getAsBean(sequenceBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Sequence.class);
-		}
-		finally {
-			readable.close();
-		}
+		Sequence sequence = parseSequence(new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false)));
 		
 		SimpleVMServiceDefinition definition = new SimpleVMServiceDefinition(pipeline);
 		definition.setRoot(sequence);
@@ -75,23 +68,38 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		return definition;
 	}
 
+	public static Sequence parseSequence(ReadableContainer<ByteBuffer> readable) throws IOException, ParseException {
+		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
+		Sequence sequence = null;
+		try {
+			sequence = TypeUtils.getAsBean(sequenceBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Sequence.class);
+		}
+		finally {
+			readable.close();
+		}
+		return sequence;
+	}
+
 	@Override
 	public List<Validation<?>> save(ResourceEntry entry, VMService artifact) throws IOException {
 		new ServiceInterfaceManager().savePipeline(entry, artifact.getPipeline());
 		
 		// next we load the root sequence
-		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
-		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true));
-		try {
-			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(artifact.getRoot()));
-		}
-		finally {
-			writable.close();
-		}
+		formatSequence(new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true)), artifact.getRoot());
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
 		return artifact.getRoot().validate(new SimpleServiceContext());		
+	}
+
+	public static void formatSequence(WritableContainer<ByteBuffer> writable, Sequence sequence) throws IOException {
+		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
+		try {
+			sequenceBinding.marshal(IOUtils.toOutputStream(writable), new BeanInstance<Sequence>(sequence));
+		}
+		finally {
+			writable.close();
+		}
 	}
 
 	@Override

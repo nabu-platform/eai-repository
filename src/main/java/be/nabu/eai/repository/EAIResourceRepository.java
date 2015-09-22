@@ -422,6 +422,7 @@ public class EAIResourceRepository implements ResourceRepository {
 			// delete the original contents
 			((ManageableContainer<?>) entry.getContainer().getParent()).delete(entry.getName());
 		}
+		scanForTypes();
 		return validations;
 	}
 	
@@ -575,7 +576,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		return nodes;
 	}
 	
-	private void scanForTypes() {
+	public void scanForTypes() {
 		if (nodesByType == null) {
 			synchronized(this) {
 				nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
@@ -587,7 +588,12 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 	
-	private void scanForTypes(Entry entry) {
+	public void scanForTypes(Entry entry) {
+		if (nodesByType == null) {
+			synchronized(this) {
+				nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+			}
+		}
 		synchronized(nodesByType) {
 			for (Entry child : entry) {
 				if (child.isNode()) {
@@ -616,8 +622,8 @@ public class EAIResourceRepository implements ResourceRepository {
 	@Override
 	public void start() {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, false), this);
-		load(repositoryRoot);
 		// start the maven repository stuff
+		load(repositoryRoot);
 		try {
 			startMavenRepository(mavenRoot);
 		}

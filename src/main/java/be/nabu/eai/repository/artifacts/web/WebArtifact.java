@@ -21,7 +21,9 @@ import be.nabu.eai.repository.artifacts.web.WebArtifactDebugger.AnyThreadTracker
 import be.nabu.eai.repository.artifacts.web.rest.WebRestArtifact;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestListener;
 import be.nabu.eai.repository.util.CombinedAuthenticator;
+import be.nabu.eai.repository.util.FlatServiceTrackerWrapper;
 import be.nabu.eai.repository.util.SystemPrincipal;
+import be.nabu.eai.services.api.FlatServiceTracker;
 import be.nabu.glue.MultipleRepository;
 import be.nabu.glue.impl.SimpleExecutionEnvironment;
 import be.nabu.glue.impl.parsers.GlueParserProvider;
@@ -53,6 +55,7 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.services.pojo.POJOUtils;
+import be.nabu.libs.services.vm.MultipleVMServiceRuntimeTracker;
 import be.nabu.utils.io.IOUtils;
 
 /**
@@ -251,19 +254,19 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	}
 	
 	public ServiceRuntimeTracker getServiceTracker() throws IOException {//FlowServiceTracker
-		// TODO: multi with the actual service tracker if there is one
-		if (WebArtifactDebugger.getCurrentThreadTracker() != null) {
-			return WebArtifactDebugger.getCurrentThreadTracker();
+		List<ServiceRuntimeTracker> trackers = new ArrayList<ServiceRuntimeTracker>();
+		if (EAIResourceRepository.isDevelopment()) {
+			trackers.add(new AnyThreadTracker());
+			if (getConfiguration().getTrackerService() != null) {
+				FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new AnyThreadTracker(), repository, SystemPrincipal.ROOT);
+				trackers.add(new FlatServiceTrackerWrapper(flatServiceTracker));
+			}
 		}
-		else {
-			return new EmptyServiceRuntimeTracker();
+		else if (getConfiguration().getTrackerService() != null) {
+			FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new EmptyServiceRuntimeTracker(), repository, SystemPrincipal.ROOT);
+			trackers.add(new FlatServiceTrackerWrapper(flatServiceTracker));
 		}
-//		if (getConfiguration().getServiceTrackerService() == null) {
-//		}
-//		else {
-//			return new FlowServiceTracker()
-//		}
-//		return null;
+		return new MultipleVMServiceRuntimeTracker(trackers.toArray(new ServiceRuntimeTracker[trackers.size()]));
 	}
 	
 	public Authenticator getAuthenticator() throws IOException {

@@ -13,7 +13,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "serviceTrackerService" })
+@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "trackerService" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
@@ -24,7 +24,7 @@ public class WebArtifactConfiguration {
 	private DefinedService permissionService;
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
-	private DefinedService serviceTrackerService;
+	private DefinedService trackerService;
 	private List<DefinedService> restServices;
 	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
@@ -109,11 +109,11 @@ public class WebArtifactConfiguration {
 	}
 
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	@InterfaceFilter(implement = "nabu.interfaces.Services.track")
-	public DefinedService getServiceTrackerService() {
-		return serviceTrackerService;
+	@InterfaceFilter(implement = "be.nabu.eai.services.api.FlatServiceTracker.track")
+	public DefinedService getTrackerService() {
+		return trackerService;
 	}
-	public void setServiceTrackerService(DefinedService serviceTrackerService) {
-		this.serviceTrackerService = serviceTrackerService;
+	public void setTrackerService(DefinedService serviceTrackerService) {
+		this.trackerService = serviceTrackerService;
 	}
 }

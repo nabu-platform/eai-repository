@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAINode;
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -85,10 +86,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 
 	@Override
 	public Entry getChild(String name) {
-		// some elements have an id with upper camelcase for the artifact but the entry has lowercase camelcase
-		// this fixes that
-		// note that this is in sync with the creation policy set by the server where the artifact name must begin with a small letter
-		name = name.length() <= 1 ? name.toLowerCase() : name.substring(0, 1).toLowerCase() + name.substring(1);
 		return getChildren().get(name);
 	}
 	
@@ -155,6 +152,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			writeNode(nodeContainer, node);
 			RepositoryEntry entry = new RepositoryEntry(getRepository(), nodeContainer, this, name);
 			children.put(name, entry);
+			// update the cached scan-typed list
+			if (repository instanceof EAIResourceRepository) {
+				((EAIResourceRepository) repository).scanForTypes(this);
+			}
 			return entry;
 		}
 		else {

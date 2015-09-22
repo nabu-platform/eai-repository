@@ -155,7 +155,8 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 	
 	public static String prettify(String name) {
-		return name.substring(0, 1).toLowerCase() + name.substring(1);
+		return name;
+//		return name.substring(0, 1).toLowerCase() + name.substring(1);
 	}
 
 	@Override
