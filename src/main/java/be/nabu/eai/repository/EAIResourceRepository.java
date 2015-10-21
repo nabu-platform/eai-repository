@@ -264,6 +264,10 @@ public class EAIResourceRepository implements ResourceRepository {
 		if (entry != null) {
 			unload(entry);
 			load(entry);
+			// also reload all the dependencies
+			for (String dependency : getDependencies(entry.getId())) {
+				reload(dependency);
+			}
 		}
 		reloadMavenRepository();
 	}

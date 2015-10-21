@@ -104,7 +104,9 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 				for (String name : GlueListener.analyzePath(getConfiguration().getPath()).getParameters()) {
 					path.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), path));
 				}
-				input.add(new ComplexElementImpl("path", path, input));
+				if (path.iterator().hasNext()) {
+					input.add(new ComplexElementImpl("path", path, input));
+				}
 			}
 			if (getConfiguration().getInput() != null) {
 				input.add(new ComplexElementImpl("content", (ComplexType) getConfiguration().getInput(), input));

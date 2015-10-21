@@ -44,6 +44,8 @@ import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.json.JSONBinding;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.utils.io.IOUtils;
+import be.nabu.utils.io.api.ByteBuffer;
+import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.mime.api.ContentPart;
 import be.nabu.utils.mime.api.Header;
 import be.nabu.utils.mime.impl.FormatException;
@@ -91,7 +93,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 	public HTTPResponse handle(HTTPRequest request) {
 		try {
 			// stop fast if wrong method
-			if (!webArtifact.getConfiguration().getMethod().toString().equalsIgnoreCase(request.getMethod())) {
+			if (webArtifact.getConfiguration().getMethod() != null && !webArtifact.getConfiguration().getMethod().toString().equalsIgnoreCase(request.getMethod())) {
 				return null;
 			}
 			URI uri = HTTPUtils.getURI(request, false);
@@ -137,7 +139,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			// check permissions
 			if (permissionHandler != null) {
 				if (!permissionHandler.hasPermission(token, path, request.getMethod().toLowerCase())) {
-					throw new HTTPException(401, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on: " + path);
+					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on: " + path);
 				}
 			}
 			// check role
@@ -177,28 +179,32 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 			}
 			if (input.getType().get("content") != null && request.getContent() instanceof ContentPart) {
-				String contentType = MimeUtils.getContentType(request.getContent().getHeaders());
-				UnmarshallableBinding binding;
-				if (contentType == null) {
-					throw new HTTPException(400, "Unknown request content type");
-				}
-				else if (contentType.equalsIgnoreCase("application/xml") || contentType.equalsIgnoreCase("text/xml")) {
-					binding = new XMLBinding((ComplexType) input.getType().get("content").getType(), charset);
-				}
-				else if (contentType.equalsIgnoreCase("application/json")) {
-					binding = new JSONBinding((ComplexType) input.getType().get("content").getType(), charset);
-				}
-				else {
-					throw new HTTPException(400, "Unsupported request content type: " + contentType);	
-				}
-				try {
-					input.set("content", binding.unmarshal(IOUtils.toInputStream(((ContentPart) request.getContent()).getReadable()), new Window[0]));
-				}
-				catch (IOException e) {
-					throw new HTTPException(500, e);
-				}
-				catch (ParseException e) {
-					throw new HTTPException(400, "Message can not be parsed using specification: " + input.getType().get("content").getType(),e);
+				ReadableContainer<ByteBuffer> readable = ((ContentPart) request.getContent()).getReadable();
+				// the readable can be null (e.g. empty part)
+				if (readable != null) {
+					String contentType = MimeUtils.getContentType(request.getContent().getHeaders());
+					UnmarshallableBinding binding;
+					if (contentType == null) {
+						throw new HTTPException(400, "Unknown request content type");
+					}
+					else if (contentType.equalsIgnoreCase("application/xml") || contentType.equalsIgnoreCase("text/xml")) {
+						binding = new XMLBinding((ComplexType) input.getType().get("content").getType(), charset);
+					}
+					else if (contentType.equalsIgnoreCase("application/json")) {
+						binding = new JSONBinding((ComplexType) input.getType().get("content").getType(), charset);
+					}
+					else {
+						throw new HTTPException(400, "Unsupported request content type: " + contentType);	
+					}
+					try {
+						input.set("content", binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]));
+					}
+					catch (IOException e) {
+						throw new HTTPException(500, e);
+					}
+					catch (ParseException e) {
+						throw new HTTPException(400, "Message can not be parsed using specification: " + input.getType().get("content").getType(),e);
+					}
 				}
 			}
 			

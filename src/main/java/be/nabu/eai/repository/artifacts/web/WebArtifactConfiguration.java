@@ -26,6 +26,7 @@ public class WebArtifactConfiguration {
 	private DefinedService tokenValidatorService;
 	private DefinedService trackerService;
 	private List<DefinedService> restServices;
+	private Boolean allowBasicAuthentication;
 	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedHTTPServer getHttpServer() {
@@ -116,4 +117,12 @@ public class WebArtifactConfiguration {
 	public void setTrackerService(DefinedService serviceTrackerService) {
 		this.trackerService = serviceTrackerService;
 	}
+
+	public Boolean getAllowBasicAuthentication() {
+		return allowBasicAuthentication;
+	}
+	public void setAllowBasicAuthentication(Boolean allowBasicAuthentication) {
+		this.allowBasicAuthentication = allowBasicAuthentication;
+	}
+	
 }

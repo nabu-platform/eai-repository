@@ -124,7 +124,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
-				System.out.println("*** ADDING " + child.getId() + " to " + parent.getId());
 				parent.addChildren(child);
 			}
 			catch (IOException e) {

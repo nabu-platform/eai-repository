@@ -42,11 +42,10 @@ import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.api.server.SessionProvider;
 import be.nabu.libs.http.glue.GlueListener;
+import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.http.server.SessionProviderImpl;
-import be.nabu.libs.http.server.util.CSSMerger;
-import be.nabu.libs.http.server.util.JavascriptMerger;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -96,10 +95,25 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			
 			// build repository
 			MultipleRepository repository = new MultipleRepository(null);
-						
+
 			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 			List<ContentRewriter> rewriters = new ArrayList<ContentRewriter>();
 			HTTPServer server = getConfiguration().getHttpServer().getServer();
+			
+			// set up a basic authentication listener which optionally interprets that, it allows for REST-based access
+			if (getConfiguration().getAllowBasicAuthentication() != null && getConfiguration().getAllowBasicAuthentication()) {
+				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(getAuthenticator(), HTTPServerUtils.newFixedRealmHandler(getId()));
+				// make sure it is not mandatory
+				basicAuthenticationHandler.setRequired(false);
+				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, basicAuthenticationHandler);
+				authenticationSubscription.filter(HTTPServerUtils.limitToPath(serverPath));
+				subscriptions.add(authenticationSubscription);
+				
+				// for all responses, we check a 401 to see if it has the required WWW-Authenticate header
+				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = server.getEventDispatcher().subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(getId()));
+				subscriptions.add(ensureAuthenticationSubscription);
+			}
+			
 			// only set up a glue listener if there are any public pages
 			SessionProvider sessionProvider = new SessionProviderImpl(1000*60*30);
 			
@@ -127,19 +141,19 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					subscriptions.add(subscription);
 					// add optimizations if it is not development
 					if (!isDevelopment) {
-						logger.debug("Adding javascript merger");
-						JavascriptMerger javascriptMerger = new JavascriptMerger(resources, resourcePath);
-						EventSubscription<HTTPRequest, HTTPResponse> javascriptMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, javascriptMerger);
-						subscriptions.add(javascriptMergerSubscription);
-						javascriptMergerSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
-						rewriters.add(javascriptMerger);
-						
-						logger.debug("Adding javascript merger");
-						CSSMerger cssMerger = new CSSMerger(resources, resourcePath);
-						EventSubscription<HTTPRequest, HTTPResponse> cssMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, cssMerger);
-						subscriptions.add(cssMergerSubscription);
-						cssMergerSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
-						rewriters.add(cssMerger);
+//						logger.debug("Adding javascript merger");
+//						JavascriptMerger javascriptMerger = new JavascriptMerger(resources, resourcePath);
+//						EventSubscription<HTTPRequest, HTTPResponse> javascriptMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, javascriptMerger);
+//						subscriptions.add(javascriptMergerSubscription);
+//						javascriptMergerSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
+//						rewriters.add(javascriptMerger);
+//						
+//						logger.debug("Adding css merger");
+//						CSSMerger cssMerger = new CSSMerger(resources, resourcePath);
+//						EventSubscription<HTTPRequest, HTTPResponse> cssMergerSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, cssMerger);
+//						subscriptions.add(cssMergerSubscription);
+//						cssMergerSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
+//						rewriters.add(cssMerger);
 					}
 				}
 				ResourceContainer<?> pages = (ResourceContainer<?>) publicDirectory.getChild("pages");

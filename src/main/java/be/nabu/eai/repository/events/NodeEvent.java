@@ -38,4 +38,9 @@ public class NodeEvent {
 	public Node getNode() {
 		return node;
 	}
+	
+	@Override
+	public String toString() {
+		return id + " - " + state + " (" + done + ")";
+	}
 }
