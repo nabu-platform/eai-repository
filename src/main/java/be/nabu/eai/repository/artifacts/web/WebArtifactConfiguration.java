@@ -13,7 +13,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "path", "charset", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "trackerService" })
+@XmlType(propOrder = { "httpServer", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "trackerService" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
