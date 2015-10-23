@@ -13,12 +13,14 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "trackerService" })
+@XmlType(propOrder = { "httpServer", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "restServices", "trackerService", "whitelistedCodes" })
 public class WebArtifactConfiguration {
 	
 	private DefinedHTTPServer httpServer;
 	private String path;
 	private String charset;
+	private String realm;
+	private String whitelistedCodes;
 	
 	private DefinedService passwordAuthenticationService, secretAuthenticationService;
 	private DefinedService permissionService;
@@ -124,5 +126,20 @@ public class WebArtifactConfiguration {
 	public void setAllowBasicAuthentication(Boolean allowBasicAuthentication) {
 		this.allowBasicAuthentication = allowBasicAuthentication;
 	}
-	
+
+	public String getRealm() {
+		return realm;
+	}
+
+	public void setRealm(String realm) {
+		this.realm = realm;
+	}
+
+	public String getWhitelistedCodes() {
+		return whitelistedCodes;
+	}
+
+	public void setWhitelistedCodes(String whitelistedCodes) {
+		this.whitelistedCodes = whitelistedCodes;
+	}
 }

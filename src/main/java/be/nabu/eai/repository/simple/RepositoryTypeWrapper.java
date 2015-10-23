@@ -4,12 +4,20 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.api.DefinedSimpleType;
 import be.nabu.libs.types.api.SimpleTypeWrapper;
 
-public class ArtifactTypeWrapper implements SimpleTypeWrapper {
+public class RepositoryTypeWrapper implements SimpleTypeWrapper {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public <T> DefinedSimpleType<T> wrap(Class<T> arg0) {
-		return Artifact.class.isAssignableFrom(arg0) ? new ArtifactSimpleType(arg0) : null;
+		if (Artifact.class.isAssignableFrom(arg0)) {
+			return new ArtifactSimpleType(arg0);
+		}
+		else if (Class.class.isAssignableFrom(arg0)) {
+			return new ClassSimpleType();
+		}
+		else {
+			return null;
+		}
 	}
 
 }

@@ -254,6 +254,10 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public void reload(String id) {
+		reload(id, true);
+	}
+
+	private void reload(String id, boolean recursiveReload) {
 		logger.info("Reloading: " + id);
 		Entry entry = getEntry(id);
 		while (entry == null && id.contains(".")) {
@@ -265,11 +269,30 @@ public class EAIResourceRepository implements ResourceRepository {
 			unload(entry);
 			load(entry);
 			// also reload all the dependencies
-			for (String dependency : getDependencies(entry.getId())) {
-				reload(dependency);
+			// prevent concurrent modification
+			if (recursiveReload) {
+				List<String> dependenciesToReload = calculateDependenciesToReload(entry.getId());
+				for (String dependency : dependenciesToReload) {
+					reload(dependency, false);
+				}
 			}
 		}
-		reloadMavenRepository();
+		if (recursiveReload) {
+			reloadMavenRepository();
+		}
+	}
+	
+	private List<String> calculateDependenciesToReload(String id) {
+		List<String> directDependencies = getDependencies(id);
+		List<String> dependenciesToReload = new ArrayList<String>(directDependencies);
+		for (String directDependency : directDependencies) {
+			List<String> indirectDependencies = calculateDependenciesToReload(directDependency);
+			// remove any dependencies that are also in the indirect ones
+			// we can add them again afterwards which means they will only be in the list once and in the correct order
+			dependenciesToReload.removeAll(indirectDependencies);
+			dependenciesToReload.addAll(indirectDependencies);
+		}
+		return dependenciesToReload;
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })

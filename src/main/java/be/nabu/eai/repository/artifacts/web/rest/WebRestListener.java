@@ -145,7 +145,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			// check role
 			if (roleHandler != null && webArtifact.getConfiguration().getRole() != null) {
 				if (!roleHandler.hasRole(token, webArtifact.getConfiguration().getRole())) {
-					throw new HTTPException(401, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have the required role: " + webArtifact.getConfiguration().getRole());
+					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have the required role: " + webArtifact.getConfiguration().getRole());
 				}
 			}
 			

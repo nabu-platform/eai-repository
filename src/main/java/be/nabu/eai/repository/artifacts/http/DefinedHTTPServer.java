@@ -10,7 +10,9 @@ import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
+import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.server.HTTPServer;
+import be.nabu.libs.http.server.AbsenceOfHeadersValidator;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.utils.security.KeyStoreHandler;
@@ -65,6 +67,9 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_CONNECTION_POOL_SIZE, "10")) : getConfiguration().getPoolSize(),
 								new EventDispatcherImpl()
 						);
+						server.setExceptionFormatter(new RepositoryExceptionFormatter());
+						// make sure no internal headers make it through
+						server.getEventDispatcher().subscribe(HTTPRequest.class, new AbsenceOfHeadersValidator(true));
 					}
 					catch (KeyManagementException e) {
 						throw new RuntimeException(e);
