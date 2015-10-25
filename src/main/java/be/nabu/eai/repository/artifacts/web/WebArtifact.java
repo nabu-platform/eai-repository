@@ -139,7 +139,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(server.getEventDispatcher().subscribe(HTTPResponse.class, debugger.getResponseListener()));
 			}
 			boolean hasPages = false;
-			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, SystemPrincipal.ROOT, new AnyThreadTracker());
+			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, new AnyThreadTracker());
 			if (publicDirectory != null) {
 				// check if there is a resource directory
 				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
