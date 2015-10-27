@@ -8,16 +8,17 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webRestArtifact")
-@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "role",
-			"preferredResponseType", "asynchronous", "input", "output" })
+@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "role",
+			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output" })
 public class WebRestArtifactConfiguration {
 
 	private DefinedType input, output;
-	private String path, queryParameters, cookieParameters, sessionParameters, headerParameters;
+	private String path, queryParameters, cookieParameters, sessionParameters, headerParameters, responseHeaders;
 	private WebMethod method;
 	private String role;
 	private Boolean asynchronous;
 	private WebResponseType preferredResponseType;
+	private Boolean inputAsStream, outputAsStream;
 
 	public String getPath() {
 		return path;
@@ -88,4 +89,23 @@ public class WebRestArtifactConfiguration {
 	public void setMethod(WebMethod method) {
 		this.method = method;
 	}
+	public Boolean getInputAsStream() {
+		return inputAsStream;
+	}
+	public void setInputAsStream(Boolean inputAsStream) {
+		this.inputAsStream = inputAsStream;
+	}
+	public Boolean getOutputAsStream() {
+		return outputAsStream;
+	}
+	public void setOutputAsStream(Boolean outputAsStream) {
+		this.outputAsStream = outputAsStream;
+	}
+	public String getResponseHeaders() {
+		return responseHeaders;
+	}
+	public void setResponseHeaders(String responseHeaders) {
+		this.responseHeaders = responseHeaders;
+	}
+	
 }

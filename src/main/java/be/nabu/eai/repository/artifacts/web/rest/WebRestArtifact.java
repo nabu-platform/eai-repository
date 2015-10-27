@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.artifacts.web.rest;
 
 import java.io.IOException;
+import java.io.InputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -75,6 +76,7 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 		Structure session = new Structure();
 		Structure cookie = new Structure();
 		Structure path = new Structure();
+		Structure responseHeader = new Structure();
 		try {
 			if (getConfiguration().getQueryParameters() != null && !getConfiguration().getQueryParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getQueryParameters().split("[\\s,]+")) {
@@ -108,10 +110,23 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 					input.add(new ComplexElementImpl("path", path, input));
 				}
 			}
-			if (getConfiguration().getInput() != null) {
+			if (getConfiguration().getInputAsStream() != null && getConfiguration().getInputAsStream()) {
+				input.add(new SimpleElementImpl<InputStream>("content", SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(InputStream.class), input));
+			}
+			else if (getConfiguration().getInput() != null) {
 				input.add(new ComplexElementImpl("content", (ComplexType) getConfiguration().getInput(), input));
 			}
-			if (getConfiguration().getOutput() != null) {
+			
+			if (getConfiguration().getResponseHeaders() != null && !getConfiguration().getResponseHeaders().trim().isEmpty()) {
+				for (String name : getConfiguration().getResponseHeaders().split("[\\s,]+")) {
+					responseHeader.add(new SimpleElementImpl<String>(headerToField(name), SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), responseHeader));
+				}
+				output.add(new ComplexElementImpl("header", responseHeader, output));
+			}
+			if (getConfiguration().getOutputAsStream() != null && getConfiguration().getOutputAsStream()) {
+				output.add(new SimpleElementImpl<InputStream>("content", SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(InputStream.class), output));
+			}
+			else if (getConfiguration().getOutput() != null) {
 				output.add(new ComplexElementImpl("content", (ComplexType) getConfiguration().getOutput(), output));
 			}
 			this.input = input;
@@ -127,5 +142,38 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 			input.remove(element);
 		}
 		return input;
+	}
+	
+	public static String headerToField(String headerName) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < headerName.length(); i++) {
+			if (i == 0) {
+				builder.append(headerName.substring(i, i + 1).toLowerCase());
+			}
+			else if (headerName.charAt(i) == '-') {
+				builder.append(headerName.substring(i + 1, i + 2).toUpperCase());
+				i++;
+			}
+			else {
+				builder.append(headerName.substring(i, i + 1).toLowerCase());
+			}
+		}
+		return builder.toString();
+	}
+	
+	public static String fieldToHeader(String fieldName) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < fieldName.length(); i++) {
+			if (i == 0) {
+				builder.append(fieldName.substring(i, i + 1).toUpperCase());
+			}
+			else if (!fieldName.substring(i, i + 1).equals(fieldName.substring(i, i + 1).toUpperCase())) {
+				builder.append("-").append(fieldName.substring(i, i + 1).toUpperCase());
+			}
+			else {
+				builder.append(fieldName.substring(i, i + 1).toLowerCase());
+			}
+		}
+		return builder.toString();
 	}
 }

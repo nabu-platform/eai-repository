@@ -177,6 +177,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	private Map<String, List<String>> references = new HashMap<String, List<String>>(), dependencies = new HashMap<String, List<String>>();
 	
+	public void updateReferences(String id, List<String> references) {
+		unbuildReferenceMap(id);
+		buildReferenceMap(id, references);
+	}
+	
 	private void buildReferenceMap(String id, List<String> references) {
 		logger.info("Loading references for '" + id + "': " + references);
 		if (references != null) {

@@ -2,6 +2,7 @@ package be.nabu.eai.repository.artifacts.web.rest;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.text.ParseException;
@@ -38,6 +39,7 @@ import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.api.SimpleType;
 import be.nabu.libs.types.binding.api.MarshallableBinding;
 import be.nabu.libs.types.binding.api.UnmarshallableBinding;
 import be.nabu.libs.types.binding.api.Window;
@@ -182,28 +184,34 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				ReadableContainer<ByteBuffer> readable = ((ContentPart) request.getContent()).getReadable();
 				// the readable can be null (e.g. empty part)
 				if (readable != null) {
-					String contentType = MimeUtils.getContentType(request.getContent().getHeaders());
-					UnmarshallableBinding binding;
-					if (contentType == null) {
-						throw new HTTPException(400, "Unknown request content type");
-					}
-					else if (contentType.equalsIgnoreCase("application/xml") || contentType.equalsIgnoreCase("text/xml")) {
-						binding = new XMLBinding((ComplexType) input.getType().get("content").getType(), charset);
-					}
-					else if (contentType.equalsIgnoreCase("application/json")) {
-						binding = new JSONBinding((ComplexType) input.getType().get("content").getType(), charset);
+					// we want the stream
+					if (input.getType() instanceof SimpleType) {
+						input.set("content", IOUtils.toInputStream(readable));
 					}
 					else {
-						throw new HTTPException(400, "Unsupported request content type: " + contentType);	
-					}
-					try {
-						input.set("content", binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]));
-					}
-					catch (IOException e) {
-						throw new HTTPException(500, e);
-					}
-					catch (ParseException e) {
-						throw new HTTPException(400, "Message can not be parsed using specification: " + input.getType().get("content").getType(),e);
+						String contentType = MimeUtils.getContentType(request.getContent().getHeaders());
+						UnmarshallableBinding binding;
+						if (contentType == null) {
+							throw new HTTPException(400, "Unknown request content type");
+						}
+						else if (contentType.equalsIgnoreCase("application/xml") || contentType.equalsIgnoreCase("text/xml")) {
+							binding = new XMLBinding((ComplexType) input.getType().get("content").getType(), charset);
+						}
+						else if (contentType.equalsIgnoreCase("application/json")) {
+							binding = new JSONBinding((ComplexType) input.getType().get("content").getType(), charset);
+						}
+						else {
+							throw new HTTPException(400, "Unsupported request content type: " + contentType);	
+						}
+						try {
+							input.set("content", binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]));
+						}
+						catch (IOException e) {
+							throw new HTTPException(500, e);
+						}
+						catch (ParseException e) {
+							throw new HTTPException(400, "Message can not be parsed using specification: " + input.getType().get("content").getType(),e);
+						}
 					}
 				}
 			}
@@ -218,9 +226,35 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					throw new HTTPException(500, serviceResult.getException());
 				}
 				ComplexContent output = serviceResult.getOutput();
+				List<Header> headers = new ArrayList<Header>();
+				if (output.get("header") != null) {
+					ComplexContent header = (ComplexContent) output.get("header");
+					for (Element<?> element : header.getType()) {
+						String value = (String) header.get(element.getName());
+						headers.add(new MimeHeader(WebRestArtifact.fieldToHeader(element.getName()), value));
+					}
+				}
 				// if there is no content to respond with, just send back an empty response
 				if (output == null || output.get("content") == null) {
-					return HTTPUtils.newEmptyResponse();
+					return HTTPUtils.newEmptyResponse(headers.toArray(new Header[headers.size()]));
+				}
+				else if (output.get("content") instanceof InputStream) {
+					// no size given, set chunked
+					if (MimeUtils.getHeader("Content-Size", headers.toArray(new Header[headers.size()])) == null) {
+						headers.add(new MimeHeader("Transfer-Encoding", "chunked"));
+					}
+					// no type given, set default
+					if (MimeUtils.getHeader("Content-Type", headers.toArray(new Header[headers.size()])) == null) {
+						headers.add(new MimeHeader("Content-Type", "application/octet-stream"));
+					}
+					PlainMimeContentPart part = new PlainMimeContentPart(null,
+						IOUtils.wrap((InputStream) output.get("content")),
+						headers.toArray(new Header[headers.size()])
+					);
+					if (allowEncoding) {
+						HTTPUtils.setContentEncoding(part, request.getContent().getHeaders());
+					}
+					return new DefaultHTTPResponse(200, HTTPCodes.getMessage(200), part);
 				}
 				else {
 					output = (ComplexContent) output.get("content");
@@ -242,10 +276,11 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					ByteArrayOutputStream content = new ByteArrayOutputStream();
 					binding.marshal(content, (ComplexContent) output);
 					byte[] byteArray = content.toByteArray();
+					headers.add(new MimeHeader("Content-Length", "" + byteArray.length));
+					headers.add(new MimeHeader("Content-Type", contentType + "; charset=" + charset.name()));
 					PlainMimeContentPart part = new PlainMimeContentPart(null,
 						IOUtils.wrap(byteArray, true),
-						new MimeHeader("Content-Length", "" + byteArray.length),
-						new MimeHeader("Content-Type", contentType + "; charset=" + charset.name())
+						headers.toArray(new Header[headers.size()])
 					);
 					if (allowEncoding) {
 						HTTPUtils.setContentEncoding(part, request.getContent().getHeaders());
