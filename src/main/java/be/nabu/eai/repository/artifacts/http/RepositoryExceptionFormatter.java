@@ -14,6 +14,9 @@ import java.util.Map;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.libs.http.HTTPCodes;
 import be.nabu.libs.http.HTTPException;
@@ -40,6 +43,7 @@ import be.nabu.utils.mime.impl.PlainMimeContentPart;
 
 public class RepositoryExceptionFormatter implements HTTPExceptionFormatter {
 
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Map<Integer, String> errorTemplates = new HashMap<Integer, String>();
 	private String defaultErrorTemplate = "<html><head><title>${code}: ${message}</title></head><body><h1>${code}: ${message}</h1><pre>${description}</pre></body></html>";
 	
@@ -48,6 +52,7 @@ public class RepositoryExceptionFormatter implements HTTPExceptionFormatter {
 	
 	@Override
 	public HTTPResponse format(HTTPRequest request, HTTPException exception) {
+		logger.error("HTTP Exception " + exception.getCode(), exception);
 		List<String> requestedTypes = new ArrayList<String>();
 		List<String> requestedCharsets = new ArrayList<String>();
 		if (request != null && request.getContent() != null) {

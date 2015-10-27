@@ -102,6 +102,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public EAIResourceRepository(ResourceContainer<?> repositoryRoot, ResourceContainer<?> mavenRoot) throws IOException {
+		ContentTypeMap.register();
 		this.resourceRoot = repositoryRoot;
 		this.mavenRoot = mavenRoot;
 		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
