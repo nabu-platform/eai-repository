@@ -159,10 +159,13 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					input.set("query/" + element.getName(), queryProperties.get(element.getName()));
 				}
 			}
-			if (input.getType().get("header") != null) {
+			if (input.getType().get("header") != null && request.getContent() != null) {
+				System.out.println(">>>>>>>>>>>>>> SETTING HEADERS");
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("header").getType())) {
+					System.out.println(">>>>>>>>>>>>>> " + element.getName() + " = " + WebRestArtifact.fieldToHeader(element.getName()));
 					int counter = 0;
-					for (Header header : MimeUtils.getHeaders(element.getName())) {
+					for (Header header : MimeUtils.getHeaders(WebRestArtifact.fieldToHeader(element.getName()), request.getContent().getHeaders())) {
+						System.out.println(">>>>>>>>>>>>>> header/" + element.getName() + "[" + counter + "] = " + header.getValue());
 						input.set("header/" + element.getName() + "[" + counter++ + "]", header.getValue());
 					}
 				}
@@ -185,7 +188,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				// the readable can be null (e.g. empty part)
 				if (readable != null) {
 					// we want the stream
-					if (input.getType() instanceof SimpleType) {
+					if (input.getType().get("content").getType() instanceof SimpleType) {
 						input.set("content", IOUtils.toInputStream(readable));
 					}
 					else {

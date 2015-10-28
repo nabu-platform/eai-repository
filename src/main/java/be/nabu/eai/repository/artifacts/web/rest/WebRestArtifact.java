@@ -86,7 +86,7 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 			}
 			if (getConfiguration().getHeaderParameters() != null && !getConfiguration().getHeaderParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getHeaderParameters().split("[\\s,]+")) {
-					header.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), header, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0)));
+					header.add(new SimpleElementImpl<String>(headerToField(name), SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), header, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0)));
 				}
 				input.add(new ComplexElementImpl("header", header, input));
 			}
@@ -167,7 +167,7 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 			if (i == 0) {
 				builder.append(fieldName.substring(i, i + 1).toUpperCase());
 			}
-			else if (!fieldName.substring(i, i + 1).equals(fieldName.substring(i, i + 1).toUpperCase())) {
+			else if (!fieldName.substring(i, i + 1).equals(fieldName.substring(i, i + 1).toLowerCase())) {
 				builder.append("-").append(fieldName.substring(i, i + 1).toUpperCase());
 			}
 			else {
