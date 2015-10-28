@@ -9,6 +9,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -32,7 +33,6 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
-import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -76,6 +76,8 @@ public class EAIResourceRepository implements ResourceRepository {
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
+	private List<be.nabu.libs.maven.ResourceRepository> mavenRepositories = new ArrayList<be.nabu.libs.maven.ResourceRepository>();
+	private List<String> internalDomains;
 	
 	private static EAIResourceRepository instance;
 	
@@ -89,10 +91,14 @@ public class EAIResourceRepository implements ResourceRepository {
 	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC });
 	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, "class", "package", "import", "for", "while", "if", "do", "else" });
 	private Charset charset = Charset.forName("UTF-8");
-	private DomainRepository mavenRepository;
 	private ResourceContainer<?> mavenRoot;
 	private URI localMavenServer;
 	private boolean updateMavenSnapshots = false;
+	
+	private Map<String, List<String>> references = new HashMap<String, List<String>>(), dependencies = new HashMap<String, List<String>>();
+	private List<MavenManager> mavenManagers = new ArrayList<MavenManager>();
+	private List<MavenArtifact> mavenArtifacts = new ArrayList<MavenArtifact>();
+	private MavenManager mavenManager;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -102,6 +108,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 	
 	public EAIResourceRepository(ResourceContainer<?> repositoryRoot, ResourceContainer<?> mavenRoot) throws IOException {
+		internalDomains = new ArrayList<String>();
+		internalDomains.add("nabu");
+		if (System.getProperty("repository.domains") != null) {
+			internalDomains.addAll(Arrays.asList(System.getProperty("repository.domains").split("[\\s]*,[\\s]*")));
+		}
 		ContentTypeMap.register();
 		this.resourceRoot = repositoryRoot;
 		this.mavenRoot = mavenRoot;
@@ -175,8 +186,6 @@ public class EAIResourceRepository implements ResourceRepository {
 		Entry entry = getEntry(id);
 		return entry != null && entry.isNode() ? entry.getNode() : null;
 	}
-	
-	private Map<String, List<String>> references = new HashMap<String, List<String>>(), dependencies = new HashMap<String, List<String>>();
 	
 	public void updateReferences(String id, List<String> references) {
 		unbuildReferenceMap(id);
@@ -252,6 +261,38 @@ public class EAIResourceRepository implements ResourceRepository {
 			}
 			// TODO: remove from reference map?
 		}
+		if (entry instanceof ResourceEntry) {
+			Iterator<be.nabu.libs.maven.ResourceRepository> iterator = mavenRepositories.iterator();
+			while (iterator.hasNext()) {
+				be.nabu.libs.maven.ResourceRepository repository = iterator.next();
+				if (((ResourceEntry) entry).getContainer().equals(repository.getRoot().getParent())) {
+					// unload all maven artifacts related to this repository
+					Iterator<MavenArtifact> artifactIterator = mavenArtifacts.iterator();
+					while (artifactIterator.hasNext()) {
+						MavenArtifact artifact = artifactIterator.next();
+						if (artifact.getRepository().equals(repository)) {
+							try {
+								MavenManager.detachChildren(getRoot(), artifact);
+							}
+							catch (IOException e) {
+								logger.error("Could not properly unload maven repository for: " + entry.getId(), e);
+							}
+							iterator.remove();
+						}
+					}
+					// unload all the maven managers related to this repository
+					Iterator<MavenManager> managerIterator = mavenManagers.iterator();
+					while (managerIterator.hasNext()) {
+						MavenManager mavenManager = managerIterator.next();
+						if (mavenManager.getRepository().equals(repository)) {
+							iterator.remove();
+						}
+					}
+					// remove the repository itself
+					iterator.remove();
+				}
+			}
+		}
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
 				unload(child);
@@ -284,7 +325,7 @@ public class EAIResourceRepository implements ResourceRepository {
 			}
 		}
 		if (recursiveReload) {
-			reloadMavenRepository();
+			reattachMavenArtifacts();
 		}
 	}
 	
@@ -320,20 +361,28 @@ public class EAIResourceRepository implements ResourceRepository {
 						}
 					}
 				}
-				catch(RuntimeException e) {
-					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				catch(Exception e) {
+					logger.error("Could not finish loading generated children for: " + entry.getId(), e);
 				}
-				catch (InstantiationException e) {
-					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+			}
+		}
+		if (entry instanceof ResourceEntry) {
+			ResourceContainer<?> container = (ResourceContainer) ((ResourceEntry) entry).getContainer().getChild(PRIVATE);
+			if (container != null) {
+				boolean loadAsMaven = false;
+				for (Resource resource : container) {
+					if (resource.getName().endsWith(".jar")) {
+						loadAsMaven = true;
+						break;
+					}
 				}
-				catch (IllegalAccessException e) {
-					logger.error("Could not finish loading generated children for " + entry.getId(), e);
-				}
-				catch (IOException e) {
-					logger.error("Could not finish loading generated children for " + entry.getId(), e);
-				}
-				catch (ParseException e) {
-					logger.error("Could not finish loading generated children for " + entry.getId(), e);
+				if (loadAsMaven) {
+					try {
+						startMavenRepository(container);
+					}
+					catch (IOException e) {
+						logger.error("Could not load maven repository for: " + entry.getId(), e);
+					}
 				}
 			}
 		}
@@ -544,40 +593,80 @@ public class EAIResourceRepository implements ResourceRepository {
 		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
+	public void unloadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) throws IOException {
+		Iterator<MavenArtifact> iterator = mavenArtifacts.iterator();
+		while(iterator.hasNext()) {
+			MavenArtifact mavenArtifact = iterator.next();
+			// only unload artifacts from the ROOT repository, the other repositories are deemed unmodifiable
+			if (mavenArtifact.getRepository().equals(mavenManager.getRepository())) {
+				// if it is the same artifact (version doesn't matter), reload it
+				if (mavenArtifact.getArtifact().getGroupId().equals(artifact.getGroupId()) && mavenArtifact.getArtifact().getArtifactId().equals(artifact.getArtifactId())) {
+					mavenManager.removeChildren(getRoot(), mavenArtifact);
+					iterator.remove();
+				}
+			}
+		}
+	}
+	
+	public void loadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
+		if (mavenManager.getRepository().isInternal(artifact)) {
+			startMavenArtifact(mavenManager, artifact);
+		}
+	}
+	
 	private void startMavenRepository(ResourceContainer<?> target) throws IOException {
 		logger.info("Starting maven repository located at: " + ResourceUtils.getURI(target));
-		mavenRepository = new be.nabu.libs.maven.ResourceRepository(target, getEventDispatcher());
-		// everything in the "nabu" domain is considered internal
-		// TODO: allow configurable entries
-		mavenRepository.getDomains().add("nabu");
-		mavenRepository.scan();
-		
-		reloadMavenRepository();
+		be.nabu.libs.maven.ResourceRepository mavenRepository = new be.nabu.libs.maven.ResourceRepository(target, getEventDispatcher());
+		mavenRepository.getDomains().addAll(internalDomains);
+		mavenRepository.scan(false);
+		mavenRepositories.add(mavenRepository);
+		startMavenRepository(mavenRepository);
 	}
 
-	private void reloadMavenRepository() {
+	private void startMavenRepository(be.nabu.libs.maven.ResourceRepository mavenRepository) {
+		// the first maven manager is considered the root manager and the only that has modifiable artifacts
+		MavenManager mavenManager = new MavenManager(mavenRepository, DefinedTypeResolverFactory.getInstance().getResolver());
+		if (this.mavenManager == null) {
+			this.mavenManager = mavenManager;
+		}
+		mavenManagers.add(mavenManager);
 		try {
-			// )do an initial load of all internal artifacts
+			// do an initial load of all internal artifacts
 			for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
-				try {
-					logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
-					MavenManager manager = new MavenManager(DefinedTypeResolverFactory.getInstance().getResolver());
-					MavenArtifact artifact = manager.load(mavenRepository, internal, localMavenServer, updateMavenSnapshots);
-					manager.removeChildren(getRoot(), artifact);
-					manager.addChildren(getRoot(), artifact);
-				}
-				catch (IOException e) {
-					logger.error("Could not load artifact: " + internal.getGroupId() + " > " + internal.getArtifactId(), e);
-				}
+				startMavenArtifact(mavenManager, internal);
 			}
 		}
 		catch (IOException e) {
 			logger.error("Could not load artifacts from maven repository", e);
 		}
 	}
+
+	private void startMavenArtifact(MavenManager mavenManager, be.nabu.libs.maven.api.Artifact internal) {
+		try {
+			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
+			MavenArtifact artifact = mavenManager.load(internal, localMavenServer, updateMavenSnapshots);
+			mavenArtifacts.add(artifact);
+			mavenManager.removeChildren(getRoot(), artifact);
+			mavenManager.addChildren(getRoot(), artifact);
+		}
+		catch (IOException e) {
+			logger.error("Could not load artifact: " + internal.getGroupId() + " > " + internal.getArtifactId(), e);
+		}
+	}
+	
+	private void reattachMavenArtifacts() {
+		for (MavenArtifact artifact : mavenArtifacts) {
+			try {
+				MavenManager.attachChildren(getRoot(), artifact);
+			}
+			catch (IOException e) {
+				logger.error("Could not reattach maven artifact: " + artifact, e);
+			}
+		}
+	}
 	
 	public be.nabu.libs.maven.api.DomainRepository getMavenRepository() {
-		return mavenRepository;
+		return mavenManager != null ? mavenManager.getRepository() : null;
 	}
 	
 	public ServiceContext getServiceContext() {
@@ -656,13 +745,15 @@ public class EAIResourceRepository implements ResourceRepository {
 	public void start() {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, false), this);
 		// start the maven repository stuff
-		load(repositoryRoot);
 		try {
 			startMavenRepository(mavenRoot);
 		}
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		load(repositoryRoot);
+		// the load can remove maven artifacts
+		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);
 	}
 

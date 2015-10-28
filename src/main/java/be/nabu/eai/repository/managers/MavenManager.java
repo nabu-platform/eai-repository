@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.api.Cache;
 import be.nabu.eai.api.Eager;
 import be.nabu.eai.repository.EAINode;
-import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -36,11 +35,14 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 
-	public MavenManager(DefinedTypeResolver definedTypeResolver) {
+	private DomainRepository repository;
+
+	public MavenManager(DomainRepository repository, DefinedTypeResolver definedTypeResolver) {
+		this.repository = repository;
 		this.definedTypeResolver = definedTypeResolver;	
 	}
 	
-	public MavenArtifact load(DomainRepository repository, Artifact artifact, URI mavenServer, boolean updateSnapshots) {
+	public MavenArtifact load(Artifact artifact, URI mavenServer, boolean updateSnapshots) {
 		try {
 			DependencyResolver dependencyResolver = mavenServer == null 
 				? new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2"))
@@ -62,7 +64,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		}
 		String groupId = id.substring(0, index);
 		String artifactId = id.substring(index + 1);
-		DomainRepository repository = ((EAIResourceRepository) entry.getRepository()).getMavenRepository();
 		List<String> versions = new ArrayList<String>(repository.getVersions(groupId, artifactId));
 		if (versions.isEmpty()) {
 			throw new IOException("Can not find the artifact " + id);
@@ -92,6 +93,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 
 	@Override
 	public List<Entry> addChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+		return attachChildren(root, artifact);
+	}
+
+	public static List<Entry> attachChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
 		List<Entry> entries = new ArrayList<Entry>();
 		// if you are adding it to the actual repository root, first create an entry for the groupId
 		// this allows you to define maven repositories in other places than the groupId
@@ -102,10 +107,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		Collections.sort(keys);
 		
 		for (String childId : keys) {
-			try {
-				ModifiableEntry parent = getParent(root, childId, false);
-				int index = childId.lastIndexOf('.');
-				String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
+			ModifiableEntry parent = getParent(root, childId, false);
+			int index = childId.lastIndexOf('.');
+			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
+			if (parent.getChild(childName) == null) {
 				EAINode node = new EAINode();
 				node.setArtifact(artifact.getChildren().get(childId));
 				Annotation[] annotations = artifact.getAnnotations(childId);
@@ -125,10 +130,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 				node.setEntry(child);
 	//			node.setEntry(parent);
 				parent.addChildren(child);
-			}
-			catch (IOException e) {
-				logger.error("Could not load: " + childId, e);
-				throw e;
 			}
 		}
 		return entries;
@@ -160,6 +161,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 
 	@Override
 	public List<Entry> removeChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+		return detachChildren(root, artifact);
+	}
+
+	public static List<Entry> detachChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
 		List<Entry> entries = new ArrayList<Entry>();
 		if (root.getParent() == null) {
 			root = getParent(root, artifact.getArtifact().getGroupId(), true);
@@ -188,5 +193,9 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	@Override
 	public List<Validation<?>> updateReference(MavenArtifact artifact, String from, String to) throws IOException {
 		return null;
-	}	
+	}
+
+	public DomainRepository getRepository() {
+		return repository;
+	}
 }
