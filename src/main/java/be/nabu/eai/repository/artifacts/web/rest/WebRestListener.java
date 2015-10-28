@@ -227,7 +227,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 				ComplexContent output = serviceResult.getOutput();
 				List<Header> headers = new ArrayList<Header>();
-				if (output.get("header") != null) {
+				if (output != null && output.get("header") != null) {
 					ComplexContent header = (ComplexContent) output.get("header");
 					for (Element<?> element : header.getType()) {
 						String value = (String) header.get(element.getName());
