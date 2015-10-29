@@ -47,10 +47,12 @@ import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
 import be.nabu.libs.services.ServiceRunnerFactory;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.DefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.maven.MavenArtifact;
+import be.nabu.libs.services.pojo.POJOInterfaceResolver;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
@@ -99,6 +101,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	private List<MavenManager> mavenManagers = new ArrayList<MavenManager>();
 	private List<MavenArtifact> mavenArtifacts = new ArrayList<MavenArtifact>();
 	private MavenManager mavenManager;
+	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -597,6 +600,10 @@ public class EAIResourceRepository implements ResourceRepository {
 		Iterator<MavenArtifact> iterator = mavenArtifacts.iterator();
 		while(iterator.hasNext()) {
 			MavenArtifact mavenArtifact = iterator.next();
+			if (mavenIfaceResolvers.containsKey(mavenArtifact)) {
+				DefinedServiceInterfaceResolverFactory.getInstance().removeResolver(mavenIfaceResolvers.get(mavenArtifact));
+				mavenIfaceResolvers.remove(mavenArtifact);
+			}
 			// only unload artifacts from the ROOT repository, the other repositories are deemed unmodifiable
 			if (mavenArtifact.getRepository().equals(mavenManager.getRepository())) {
 				// if it is the same artifact (version doesn't matter), reload it
@@ -648,6 +655,8 @@ public class EAIResourceRepository implements ResourceRepository {
 			mavenArtifacts.add(artifact);
 			mavenManager.removeChildren(getRoot(), artifact);
 			mavenManager.addChildren(getRoot(), artifact);
+			mavenIfaceResolvers.put(artifact, new POJOInterfaceResolver(artifact.getClassLoader()));
+			DefinedServiceInterfaceResolverFactory.getInstance().addResolver(mavenIfaceResolvers.get(artifact));
 		}
 		catch (IOException e) {
 			logger.error("Could not load artifact: " + internal.getGroupId() + " > " + internal.getArtifactId(), e);
@@ -684,6 +693,20 @@ public class EAIResourceRepository implements ResourceRepository {
 		return new EAIExecutionContext(this, principal, isDevelopment());
 	}
 
+	@SuppressWarnings("unchecked")
+	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
+		List<T> artifacts = new ArrayList<T>();
+		for (Node node : getNodes(artifactClazz)) {
+			try {
+				artifacts.add((T) node.getArtifact());
+			}
+			catch (Exception e) {
+				logger.error("Could not load node: " + node);
+			}
+		}
+		return artifacts;
+	}
+	
 	@Override
 	public List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
 		if (nodesByType == null) {

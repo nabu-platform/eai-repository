@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.api.Cache;
 import be.nabu.eai.api.Eager;
+import be.nabu.eai.api.Hidden;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
@@ -113,6 +114,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			if (parent.getChild(childName) == null) {
 				EAINode node = new EAINode();
 				node.setArtifact(artifact.getChildren().get(childId));
+				boolean hidden = false;
 				Annotation[] annotations = artifact.getAnnotations(childId);
 				for (Annotation annotation : annotations) {
 					if (annotation instanceof Cache) {
@@ -124,12 +126,17 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					else if (annotation instanceof Eager) {
 						node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
 					}
+					else if (annotation instanceof Hidden) {
+						hidden = true;
+					}
 				}
 				node.setLeaf(true);
 				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
-				parent.addChildren(child);
+				if (!hidden) {
+					parent.addChildren(child);
+				}
 			}
 		}
 		return entries;
