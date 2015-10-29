@@ -118,4 +118,9 @@ public class JAXBArtifact<T> implements Artifact {
 	public ResourceContainer<?> getDirectory() {
 		return directory;
 	}
+	
+	@Override
+	public String toString() {
+		return getId() + " [" + getClass().getName() + "]";
+	}
 }
