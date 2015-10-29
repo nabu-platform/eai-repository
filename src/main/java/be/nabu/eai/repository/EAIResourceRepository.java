@@ -798,4 +798,28 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 		return services;
 	}
+	
+	public List<Class<?>> getMavenImplementationsFor(Class<?> clazz) throws IOException {
+		List<Class<?>> implementations = new ArrayList<Class<?>>();
+		for (MavenArtifact artifact : mavenArtifacts) {
+			List<Class<?>> provided = artifact.getImplementations().get(clazz);
+			if (provided != null) {
+				implementations.addAll(provided);
+			}
+		}
+		return implementations;
+	}
+	
+	public Class<?> getMavenClass(String className) throws IOException {
+		for (MavenArtifact artifact : mavenArtifacts) {
+			for (List<Class<?>> list : artifact.getImplementations().values()) {
+				for (Class<?> clazz : list) {
+					if (clazz.getName().equals(className)) {
+						return clazz;
+					}
+				}
+			}
+		}
+		return null;
+	}
 }

@@ -2,28 +2,48 @@ package be.nabu.eai.repository.util;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
-public class KeyValueMapAdapter extends XmlAdapter<ArrayList<KeyValuePair>, Map<String, String>> {
+public class KeyValueMapAdapter extends XmlAdapter<KeyValueMapAdapter.MapRoot, Map<String, String>> {
 
+	public static class MapRoot {
+		private List<KeyValuePair> properties = new ArrayList<KeyValuePair>();
+
+		@XmlElement(name = "property")
+		public List<KeyValuePair> getProperties() {
+			return properties;
+		}
+		public void setProperties(List<KeyValuePair> properties) {
+			this.properties = properties;
+		}
+	}
+	
 	@Override
-	public Map<String, String> unmarshal(ArrayList<KeyValuePair> v) throws Exception {
+	public Map<String, String> unmarshal(MapRoot v) throws Exception {
 		Map<String, String> map = new LinkedHashMap<String, String>();
-		for (KeyValuePair pair : v) {
+		if (v == null) {
+			return map;
+		}
+		for (KeyValuePair pair : v.getProperties()) {
 			map.put(pair.getKey(), pair.getValue());
 		}
 		return map;
 	}
 
 	@Override
-	public ArrayList<KeyValuePair> marshal(Map<String, String> v) throws Exception {
-		ArrayList<KeyValuePair> list = new ArrayList<KeyValuePair>();
-		for (String key : v.keySet()) {
-			list.add(new KeyValuePair(key, v.get(key)));
+	public MapRoot marshal(Map<String, String> v) throws Exception {
+		if (v == null) {
+			return null;
 		}
-		return list;
+		MapRoot root = new MapRoot();
+		for (String key : v.keySet()) {
+			root.getProperties().add(new KeyValuePair(key, v.get(key)));
+		}
+		return root;
 	}
 
 }

@@ -160,12 +160,9 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 			}
 			if (input.getType().get("header") != null && request.getContent() != null) {
-				System.out.println(">>>>>>>>>>>>>> SETTING HEADERS");
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("header").getType())) {
-					System.out.println(">>>>>>>>>>>>>> " + element.getName() + " = " + WebRestArtifact.fieldToHeader(element.getName()));
 					int counter = 0;
 					for (Header header : MimeUtils.getHeaders(WebRestArtifact.fieldToHeader(element.getName()), request.getContent().getHeaders())) {
-						System.out.println(">>>>>>>>>>>>>> header/" + element.getName() + "[" + counter + "] = " + header.getValue());
 						input.set("header/" + element.getName() + "[" + counter++ + "]", header.getValue());
 					}
 				}

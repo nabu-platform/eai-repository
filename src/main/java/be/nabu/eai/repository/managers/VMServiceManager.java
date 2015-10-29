@@ -57,7 +57,6 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 	
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
-		System.out.println("loading: " + entry.getId());
 		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
 		// next we load the root sequence
 		Sequence sequence = parseSequence(new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false)));

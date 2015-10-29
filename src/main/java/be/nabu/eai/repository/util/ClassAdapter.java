@@ -2,11 +2,20 @@ package be.nabu.eai.repository.util;
 
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
+import be.nabu.eai.repository.EAIResourceRepository;
+
 public class ClassAdapter extends XmlAdapter<String, Class<?>> {
 
 	@Override
 	public Class<?> unmarshal(String v) throws Exception {
-		return v == null ? null : Thread.currentThread().getContextClassLoader().loadClass(v);
+		if (v == null) {
+			return null;
+		}
+		Class<?> clazz = EAIResourceRepository.getInstance().getMavenClass(v);
+		if (clazz == null) {
+			clazz = Thread.currentThread().getContextClassLoader().loadClass(v);
+		}
+		return clazz;
 	}
 
 	@Override

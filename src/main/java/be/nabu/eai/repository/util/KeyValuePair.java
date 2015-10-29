@@ -1,8 +1,10 @@
 package be.nabu.eai.repository.util;
 
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlValue;
 
+@XmlRootElement(name = "property")
 public class KeyValuePair {
 	private String key, value;
 
