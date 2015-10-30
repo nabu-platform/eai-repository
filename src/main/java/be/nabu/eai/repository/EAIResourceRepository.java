@@ -363,13 +363,13 @@ public class EAIResourceRepository implements ResourceRepository {
 		load(entry, artifactRepositoryManagers);
 		// first load the repositories without dependencies
 		for (Entry manager : artifactRepositoryManagers) {
-			if (entry.getNode().getReferences() == null || entry.getNode().getReferences().isEmpty()) {
+			if (manager.getNode().getReferences() == null || manager.getNode().getReferences().isEmpty()) {
 				loadArtifactManager(manager);
 			}
 		}
 		// then the rest
 		for (Entry manager : artifactRepositoryManagers) {
-			if (entry.getNode().getReferences() != null && !entry.getNode().getReferences().isEmpty()) {
+			if (manager.getNode().getReferences() != null && !manager.getNode().getReferences().isEmpty()) {
 				loadArtifactManager(manager);
 			}
 		}
@@ -377,6 +377,7 @@ public class EAIResourceRepository implements ResourceRepository {
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void loadArtifactManager(Entry entry) {
+		logger.debug("Loading children of: " + entry.getId());
 		try {
 			List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
 			if (addedChildren != null) {
@@ -390,7 +391,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@SuppressWarnings({ "rawtypes" })
 	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
 		// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
 		entry.refresh();
@@ -400,18 +401,7 @@ public class EAIResourceRepository implements ResourceRepository {
 			logger.info("Loading entry: " + entry.getId());
 			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
 			if (entry instanceof ModifiableEntry && entry.isNode() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
-				logger.debug("Loading children of: " + entry.getId());
-				try {
-					List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
-					if (addedChildren != null) {
-						for (Entry addedChild : addedChildren) {
-							buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
-						}
-					}
-				}
-				catch(Exception e) {
-					logger.error("Could not finish loading generated children for: " + entry.getId(), e);
-				}
+				artifactRepositoryManagers.add(entry);
 			}
 		}
 		if (entry instanceof ResourceEntry) {
