@@ -72,9 +72,19 @@ import be.nabu.utils.io.api.WritableContainer;
 /**
  * Ideally at some point I want to plug in the higher level VFS api instead of the low level resource API
  * To make this easier, I have tried to encapsulate as much resource-related stuff here as possible
- * 
- * TODO: add a node event listener for rename, move, delete etc node events to update reference?
- * 		> currently they are static
+ *
+ * Interesting problem:
+ * - for performance reasons and to prevent load-order issues, nodes are lazily loaded
+ * - EXCEPT artifact repositories as they need to be loaded to recursively load whatever artifacts they additionally expose
+ * - HOWEVER if one artifact repository has a dependency to another, they must load in the correct order
+ * - in our case we had a JDBC adapter referencing a UML type, if the JDBC adapter is loaded() first (because its a repository), it will not find the as-of-yet-unloaded UML artifact repository
+ * The solution is predicated on this assumption:
+ * - node repositories should almost never have dependencies to one another as they are by definition objects created outside of the scope of nabu and unable to know that the other exists
+ * - JDBC service is an exception as it is a hybrid: it is a native repository object but it also generates other objects for usage
+ * The solution consists of two parts:
+ * - first load all the nodes, then load all the artifact repositories
+ * - in the artifact repository loading, we make a very rough distinction between those that have dependencies (very few of them) and those that don't, the ones without can be safely loaded
+ * - if we add more hybrids like JDBC we will likely have to optimize this and perform actual dependency calculation, so for instance if a JDBC service requires "path.to.node" and only "path" exists which is a repository, load that one first
  */
 public class EAIResourceRepository implements ResourceRepository {
 	
@@ -348,8 +358,40 @@ public class EAIResourceRepository implements ResourceRepository {
 		return dependenciesToReload;
 	}
 
-	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void load(Entry entry) {
+		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
+		load(entry, artifactRepositoryManagers);
+		// first load the repositories without dependencies
+		for (Entry manager : artifactRepositoryManagers) {
+			if (entry.getNode().getReferences() == null || entry.getNode().getReferences().isEmpty()) {
+				loadArtifactManager(manager);
+			}
+		}
+		// then the rest
+		for (Entry manager : artifactRepositoryManagers) {
+			if (entry.getNode().getReferences() != null && !entry.getNode().getReferences().isEmpty()) {
+				loadArtifactManager(manager);
+			}
+		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void loadArtifactManager(Entry entry) {
+		try {
+			List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+			if (addedChildren != null) {
+				for (Entry addedChild : addedChildren) {
+					buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
+				}
+			}
+		}
+		catch (Exception e) {
+			logger.error("Could not finish loading generated children for: " + entry.getId(), e);
+		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
 		// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
 		entry.refresh();
 		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
@@ -394,7 +436,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
-				load(child);
+				load(child, artifactRepositoryManagers);
 			}
 		}
 	}

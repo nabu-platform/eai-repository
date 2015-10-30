@@ -99,7 +99,7 @@ public class EAINode implements Node {
 	
 	public ArtifactManager<?> newArtifactManager() {
 		if (getArtifactManager() == null) {
-			throw new NullPointerException("No artifact manager configured");
+			throw new NullPointerException("No artifact manager configured for: " + getEntry().getId());
 		}
 		try {
 			return getArtifactManager().newInstance();
