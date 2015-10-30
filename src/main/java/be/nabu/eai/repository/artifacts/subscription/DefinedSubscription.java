@@ -32,6 +32,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 	private static final String DELAY_DELTA = "be.nabu.eai.broker.delayDelta";
 	private static final String DELAY_MAX = "be.nabu.eai.broker.delayMax";
 	private Repository repository;
+	private boolean enabled;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -116,6 +117,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 					configuration.getDelayDelta() == null ? new Long(System.getProperty(DELAY_DELTA, "1000")) : configuration.getDelayDelta(),
 					configuration.getDelayMax() == null ? new Long(System.getProperty(DELAY_MAX, "60000")) : configuration.getDelayMax()
 				);
+				enabled = true;
 			}
 			catch (SubscriptionException e) {
 				throw new IOException(e);
@@ -132,6 +134,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 		try {
 			if (getConfiguration().getBrokerClient() != null) {
 				getConfiguration().getBrokerClient().getBrokerClient().unsubscribe(getId());
+				enabled = false;
 			}
 		}
 		catch (IOException e) {
@@ -142,5 +145,10 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 	@Override
 	public void restart() throws IOException {
 		start();
+	}
+
+	@Override
+	public boolean isStarted() {
+		return enabled;
 	}
 }

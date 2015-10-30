@@ -94,4 +94,9 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 		}
 		return server;
 	}
+
+	@Override
+	public boolean isStarted() {
+		return thread != null && thread.getState() != Thread.State.TERMINATED;
+	}
 }

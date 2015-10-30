@@ -328,4 +328,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		return listener;
 	}
 
+	@Override
+	public boolean isStarted() {
+		return !subscriptions.isEmpty();
+	}
+
 }

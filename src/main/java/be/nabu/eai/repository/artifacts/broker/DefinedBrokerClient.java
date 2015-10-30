@@ -24,6 +24,7 @@ public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> imple
 	private static final String BROKER_PROCESSING_POOL_SIZE = "be.nabu.eai.broker.processingPoolSize";
 	private static final String BROKER_CONNECTION_POOL_SIZE = "be.nabu.eai.broker.connectionPoolSize";
 	private static final String BROKER_DEVIATION = "be.nabu.eai.broker.deviation";
+	private boolean enabled;
 	
 	private BrokerClient brokerClient;
 
@@ -73,10 +74,17 @@ public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> imple
 	@Override
 	public void stop() throws IOException {
 		getBrokerClient().close();
+		enabled = false;
 	}
 
 	@Override
 	public void start() throws IOException {
 		getBrokerClient().start();
+		enabled = true;
+	}
+
+	@Override
+	public boolean isStarted() {
+		return enabled;
 	}
 }

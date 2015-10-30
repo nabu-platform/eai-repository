@@ -32,6 +32,8 @@ import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
+import be.nabu.libs.artifacts.api.StartableArtifact;
+import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.resources.ResourceFactory;
@@ -87,7 +89,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
 	
-	private Map<Class<? extends Artifact>, Map<String, Node>> nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+	private Map<Class<? extends Artifact>, Map<String, Node>> nodesByType;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -242,7 +244,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
 		logger.info("Unloading: " + entry.getId());
-		nodesByType = null;
+		reset();
 		if (entry.isNode()) {
 			unbuildReferenceMap(entry.getId());
 			// if there is an artifact manager and it maintains a repository, remove it all
@@ -351,7 +353,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
 		entry.refresh();
 		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
-		nodesByType = null;
+		reset();
 		if (entry.isNode()) {
 			logger.info("Loading entry: " + entry.getId());
 			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
@@ -725,7 +727,9 @@ public class EAIResourceRepository implements ResourceRepository {
 	public void scanForTypes() {
 		if (nodesByType == null) {
 			synchronized(this) {
-				nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+				if (nodesByType == null) {
+					nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+				}
 			}
 		}
 		synchronized(nodesByType) {
@@ -855,5 +859,22 @@ public class EAIResourceRepository implements ResourceRepository {
 			}
 		}
 		return null;
+	}
+	
+	private void reset() {
+		nodesByType = null;
+	}
+	
+	public Map<Class<? extends Artifact>, Map<String, Node>> getManageableNodes() {
+		if (nodesByType == null) {
+			scanForTypes();
+		}
+		Map<Class<? extends Artifact>, Map<String, Node>> manageableNodes = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+		for (Class<? extends Artifact> clazz : nodesByType.keySet()) {
+			if (StartableArtifact.class.isAssignableFrom(clazz) && StoppableArtifact.class.isAssignableFrom(clazz)) {
+				manageableNodes.put(clazz, nodesByType.get(clazz));
+			}
+		}
+		return manageableNodes;
 	}
 }
