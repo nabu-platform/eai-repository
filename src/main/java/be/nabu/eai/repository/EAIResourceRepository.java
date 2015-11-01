@@ -359,6 +359,7 @@ public class EAIResourceRepository implements ResourceRepository {
 	}
 
 	private void load(Entry entry) {
+		logger.info("Loading: " + entry.getId());
 		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
 		load(entry, artifactRepositoryManagers);
 		// first load the repositories without dependencies
@@ -522,6 +523,8 @@ public class EAIResourceRepository implements ResourceRepository {
 			throw new IOException("The name is not valid: " + targetName);
 		}
 		ResourceEntry entry = (ResourceEntry) sourceEntry;
+		// make sure we have the latest view on the system
+		entry.refresh();
 		// copy the contents to the new location
 		ResourceUtils.copy(entry.getContainer(), (ManageableContainer<?>) parent.getContainer(), targetName);
 		// we need to refresh the parent entry as it can cache the children and not see the new addition
@@ -548,9 +551,11 @@ public class EAIResourceRepository implements ResourceRepository {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void relink(Entry from, Entry to, List<Validation<?>> validations) {
+		logger.debug("Relinking: " + from.getId() + " to " + to.getId());
 		List<String> dependencies = new ArrayList<String>(getDependencies(from.getId()));
 		if (dependencies != null) {
 			for (String dependency : dependencies) {
+				logger.debug("Relinking dependency: " + dependency);
 				Entry dependencyEntry = getEntry(dependency);
 				if (dependencyEntry instanceof ResourceEntry) {
 					Node node = dependencyEntry.getNode();

@@ -18,6 +18,8 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.MemoryEntry;
+import be.nabu.libs.artifacts.ArtifactResolverFactory;
+import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
@@ -28,12 +30,15 @@ import be.nabu.libs.services.jdbc.JDBCService;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.DefinedType;
+import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.binding.api.Window;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.types.structure.DefinedStructure;
 import be.nabu.libs.validator.api.Validation;
+import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -226,8 +231,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		if (artifact.getConnectionId() != null) {
 			references.add(artifact.getConnectionId());
 		}
-		references.addAll(StructureManager.getComplexReferences(artifact.getParameters()));
-		references.addAll(StructureManager.getComplexReferences(artifact.getResults()));
+		references.addAll(StructureManager.getComplexReferences(artifact.getInput()));
+		references.addAll(StructureManager.getComplexReferences(artifact.getOutput()));
 		return references;
 	}
 
@@ -237,8 +242,30 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 			artifact.setConnectionId(to);
 		}
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
-		messages.addAll(StructureManager.updateReferences(artifact.getParameters(), from, to));
-		messages.addAll(StructureManager.updateReferences(artifact.getResults(), from, to));
+		if (artifact.isInputGenerated()) {
+			messages.addAll(StructureManager.updateReferences(artifact.getInput(), from, to));
+		}
+		else if (from.equals(((DefinedType) artifact.getParameters()).getId())) {
+			Artifact newType = ArtifactResolverFactory.getInstance().getResolver().resolve(to);
+			if (!(newType instanceof Type)) {
+				messages.add(new ValidationMessage(Severity.ERROR, "Not a type: " + to));	
+			}
+			else {
+				artifact.setParameters((ComplexType) newType);
+			}
+		}
+		if (artifact.isOutputGenerated()) {
+			messages.addAll(StructureManager.updateReferences(artifact.getOutput(), from, to));
+		}
+		else if (from.equals(((DefinedType) artifact.getResults()).getId())) {
+			Artifact newType = ArtifactResolverFactory.getInstance().getResolver().resolve(to);
+			if (!(newType instanceof Type)) {
+				messages.add(new ValidationMessage(Severity.ERROR, "Not a type: " + to));	
+			}
+			else {
+				artifact.setResults((ComplexType) newType);
+			}
+		}
 		return messages;
 	}
 }
