@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.authentication.api.Authenticator;
 import be.nabu.libs.authentication.api.PermissionHandler;
@@ -57,6 +60,7 @@ import be.nabu.utils.mime.impl.PlainMimeContentPart;
 
 public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> {
 
+	private Logger logger = LoggerFactory.getLogger(getClass());
 	private PathAnalysis pathAnalysis;
 	private String serverPath;
 	private TokenValidator tokenValidator;
@@ -109,7 +113,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				path = path.substring(1);
 			}
 			Map<String, String> analyzed = pathAnalysis.analyze(path);
-			System.out.println("Analyzed: " + analyzed + " in path: " + webArtifact.getConfiguration().getPath());
+			logger.debug("Analyzed: " + analyzed + " in path: " + webArtifact.getConfiguration().getPath());
 			// not in this rest path
 			if (analyzed == null) {
 				return null;
