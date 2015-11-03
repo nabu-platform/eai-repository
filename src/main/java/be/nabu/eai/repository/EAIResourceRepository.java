@@ -29,6 +29,7 @@ import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.eai.repository.resources.RepositoryResourceResolver;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
@@ -142,6 +143,7 @@ public class EAIResourceRepository implements ResourceRepository {
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceInterfaceResolver(this));
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new SPIDefinedServiceInterfaceResolver());
 		instance = this;
+		ResourceFactory.getInstance().addResourceResolver(new RepositoryResourceResolver(this));
 	}
 	
 	public static EAIResourceRepository getInstance() {
@@ -432,7 +434,8 @@ public class EAIResourceRepository implements ResourceRepository {
 		}
 	}
 
-	private Entry getEntry(String id) {
+	@Override
+	public Entry getEntry(String id) {
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		Entry entry = getRoot();
 		while (entry != null && path != null) {

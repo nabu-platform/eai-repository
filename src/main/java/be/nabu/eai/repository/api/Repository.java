@@ -13,6 +13,7 @@ import be.nabu.libs.services.api.ServiceRunner;
 
 public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister {
 	public RepositoryEntry getRoot();
+	public Entry getEntry(String id);
 	public Charset getCharset();
 	public EventDispatcher getEventDispatcher();
 	public Node getNode(String id);
