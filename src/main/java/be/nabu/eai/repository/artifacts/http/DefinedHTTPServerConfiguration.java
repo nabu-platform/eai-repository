@@ -7,12 +7,12 @@ import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.utils.io.SSLServerMode;
 
 @XmlRootElement(name = "httpServer")
-@XmlType(propOrder = { "keystore", "sslServerMode", "port", "poolSize", "socketTimeout" })
+@XmlType(propOrder = { "keystore", "sslServerMode", "port", "poolSize", "socketTimeout", "ioPoolSize" })
 public class DefinedHTTPServerConfiguration {
 	private int port;
 	private DefinedKeyStore keystore;
 	private SSLServerMode sslServerMode;
-	private Integer poolSize, socketTimeout;
+	private Integer poolSize, socketTimeout, ioPoolSize;
 
 	public int getPort() {
 		return port;
@@ -43,5 +43,11 @@ public class DefinedHTTPServerConfiguration {
 	}
 	public void setSslServerMode(SSLServerMode sslServerMode) {
 		this.sslServerMode = sslServerMode;
+	}
+	public Integer getIoPoolSize() {
+		return ioPoolSize;
+	}
+	public void setIoPoolSize(Integer ioPoolSize) {
+		this.ioPoolSize = ioPoolSize;
 	}
 }

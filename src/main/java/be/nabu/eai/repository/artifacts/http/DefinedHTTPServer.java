@@ -9,11 +9,7 @@ import java.security.UnrecoverableKeyException;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
-import be.nabu.libs.events.impl.EventDispatcherImpl;
-import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.server.HTTPServer;
-import be.nabu.libs.http.core.ServerHeader;
-import be.nabu.libs.http.server.AbsenceOfHeadersValidator;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.utils.security.KeyStoreHandler;
@@ -21,7 +17,8 @@ import be.nabu.utils.security.SSLContextType;
 
 public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfiguration> implements StartableArtifact, StoppableArtifact {
 
-	private static final String HTTP_CONNECTION_POOL_SIZE = "be.nabu.eai.http.connectionPoolSize";
+	private static final String HTTP_IO_POOL_SIZE = "be.nabu.eai.http.ioPoolSize";
+	private static final String HTTP_PROCESS_POOL_SIZE = "be.nabu.eai.http.processPoolSize";
 	private Thread thread;
 	
 	public DefinedHTTPServer(String id, ResourceContainer<?> directory) {
@@ -57,22 +54,17 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 				if (server == null) {
 					try {
 						server = getConfiguration().getKeystore() == null 
-							? HTTPServerUtils.newNonBlocking(
+							? HTTPServerUtils.newServer(
 								getConfiguration().getPort(), 
-								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_CONNECTION_POOL_SIZE, "10")) : getConfiguration().getPoolSize(),
-								new EventDispatcherImpl())
-							: HTTPServerUtils.newNonBlocking(
+								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize())
+							: HTTPServerUtils.newServer(
 								getConfiguration().getKeystore() == null ? null : new KeyStoreHandler(getConfiguration().getKeystore().getKeyStore().getKeyStore()).createContext(SSLContextType.TLS),
 								getConfiguration().getSslServerMode(),
-								getConfiguration().getPort(), 
-								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_CONNECTION_POOL_SIZE, "10")) : getConfiguration().getPoolSize(),
-								new EventDispatcherImpl()
+								getConfiguration().getPort(),
+								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_IO_POOL_SIZE, "5")) : getConfiguration().getPoolSize(),
+								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize()
 						);
 						server.setExceptionFormatter(new RepositoryExceptionFormatter());
-						server.getEventDispatcher().subscribe(HTTPRequest.class, new AbsenceOfHeadersValidator(true,
-							ServerHeader.AUTHENTICATION_SCHEME.getName(),
-							ServerHeader.REMOTE_USER.getName()
-						));
 					}
 					catch (KeyManagementException e) {
 						throw new RuntimeException(e);

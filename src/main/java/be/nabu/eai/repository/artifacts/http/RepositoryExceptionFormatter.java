@@ -22,8 +22,8 @@ import be.nabu.libs.http.HTTPCodes;
 import be.nabu.libs.http.HTTPException;
 import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
-import be.nabu.libs.http.api.server.HTTPExceptionFormatter;
 import be.nabu.libs.http.core.DefaultHTTPResponse;
+import be.nabu.libs.nio.api.ExceptionFormatter;
 import be.nabu.libs.property.api.Value;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.types.TypeUtils;
@@ -41,7 +41,7 @@ import be.nabu.utils.mime.impl.MimeHeader;
 import be.nabu.utils.mime.impl.MimeUtils;
 import be.nabu.utils.mime.impl.PlainMimeContentPart;
 
-public class RepositoryExceptionFormatter implements HTTPExceptionFormatter {
+public class RepositoryExceptionFormatter implements ExceptionFormatter<HTTPRequest, HTTPResponse> {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Map<Integer, String> errorTemplates = new HashMap<Integer, String>();
@@ -51,7 +51,8 @@ public class RepositoryExceptionFormatter implements HTTPExceptionFormatter {
 	private Map<String, List<String>> artifactCodes = new HashMap<String, List<String>>();
 	
 	@Override
-	public HTTPResponse format(HTTPRequest request, HTTPException exception) {
+	public HTTPResponse format(HTTPRequest request, Exception originalException) {
+		HTTPException exception = originalException instanceof HTTPException ? (HTTPException) originalException : new HTTPException(500, originalException);
 		logger.error("HTTP Exception " + exception.getCode(), exception);
 		List<String> requestedTypes = new ArrayList<String>();
 		List<String> requestedCharsets = new ArrayList<String>();

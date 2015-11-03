@@ -37,7 +37,9 @@ import be.nabu.libs.authentication.api.Authenticator;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.TokenValidator;
+import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventSubscription;
+import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.http.api.ContentRewriter;
 import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
@@ -68,6 +70,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	private GlueListener listener;
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Repository repository;
+	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	
 	public WebArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, "webartifact.xml", WebArtifactConfiguration.class);
@@ -85,6 +88,15 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		HTTPServer server = getConfiguration().getHttpServer().getServer();
 		if (server != null && server.getExceptionFormatter() instanceof RepositoryExceptionFormatter) {
 			((RepositoryExceptionFormatter) server.getExceptionFormatter()).unregister(getId());
+		}
+		// first make sure we route the server correctly
+		if (getConfiguration().getHosts() == null || getConfiguration().getHosts().isEmpty()) {
+			server.unroute(null);
+		}
+		else {
+			for (String host : getConfiguration().getHosts()) {
+				server.unroute(host);
+			}
 		}
 	}
 
@@ -110,18 +122,28 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (server.getExceptionFormatter() instanceof RepositoryExceptionFormatter && getConfiguration().getWhitelistedCodes() != null) {
 				((RepositoryExceptionFormatter) server.getExceptionFormatter()).register(getId(), Arrays.asList(getConfiguration().getWhitelistedCodes().split("[\\s]*,[\\s]*")));
 			}
+
+			// first make sure we route the server correctly
+			if (getConfiguration().getHosts() == null || getConfiguration().getHosts().isEmpty()) {
+				server.route(null, dispatcher);
+			}
+			else {
+				for (String host : getConfiguration().getHosts()) {
+					server.route(host, dispatcher);
+				}
+			}
 			
 			// set up a basic authentication listener which optionally interprets that, it allows for REST-based access
 			if (getConfiguration().getAllowBasicAuthentication() != null && getConfiguration().getAllowBasicAuthentication()) {
 				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(getAuthenticator(), HTTPServerUtils.newFixedRealmHandler(realm));
 				// make sure it is not mandatory
 				basicAuthenticationHandler.setRequired(false);
-				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = server.getEventDispatcher().subscribe(HTTPRequest.class, basicAuthenticationHandler);
+				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = dispatcher.subscribe(HTTPRequest.class, basicAuthenticationHandler);
 				authenticationSubscription.filter(HTTPServerUtils.limitToPath(serverPath));
 				subscriptions.add(authenticationSubscription);
 				
 				// for all responses, we check a 401 to see if it has the required WWW-Authenticate header
-				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = server.getEventDispatcher().subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
+				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
 				subscriptions.add(ensureAuthenticationSubscription);
 			}
 			
@@ -132,11 +154,11 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (isDevelopment) {
 				debugger = new WebArtifactDebugger(serverPath, sessionProvider);
 				// the request listener
-				EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, debugger.getRequestListener());
+				EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, debugger.getRequestListener());
 				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
 				subscriptions.add(subscription);
 				// the response listener
-				subscriptions.add(server.getEventDispatcher().subscribe(HTTPResponse.class, debugger.getResponseListener()));
+				subscriptions.add(dispatcher.subscribe(HTTPResponse.class, debugger.getResponseListener()));
 			}
 			boolean hasPages = false;
 			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, new AnyThreadTracker());
@@ -147,7 +169,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					logger.debug("Adding resource listener for folder: " + resources);
 					String resourcePath = serverPath.equals("/") ? "/resources" : serverPath + "/resources";
 					ResourceHandler handler = new ResourceHandler(resources, resourcePath, !isDevelopment);
-					EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, handler);
+					EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, handler);
 					subscription.filter(HTTPServerUtils.limitToPath(resourcePath));
 					subscriptions.add(subscription);
 					// add optimizations if it is not development
@@ -236,7 +258,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				listener.setPermissionHandler(getPermissionHandler());
 				listener.setRoleHandler(getRoleHandler());
 				listener.setRealm(realm);
-				EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, listener);
+				EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
 				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
 				subscriptions.add(subscription);
 			}
@@ -268,7 +290,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 							Charset.forName(getConfiguration().getCharset()), 
 							!isDevelopment
 						);
-						EventSubscription<HTTPRequest, HTTPResponse> subscription = server.getEventDispatcher().subscribe(HTTPRequest.class, listener);
+						EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
 						subscription.filter(HTTPServerUtils.limitToPath(serverPath));
 						subscriptions.add(subscription);
 					}
