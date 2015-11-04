@@ -20,6 +20,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.MavenRepository;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
@@ -87,7 +88,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * - in the artifact repository loading, we make a very rough distinction between those that have dependencies (very few of them) and those that don't, the ones without can be safely loaded
  * - if we add more hybrids like JDBC we will likely have to optimize this and perform actual dependency calculation, so for instance if a JDBC service requires "path.to.node" and only "path" exists which is a repository, load that one first
  */
-public class EAIResourceRepository implements ResourceRepository {
+public class EAIResourceRepository implements ResourceRepository, MavenRepository {
 	
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
@@ -639,7 +640,8 @@ public class EAIResourceRepository implements ResourceRepository {
 		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
-	public void unloadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) throws IOException {
+	@Override
+	public void unloadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
 		Iterator<MavenArtifact> iterator = mavenArtifacts.iterator();
 		while(iterator.hasNext()) {
 			MavenArtifact mavenArtifact = iterator.next();
@@ -651,13 +653,19 @@ public class EAIResourceRepository implements ResourceRepository {
 			if (mavenArtifact.getRepository().equals(mavenManager.getRepository())) {
 				// if it is the same artifact (version doesn't matter), reload it
 				if (mavenArtifact.getArtifact().getGroupId().equals(artifact.getGroupId()) && mavenArtifact.getArtifact().getArtifactId().equals(artifact.getArtifactId())) {
-					mavenManager.removeChildren(getRoot(), mavenArtifact);
+					try {
+						mavenManager.removeChildren(getRoot(), mavenArtifact);
+					}
+					catch (IOException e) {
+						logger.error("Could not remove children of maven artifact: " + artifact, e);
+					}
 					iterator.remove();
 				}
 			}
 		}
 	}
 	
+	@Override
 	public void loadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
 		if (mavenManager.getRepository().isInternal(artifact)) {
 			startMavenArtifact(mavenManager, artifact);
@@ -825,8 +833,9 @@ public class EAIResourceRepository implements ResourceRepository {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);
 	}
 
-	public ResourceContainer<?> getMavenRoot() {
-		return mavenRoot;
+	@Override
+	public URI getMavenRoot() {
+		return ResourceUtils.getURI(mavenRoot);
 	}
 
 	public URI getLocalMavenServer() {

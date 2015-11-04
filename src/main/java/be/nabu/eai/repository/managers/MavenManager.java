@@ -20,6 +20,8 @@ import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
+import be.nabu.eai.repository.events.NodeEvent;
+import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.eai.repository.util.NodeUtils;
 import be.nabu.libs.maven.api.Artifact;
@@ -112,6 +114,8 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			int index = childId.lastIndexOf('.');
 			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
 			if (parent.getChild(childName) == null) {
+				String entryId = parent.getId() + "." + childName;
+				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
 				EAINode node = new EAINode();
 				node.setArtifact(artifact.getChildren().get(childId));
 				boolean hidden = false;
@@ -131,12 +135,13 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					}
 				}
 				node.setLeaf(true);
-				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + childName, childName);
+				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, entryId, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
 				if (!hidden) {
 					parent.addChildren(child);
 				}
+				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
 			}
 		}
 		return entries;

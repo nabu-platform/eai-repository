@@ -21,8 +21,7 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public void unload(String id);
 	public List<Node> getNodes(Class<? extends Artifact> artifactClazz);
 	public ServiceRunner getServiceRunner();
-	/**
-	 * Start the repository, it will start loading all the nodes
-	 */
+	public void setServiceRunner(ServiceRunner serviceRunner);
+	public List<String> getReferences(String id);
 	public void start();
 }
