@@ -147,7 +147,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(ensureAuthenticationSubscription);
 			}
 			
-			// only set up a glue listener if there are any public pages
 			SessionProvider sessionProvider = new SessionProviderImpl(1000*60*30);
 			
 			WebArtifactDebugger debugger = null;
@@ -209,6 +208,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					repository.add(new ScannableScriptRepository(repository, scripts, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset()));
 				}
 			}
+			// only set up a glue listener if there are any public pages
 			if (hasPages) {
 				Properties properties = new Properties();
 				if (getDirectory().getChild(".properties") instanceof ReadableResource) {
@@ -242,7 +242,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				if (environmentName.isEmpty()) {
 					environmentName = "root";
 				}
-				
 				
 				listener = new GlueListener(
 					sessionProvider, 

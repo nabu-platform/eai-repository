@@ -815,6 +815,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public void setServiceRunner(ServiceRunner serviceRunner) {
 		ServiceRunnerFactory.getInstance().setServiceRunner(serviceRunner);
+		serviceRunner.setCacheProvider(new EAIRepositoryCacheProvider(this));
 	}
 
 	@Override
