@@ -22,6 +22,7 @@ import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.artifacts.web.WebArtifactDebugger.AnyThreadTracker;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestArtifact;
 import be.nabu.eai.repository.artifacts.web.rest.WebRestListener;
+import be.nabu.eai.repository.impl.CacheSessionProvider;
 import be.nabu.eai.repository.util.CombinedAuthenticator;
 import be.nabu.eai.repository.util.FlatServiceTrackerWrapper;
 import be.nabu.eai.repository.util.SystemPrincipal;
@@ -37,6 +38,10 @@ import be.nabu.libs.authentication.api.Authenticator;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.TokenValidator;
+import be.nabu.libs.cache.api.Cache;
+import be.nabu.libs.cache.impl.AccessBasedTimeoutManager;
+import be.nabu.libs.cache.impl.SerializableSerializer;
+import be.nabu.libs.cache.impl.StringSerializer;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventSubscription;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
@@ -98,6 +103,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				server.unroute(host);
 			}
 		}
+		if (getConfiguration().getCacheProvider() != null) {
+			getConfiguration().getCacheProvider().remove(getId());
+		}
 	}
 
 	@Override
@@ -147,7 +155,27 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(ensureAuthenticationSubscription);
 			}
 			
-			SessionProvider sessionProvider = new SessionProviderImpl(1000*60*30);
+			SessionProvider sessionProvider = null;
+			
+			if (getConfiguration().getCacheProvider() != null) {
+				Cache sessionCache = getConfiguration().getCacheProvider().create(
+					getId(),
+					// defaults to unlimited
+					getConfiguration().getMaxTotalSessionSize() == null ? 0 : getConfiguration().getMaxTotalSessionSize(),
+					// defaults to unlimited
+					getConfiguration().getMaxSessionSize() == null ? 0 : getConfiguration().getMaxSessionSize(),
+					new StringSerializer(),
+					new SerializableSerializer(),
+					// no refreshing logic obviously
+					null,
+					// defaults to 1 hour
+					new AccessBasedTimeoutManager(getConfiguration().getSessionTimeout() == null ? 1000l*60*60 : getConfiguration().getSessionTimeout())
+				);
+				sessionProvider = new CacheSessionProvider(sessionCache);
+			}
+			else {
+				sessionProvider = new SessionProviderImpl(getConfiguration().getSessionTimeout() == null ? 1000l*60*60 : getConfiguration().getSessionTimeout());
+			}
 			
 			WebArtifactDebugger debugger = null;
 			if (isDevelopment) {
