@@ -23,5 +23,6 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public ServiceRunner getServiceRunner();
 	public void setServiceRunner(ServiceRunner serviceRunner);
 	public List<String> getReferences(String id);
+	public List<String> getDependencies(String id);
 	public void start();
 }
