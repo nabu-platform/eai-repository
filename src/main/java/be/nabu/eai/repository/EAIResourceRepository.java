@@ -212,7 +212,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	private void buildReferenceMap(String id, List<String> references) {
-		logger.info("Loading references for '" + id + "': " + references);
+		logger.debug("Loading references for '" + id + "': " + references);
 		if (references != null) {
 			this.references.put(id, references);
 			for (String reference : references) {

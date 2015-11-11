@@ -4,6 +4,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
@@ -20,6 +23,7 @@ import be.nabu.libs.validator.api.Validation;
 abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> implements ArtifactRepositoryManager<T> {
 
 	private Class<T> clazz;
+	private Logger logger = LoggerFactory.getLogger(getClass());
 
 	public TypeRegistryManager(Class<T> clazz) {
 		this.clazz = clazz;
@@ -52,7 +56,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 		for (String namespace : artifact.getNamespaces()) {
 			// currently we only expose the complex types
 			for (ComplexType type : artifact.getComplexTypes(namespace)) {
-				System.out.println("Loading complex type: " + type + " in namespace: " + namespace);
+				logger.debug("Loading complex type: " + type + " in namespace: " + namespace);
 				// only exposed the defined complex types, not anonymous ones
 				if (type instanceof DefinedType) {
 					String id = ((DefinedType) type).getId();

@@ -76,6 +76,8 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Repository repository;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
+	private SessionProvider sessionProvider;
+	private boolean started;
 	
 	public WebArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, "webartifact.xml", WebArtifactConfiguration.class);
@@ -84,6 +86,8 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 
 	@Override
 	public void stop() throws IOException {
+		started = false;
+		sessionProvider = null;
 		logger.info("Stopping " + subscriptions.size() + " subscriptions");
 		for (EventSubscription<?, ?> subscription : subscriptions) {
 			subscription.unsubscribe();
@@ -111,15 +115,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	@Override
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
-		if (subscriptions.isEmpty()) {
+		if (!started) {
 			String realm = getConfiguration().getRealm() == null ? getId() : getConfiguration().getRealm();
-			String serverPath = getConfiguration().getPath();
-			if (serverPath == null) {
-				serverPath = "/";
-			}
-			else if (!serverPath.startsWith("/")) {
-				serverPath = "/" + serverPath;
-			}
+			String serverPath = getServerPath();
 			
 			// build repository
 			MultipleRepository repository = new MultipleRepository(null);
@@ -154,8 +152,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
 				subscriptions.add(ensureAuthenticationSubscription);
 			}
-			
-			SessionProvider sessionProvider = null;
 			
 			if (getConfiguration().getCacheProvider() != null) {
 				Cache sessionCache = getConfiguration().getCacheProvider().create(
@@ -323,8 +319,20 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					}
 				}
 			}
+			started = true;
 			logger.info("Started " + subscriptions.size() + " subscriptions");
 		}
+	}
+
+	public String getServerPath() throws IOException {
+		String serverPath = getConfiguration().getPath();
+		if (serverPath == null) {
+			serverPath = "/";
+		}
+		else if (!serverPath.startsWith("/")) {
+			serverPath = "/" + serverPath;
+		}
+		return serverPath;
 	}
 	
 	public ServiceRuntimeTracker getServiceTracker() throws IOException {//FlowServiceTracker
@@ -380,6 +388,10 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	@Override
 	public boolean isStarted() {
 		return !subscriptions.isEmpty();
+	}
+
+	public SessionProvider getSessionProvider() {
+		return sessionProvider;
 	}
 
 }
