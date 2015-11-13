@@ -9,6 +9,7 @@ import java.security.UnrecoverableKeyException;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -56,13 +57,15 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 						server = getConfiguration().getKeystore() == null 
 							? HTTPServerUtils.newServer(
 								getConfiguration().getPort(), 
-								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize())
+								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize(),
+								new EventDispatcherImpl())
 							: HTTPServerUtils.newServer(
 								getConfiguration().getKeystore() == null ? null : new KeyStoreHandler(getConfiguration().getKeystore().getKeyStore().getKeyStore()).createContext(SSLContextType.TLS),
 								getConfiguration().getSslServerMode(),
 								getConfiguration().getPort(),
 								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_IO_POOL_SIZE, "5")) : getConfiguration().getPoolSize(),
-								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize()
+								getConfiguration().getPoolSize() == null ? new Integer(System.getProperty(HTTP_PROCESS_POOL_SIZE, "10")) : getConfiguration().getPoolSize(),
+								new EventDispatcherImpl()
 						);
 						server.setExceptionFormatter(new RepositoryExceptionFormatter());
 					}
