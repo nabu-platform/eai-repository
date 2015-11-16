@@ -9,8 +9,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,8 +33,9 @@ import be.nabu.libs.http.glue.GlueListener;
 import be.nabu.libs.http.glue.GlueListener.PathAnalysis;
 import be.nabu.libs.http.glue.impl.ResponseMethods;
 import be.nabu.libs.resources.URIUtils;
+import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
-import be.nabu.libs.services.api.ServiceResult;
+import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
@@ -220,16 +219,15 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 			}
 			
-			Future<ServiceResult> run = repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, tracker);
 			if (webArtifact.getConfiguration().getAsynchronous() != null && webArtifact.getConfiguration().getAsynchronous()) {
+				repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, tracker);
 				return HTTPUtils.newEmptyResponse();
 			}
 			else {
-				ServiceResult serviceResult = run.get();
-				if (serviceResult.getException() != null) {
-					throw new HTTPException(500, serviceResult.getException());
-				}
-				ComplexContent output = serviceResult.getOutput();
+				ServiceRuntime runtime = new ServiceRuntime(service, repository.newExecutionContext(token));
+				runtime.setRuntimeTracker(tracker);
+				runtime.getContext().put("session", session);
+				ComplexContent output = runtime.run(input);
 				List<Header> headers = new ArrayList<Header>();
 				if (output != null && output.get("header") != null) {
 					ComplexContent header = (ComplexContent) output.get("header");
@@ -296,13 +294,10 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 		catch (FormatException e) {
 			throw new HTTPException(500, e);
 		}
-		catch (InterruptedException e) {
-			throw new HTTPException(500, e);
-		}
-		catch (ExecutionException e) {
-			throw new HTTPException(500, e);
-		}
 		catch (IOException e) {
+			throw new HTTPException(500, e);
+		}
+		catch (ServiceException e) {
 			throw new HTTPException(500, e);
 		}
 	}

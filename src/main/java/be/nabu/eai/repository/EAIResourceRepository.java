@@ -136,8 +136,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		this.mavenRoot = mavenRoot;
 		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
 		ArtifactResolverFactory.getInstance().addResolver(this);
-		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
+		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
 		// service interface resolvers

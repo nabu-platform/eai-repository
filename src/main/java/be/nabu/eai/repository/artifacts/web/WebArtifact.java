@@ -50,7 +50,9 @@ import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.api.server.SessionProvider;
+import be.nabu.libs.http.api.server.SessionResolver;
 import be.nabu.libs.http.glue.GlueListener;
+import be.nabu.libs.http.glue.GlueSessionResolver;
 import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
@@ -116,7 +118,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
 		if (!started) {
-			String realm = getConfiguration().getRealm() == null ? getId() : getConfiguration().getRealm();
+			String realm = getRealm();
 			String serverPath = getServerPath();
 			
 			// build repository
@@ -281,6 +283,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				listener.setPermissionHandler(getPermissionHandler());
 				listener.setRoleHandler(getRoleHandler());
 				listener.setRealm(realm);
+				listener.setAlwaysCreateSession(true);
 				EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
 				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
 				subscriptions.add(subscription);
@@ -322,6 +325,10 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			started = true;
 			logger.info("Started " + subscriptions.size() + " subscriptions");
 		}
+	}
+
+	public String getRealm() throws IOException {
+		return getConfiguration().getRealm() == null ? getId() : getConfiguration().getRealm();
 	}
 
 	public String getServerPath() throws IOException {
@@ -394,4 +401,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		return sessionProvider;
 	}
 
+	public SessionResolver getSessionResolver() {
+		return new GlueSessionResolver(sessionProvider);
+	}
+
+	public EventDispatcher getDispatcher() {
+		return dispatcher;
+	}
+	
 }
