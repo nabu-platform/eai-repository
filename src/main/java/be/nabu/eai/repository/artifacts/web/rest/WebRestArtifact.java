@@ -137,7 +137,7 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 		}
 	}
 
-	private static Structure clean(Structure input) {
+	public static Structure clean(Structure input) {
 		for (Element<?> element : TypeUtils.getAllChildren(input)) {
 			input.remove(element);
 		}

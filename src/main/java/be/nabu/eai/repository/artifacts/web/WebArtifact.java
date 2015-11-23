@@ -292,6 +292,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			List<DefinedService> restServices = getConfiguration().getRestServices();
 			if (restServices != null) {
 				for (DefinedService service : restServices) {
+					if (service == null) {
+						continue;
+					}
 					ServiceInterface serviceInterface = service.getServiceInterface();
 					while (!(serviceInterface instanceof WebRestArtifact)) {
 						serviceInterface = serviceInterface.getParent();

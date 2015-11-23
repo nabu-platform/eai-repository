@@ -20,4 +20,9 @@ public class RepositoryTypeWrapper implements SimpleTypeWrapper {
 		}
 	}
 
+	@Override
+	public DefinedSimpleType<?> getByName(String name) {
+		return null;
+	}
+
 }

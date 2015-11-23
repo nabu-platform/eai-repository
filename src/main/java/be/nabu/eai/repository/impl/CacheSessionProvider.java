@@ -81,5 +81,5 @@ public class CacheSessionProvider implements SessionProvider {
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "");
 	}
-	
+
 }
