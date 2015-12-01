@@ -59,6 +59,9 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 			JDBCServiceConfig config = TypeUtils.getAsBean(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), JDBCServiceConfig.class);
 			service.setSql(config.getSql());
 			service.setConnectionId(config.getConnectionId());
+			service.setGeneratedColumn(config.getGeneratedColumn());
+			service.setValidateInput(config.getValidateInput());
+			service.setValidateOutput(config.getValidateOutput());
 			if (config.getInputDefinition() != null) {
 				Node node = entry.getRepository().getNode(config.getInputDefinition());
 				if (node == null) {
@@ -107,6 +110,9 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 			config.setOutputDefinition(((DefinedType) artifact.getResults()).getId());
 			((ManageableContainer<?>) entry.getContainer()).delete("results.xml");
 		}
+		config.setValidateInput(artifact.getValidateInput());
+		config.setValidateOutput(artifact.getValidateOutput());
+		config.setGeneratedColumn(artifact.getGeneratedColumn());
 		Resource resource = entry.getContainer().getChild("jdbcservice.xml");
 		if (resource == null) {
 			resource = ((ManageableContainer<?>) entry.getContainer()).create("jdbcservice.xml", "application/xml");
@@ -132,7 +138,8 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	
 	@XmlRootElement(name = "jdbcService")
 	public static class JDBCServiceConfig {
-		private String connectionId, sql, inputDefinition, outputDefinition;
+		private String connectionId, sql, inputDefinition, outputDefinition, generatedColumn;
+		private Boolean validateInput, validateOutput;
 
 		public String getConnectionId() {
 			return connectionId;
@@ -164,6 +171,30 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 
 		public void setOutputDefinition(String outputDefinition) {
 			this.outputDefinition = outputDefinition;
+		}
+
+		public Boolean getValidateInput() {
+			return validateInput;
+		}
+
+		public void setValidateInput(Boolean validateInput) {
+			this.validateInput = validateInput;
+		}
+
+		public Boolean getValidateOutput() {
+			return validateOutput;
+		}
+
+		public void setValidateOutput(Boolean validateOutput) {
+			this.validateOutput = validateOutput;
+		}
+
+		public String getGeneratedColumn() {
+			return generatedColumn;
+		}
+
+		public void setGeneratedColumn(String generatedColumn) {
+			this.generatedColumn = generatedColumn;
 		}
 	}
 
