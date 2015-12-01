@@ -69,6 +69,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 
 	public static Sequence parseSequence(ReadableContainer<ByteBuffer> readable) throws IOException, ParseException {
 		XMLBinding sequenceBinding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(Sequence.class), Charset.forName("UTF-8"));
+		sequenceBinding.setTrimContent(false);
 		Sequence sequence = null;
 		try {
 			sequence = TypeUtils.getAsBean(sequenceBinding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), Sequence.class);
