@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -339,7 +341,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// also reload all the dependencies
 			// prevent concurrent modification
 			if (recursiveReload) {
-				List<String> dependenciesToReload = calculateDependenciesToReload(entry.getId());
+				Set<String> dependenciesToReload = calculateDependenciesToReload(entry.getId());
+				System.out.println("RELOADING RECURSIVE of " + entry.getId() + ": " + dependenciesToReload);
 				for (String dependency : dependenciesToReload) {
 					reload(dependency, false);
 				}
@@ -350,11 +353,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 	
-	private List<String> calculateDependenciesToReload(String id) {
+	private Set<String> calculateDependenciesToReload(String id) {
 		List<String> directDependencies = getDependencies(id);
-		List<String> dependenciesToReload = new ArrayList<String>(directDependencies);
+		Set<String> dependenciesToReload = new LinkedHashSet<String>(directDependencies);
 		for (String directDependency : directDependencies) {
-			List<String> indirectDependencies = calculateDependenciesToReload(directDependency);
+			Set<String> indirectDependencies = calculateDependenciesToReload(directDependency);
 			// remove any dependencies that are also in the indirect ones
 			// we can add them again afterwards which means they will only be in the list once and in the correct order
 			dependenciesToReload.removeAll(indirectDependencies);
