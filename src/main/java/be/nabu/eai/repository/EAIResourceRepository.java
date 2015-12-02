@@ -235,12 +235,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@Override
 	public List<String> getDependencies(String id) {
-		return dependencies.containsKey(id) ? dependencies.get(id) : new ArrayList<String>();
+		return dependencies.containsKey(id) ? new ArrayList<String>(dependencies.get(id)) : new ArrayList<String>();
 	}
 	
 	@Override
 	public List<String> getReferences(String id) {
-		return references.containsKey(id) ? references.get(id) : new ArrayList<String>();
+		return references.containsKey(id) ? new ArrayList<String>(references.get(id)) : new ArrayList<String>();
 	}
 	
 	@Override
