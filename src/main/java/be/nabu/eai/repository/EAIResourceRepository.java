@@ -342,7 +342,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// prevent concurrent modification
 			if (recursiveReload) {
 				Set<String> dependenciesToReload = calculateDependenciesToReload(entry.getId());
-				System.out.println("RELOADING RECURSIVE of " + entry.getId() + ": " + dependenciesToReload);
 				for (String dependency : dependenciesToReload) {
 					reload(dependency, false);
 				}
