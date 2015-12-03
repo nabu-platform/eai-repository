@@ -296,7 +296,7 @@ public class WebArtifactDebugger {
 			try {
 				binding.marshal(output, content);
 				byte[] byteArray = output.toByteArray();
-				return HTTPUtils.newResponse(contentType, IOUtils.wrap(byteArray, true));
+				return HTTPUtils.newResponse(request, contentType, IOUtils.wrap(byteArray, true));
 			}
 			catch (IOException e) {
 				throw new RuntimeException(e);
@@ -344,7 +344,7 @@ public class WebArtifactDebugger {
 								}
 							}
 						}
-						return HTTPUtils.newEmptyResponse();
+						return HTTPUtils.newEmptyResponse(request);
 					}
 					// it should be a path pointing to the request, if there are multiple matches most recent one wins
 					else {

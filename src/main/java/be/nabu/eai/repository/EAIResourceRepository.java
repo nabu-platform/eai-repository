@@ -329,6 +329,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	private void reload(String id, boolean recursiveReload) {
 		logger.info("Reloading: " + id);
+		if (recursiveReload) {
+			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
+		}
 		Entry entry = getEntry(id);
 		while (entry == null && id.contains(".")) {
 			int index = id.lastIndexOf('.');
@@ -348,7 +351,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		if (recursiveReload) {
+			// TODO: remove
 			reattachMavenArtifacts();
+			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 		}
 	}
 	

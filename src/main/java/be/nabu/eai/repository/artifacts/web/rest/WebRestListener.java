@@ -221,7 +221,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			
 			if (webArtifact.getConfiguration().getAsynchronous() != null && webArtifact.getConfiguration().getAsynchronous()) {
 				repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, tracker);
-				return HTTPUtils.newEmptyResponse();
+				return HTTPUtils.newEmptyResponse(request);
 			}
 			else {
 				ServiceRuntime runtime = new ServiceRuntime(service, repository.newExecutionContext(token));
@@ -238,7 +238,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 				}
 				// if there is no content to respond with, just send back an empty response
 				if (output == null || output.get("content") == null) {
-					return HTTPUtils.newEmptyResponse(headers.toArray(new Header[headers.size()]));
+					return HTTPUtils.newEmptyResponse(request, headers.toArray(new Header[headers.size()]));
 				}
 				else if (output.get("content") instanceof InputStream) {
 					// no size given, set chunked
@@ -256,7 +256,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					if (allowEncoding) {
 						HTTPUtils.setContentEncoding(part, request.getContent().getHeaders());
 					}
-					return new DefaultHTTPResponse(200, HTTPCodes.getMessage(200), part);
+					return new DefaultHTTPResponse(request, 200, HTTPCodes.getMessage(200), part);
 				}
 				else {
 					output = (ComplexContent) output.get("content");
@@ -287,7 +287,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					if (allowEncoding) {
 						HTTPUtils.setContentEncoding(part, request.getContent().getHeaders());
 					}
-					return new DefaultHTTPResponse(200, HTTPCodes.getMessage(200), part);
+					return new DefaultHTTPResponse(request, 200, HTTPCodes.getMessage(200), part);
 				}
 			}
 		}

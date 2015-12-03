@@ -28,6 +28,7 @@ import be.nabu.eai.repository.util.FlatServiceTrackerWrapper;
 import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.eai.services.api.FlatServiceTracker;
 import be.nabu.glue.MultipleRepository;
+import be.nabu.glue.api.ScriptRepository;
 import be.nabu.glue.impl.SimpleExecutionEnvironment;
 import be.nabu.glue.impl.parsers.GlueParserProvider;
 import be.nabu.glue.repositories.ScannableScriptRepository;
@@ -52,6 +53,8 @@ import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.api.server.SessionProvider;
 import be.nabu.libs.http.api.server.SessionResolver;
 import be.nabu.libs.http.glue.GlueListener;
+import be.nabu.libs.http.glue.GluePostProcessListener;
+import be.nabu.libs.http.glue.GluePreprocessListener;
 import be.nabu.libs.http.glue.GlueSessionResolver;
 import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
@@ -120,11 +123,20 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		if (!started) {
 			String realm = getRealm();
 			String serverPath = getServerPath();
+
+			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
+			ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
+			
+			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, new AnyThreadTracker());
+			
+			ResourceContainer<?> meta = privateDirectory == null ? null : (ResourceContainer<?>) privateDirectory.getChild("meta");
+			ScriptRepository metaRepository = null;
+			if (meta != null) {
+				metaRepository = new ScannableScriptRepository(null, meta, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset());
+			}
 			
 			// build repository
 			MultipleRepository repository = new MultipleRepository(null);
-
-			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 			List<ContentRewriter> rewriters = new ArrayList<ContentRewriter>();
 			HTTPServer server = getConfiguration().getHttpServer().getServer();
 			if (server.getExceptionFormatter() instanceof RepositoryExceptionFormatter && getConfiguration().getWhitelistedCodes() != null) {
@@ -140,21 +152,8 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					server.route(host, dispatcher);
 				}
 			}
-			
-			// set up a basic authentication listener which optionally interprets that, it allows for REST-based access
-			if (getConfiguration().getAllowBasicAuthentication() != null && getConfiguration().getAllowBasicAuthentication()) {
-				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(getAuthenticator(), HTTPServerUtils.newFixedRealmHandler(realm));
-				// make sure it is not mandatory
-				basicAuthenticationHandler.setRequired(false);
-				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = dispatcher.subscribe(HTTPRequest.class, basicAuthenticationHandler);
-				authenticationSubscription.filter(HTTPServerUtils.limitToPath(serverPath));
-				subscriptions.add(authenticationSubscription);
-				
-				// for all responses, we check a 401 to see if it has the required WWW-Authenticate header
-				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
-				subscriptions.add(ensureAuthenticationSubscription);
-			}
-			
+
+			// create session provider
 			if (getConfiguration().getCacheProvider() != null) {
 				Cache sessionCache = getConfiguration().getCacheProvider().create(
 					getId(),
@@ -175,6 +174,85 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				sessionProvider = new SessionProviderImpl(getConfiguration().getSessionTimeout() == null ? 1000l*60*60 : getConfiguration().getSessionTimeout());
 			}
 			
+			// load properties
+			Properties properties = new Properties();
+			if (getDirectory().getChild(".properties") instanceof ReadableResource) {
+				logger.debug("Adding properties found in: " + getDirectory().getChild(".properties"));
+				InputStream input = IOUtils.toInputStream(new ResourceReadableContainer((ReadableResource) getDirectory().getChild(".properties")));
+				try {
+					properties.load(input);
+				}
+				finally {
+					input.close();
+				}
+			}
+			
+			Map<String, String> environment = new HashMap<String, String>();
+			if (!properties.isEmpty()) {
+				for (Object key : properties.keySet()) {
+					if (key == null) {
+						continue;
+					}
+					environment.put(key.toString().trim(), properties.getProperty(key.toString()).trim());
+				}
+			}
+			if (isDevelopment) {
+				environment.put("development", "true");
+			}
+			
+			String environmentName = serverPath;
+			if (environmentName.startsWith("/")) {
+				environmentName.substring(1);
+			}
+			if (environmentName.isEmpty()) {
+				environmentName = "root";
+			}
+			
+			// before the base authentication required authenticate header rewriter, add a rewriter for the response (if applicable)
+			if (metaRepository != null) {
+				GluePostProcessListener postprocessListener = new GluePostProcessListener(
+					metaRepository, 
+					new SimpleExecutionEnvironment(environmentName, environment),
+					serverPath
+				);
+				postprocessListener.setRefresh(isDevelopment);
+				postprocessListener.setRealm(realm);
+				EventSubscription<HTTPResponse, HTTPResponse> subscription = dispatcher.subscribe(HTTPResponse.class, postprocessListener);
+				subscription.filter(HTTPServerUtils.limitToRequestPath(serverPath));
+				subscriptions.add(subscription);
+			}
+			
+			// set up a basic authentication listener which optionally interprets that, it allows for REST-based access
+			if (getConfiguration().getAllowBasicAuthentication() != null && getConfiguration().getAllowBasicAuthentication()) {
+				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(getAuthenticator(), HTTPServerUtils.newFixedRealmHandler(realm));
+				// make sure it is not mandatory
+				basicAuthenticationHandler.setRequired(false);
+				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = dispatcher.subscribe(HTTPRequest.class, basicAuthenticationHandler);
+				authenticationSubscription.filter(HTTPServerUtils.limitToPath(serverPath));
+				subscriptions.add(authenticationSubscription);
+				
+				// for all responses, we check a 401 to see if it has the required WWW-Authenticate header
+				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
+				ensureAuthenticationSubscription.filter(HTTPServerUtils.limitToRequestPath(serverPath));
+				subscriptions.add(ensureAuthenticationSubscription);
+			}
+			
+			// after the base authentication but before anything else, allow for rewriting
+			if (metaRepository != null) {
+				GluePreprocessListener preprocessListener = new GluePreprocessListener(
+					sessionProvider, 
+					metaRepository, 
+					new SimpleExecutionEnvironment(environmentName, environment),
+					serverPath
+				);
+				preprocessListener.setRefresh(isDevelopment);
+				preprocessListener.setTokenValidator(getTokenValidator());
+				preprocessListener.setRealm(realm);
+				EventSubscription<HTTPRequest, HTTPRequest> subscription = dispatcher.subscribe(HTTPRequest.class, preprocessListener);
+				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
+				subscriptions.add(subscription);
+			}
+			
 			WebArtifactDebugger debugger = null;
 			if (isDevelopment) {
 				debugger = new WebArtifactDebugger(serverPath, sessionProvider);
@@ -186,7 +264,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(dispatcher.subscribe(HTTPResponse.class, debugger.getResponseListener()));
 			}
 			boolean hasPages = false;
-			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, new AnyThreadTracker());
 			if (publicDirectory != null) {
 				// check if there is a resource directory
 				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
@@ -224,7 +301,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					repository.add(scannableScriptRepository);
 				}
 			}
-			ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
 			// the private directory houses the scripts
 			if (privateDirectory != null) {
 				// currently only a scripts folder, but we may want to add more private folders later on
@@ -236,39 +312,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			}
 			// only set up a glue listener if there are any public pages
 			if (hasPages) {
-				Properties properties = new Properties();
-				if (getDirectory().getChild(".properties") instanceof ReadableResource) {
-					logger.debug("Adding properties found in: " + getDirectory().getChild(".properties"));
-					InputStream input = IOUtils.toInputStream(new ResourceReadableContainer((ReadableResource) getDirectory().getChild(".properties")));
-					try {
-						properties.load(input);
-					}
-					finally {
-						input.close();
-					}
-				}
-				
-				Map<String, String> environment = new HashMap<String, String>();
-				if (!properties.isEmpty()) {
-					for (Object key : properties.keySet()) {
-						if (key == null) {
-							continue;
-						}
-						environment.put(key.toString().trim(), properties.getProperty(key.toString()).trim());
-					}
-				}
-				if (isDevelopment) {
-					environment.put("development", "true");
-				}
-				
-				String environmentName = serverPath;
-				if (environmentName.startsWith("/")) {
-					environmentName.substring(1);
-				}
-				if (environmentName.isEmpty()) {
-					environmentName = "root";
-				}
-				
 				listener = new GlueListener(
 					sessionProvider, 
 					repository, 

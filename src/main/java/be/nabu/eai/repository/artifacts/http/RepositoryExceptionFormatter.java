@@ -114,7 +114,7 @@ public class RepositoryExceptionFormatter implements ExceptionFormatter<HTTPRequ
 			throw new RuntimeException(e);
 		}
 		byte [] bytes = output.toByteArray();
-		return new ExceptionHTTPResponse(exception.getCode(), HTTPCodes.getMessage(exception.getCode()), new PlainMimeContentPart(null, IOUtils.wrap(bytes, true), 
+		return new ExceptionHTTPResponse(request, exception.getCode(), HTTPCodes.getMessage(exception.getCode()), new PlainMimeContentPart(null, IOUtils.wrap(bytes, true), 
 			new MimeHeader("Connection", "close"),
 			new MimeHeader("Content-Length", "" + bytes.length),
 			new MimeHeader("Content-Type", contentType + "; charset=" + charset.displayName())
@@ -203,10 +203,14 @@ public class RepositoryExceptionFormatter implements ExceptionFormatter<HTTPRequ
 		private StructuredResponse structured;
 		private HTTPException exception;
 
-		public ExceptionHTTPResponse(int code, String message, ModifiablePart content, HTTPException exception, StructuredResponse response) {
-			super(code, message, content);
+		public ExceptionHTTPResponse(HTTPRequest request, int code, String message, ModifiablePart content, HTTPException exception, StructuredResponse response) {
+			super(request, code, message, content);
 			this.exception = exception;
 			structured = response;
+		}
+		
+		public ExceptionHTTPResponse(int code, String message, ModifiablePart content, HTTPException exception, StructuredResponse response) {
+			this(null, code, message, content, exception, response);
 		}
 		
 		public StructuredResponse getStructured() {
