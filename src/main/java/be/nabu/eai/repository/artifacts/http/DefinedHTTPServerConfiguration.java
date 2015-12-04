@@ -2,8 +2,10 @@ package be.nabu.eai.repository.artifacts.http;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
+import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.utils.io.SSLServerMode;
 
 @XmlRootElement(name = "httpServer")
@@ -17,6 +19,7 @@ public class DefinedHTTPServerConfiguration {
 	public Integer getPort() {
 		return port;
 	}
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedKeyStore getKeystore() {
 		return keystore;
 	}

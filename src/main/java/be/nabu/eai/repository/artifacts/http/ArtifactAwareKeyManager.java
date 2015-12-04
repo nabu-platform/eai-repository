@@ -6,6 +6,7 @@ import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import javax.net.ssl.ExtendedSSLSession;
@@ -46,12 +47,12 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 	private List<WebArtifact> webArtifacts;
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private X509KeyManager parent;
-	private SSLServerMode sslServerMode;
+	private DefinedHTTPServer server;
 	
-	public ArtifactAwareKeyManager(X509KeyManager parent, Repository repository, SSLServerMode sslServerMode) {
+	public ArtifactAwareKeyManager(X509KeyManager parent, Repository repository, DefinedHTTPServer server) {
 		this.parent = parent;
 		this.repository = repository;
-		this.sslServerMode = sslServerMode;
+		this.server = server;
 	}
 	
 	/**
@@ -60,6 +61,18 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 	@Override
 	public String chooseEngineServerAlias(String keyType, Principal[] issuers, SSLEngine engine) {
 		List<WebArtifact> webArtifacts = getWebArtifacts();
+		Iterator<WebArtifact> iterator = webArtifacts.iterator();
+		while (iterator.hasNext()) {
+			try {
+				if (!server.equals(iterator.next().getConfiguration().getHttpServer())) {
+					iterator.remove();
+				}
+			}
+			catch (Exception e) {
+				logger.error("Could not load web artifact", e);
+				iterator.remove();
+			}
+		}
 		// no valid webartifacts
 		if (webArtifacts.isEmpty()) {
 			return null;
@@ -76,43 +89,49 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 		}
 		// multiple, choose on the basis of the SNI host name (if any)
 		else {
-			if (SSLServerMode.NEED_CLIENT_CERTIFICATES.equals(sslServerMode)) {
-				logger.error("Currently SNI-based resolving on multiple web artifacts is not supported if client certificates are turned on because we can't guarantee (yet) that the correct pipeline is chosen");
-				return null;
-			}
-			ExtendedSSLSession session = (ExtendedSSLSession) engine.getHandshakeSession();
-			String hostName = null;
-			for (SNIServerName name : session.getRequestedServerNames()) {
-				if (name.getType() == StandardConstants.SNI_HOST_NAME) {
-					hostName = ((SNIHostName) name).getAsciiName();
-					break;
+			try {
+				if (SSLServerMode.NEED_CLIENT_CERTIFICATES.equals(server.getConfiguration().getSslServerMode())) {
+					logger.error("Currently SNI-based resolving on multiple web artifacts is not supported if client certificates are turned on because we can't guarantee (yet) that the correct pipeline is chosen");
+					return null;
 				}
-			}
-			if (hostName == null) {
-				logger.error("Multiple web artifacts on a secure connection but no SNI in the original request");
-				return null;
-			}
-			for (WebArtifact artifact : getWebArtifacts()) {
-				try {
-					if (artifact.getConfiguration().getHosts() != null) {
-						for (String host : artifact.getConfiguration().getHosts()) {
-							SNIHostName sniHostName = new SNIHostName(host);
-							if (sniHostName.equals(hostName)) {
-								if (artifact.getConfiguration().getKeyAlias() == null) {
-									logger.error("No key alias set on web artifact: " + artifact.getId());
-									return null;
+				ExtendedSSLSession session = (ExtendedSSLSession) engine.getHandshakeSession();
+				SNIHostName hostName = null;
+				for (SNIServerName name : session.getRequestedServerNames()) {
+					if (name.getType() == StandardConstants.SNI_HOST_NAME) {
+						hostName = (SNIHostName) name;
+						break;
+					}
+				}
+				if (hostName == null) {
+					logger.error("Multiple web artifacts on a secure connection but no SNI in the original request");
+					return null;
+				}
+				for (WebArtifact artifact : getWebArtifacts()) {
+					try {
+						if (artifact.getConfiguration().getHosts() != null) {
+							for (String host : artifact.getConfiguration().getHosts()) {
+								SNIHostName sniHostName = new SNIHostName(host);
+								if (sniHostName.equals(hostName)) {
+									if (artifact.getConfiguration().getKeyAlias() == null) {
+										logger.error("No key alias set on web artifact: " + artifact.getId());
+										return null;
+									}
+									return artifact.getConfiguration().getKeyAlias();
 								}
-								return artifact.getConfiguration().getKeyAlias();
 							}
 						}
 					}
+					catch (Exception e) {
+						logger.error("Could not check web artifact for SNI hostname matches", e);
+					}
 				}
-				catch (Exception e) {
-					logger.error("Could not check web artifact for SNI hostname matches", e);
-				}
+				logger.error("Found multiple web artifacts but none had a host that matches: " + hostName);
+				return null;
 			}
-			logger.error("Found multiple web artifacts but none had a host that matches: " + hostName);
-			return null;
+			catch (Exception e) {
+				logger.error("Could not determine web artifact", e);
+				return null;
+			}
 		}
 	}
 

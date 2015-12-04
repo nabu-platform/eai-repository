@@ -73,7 +73,7 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 							KeyManager[] keyManagers = keyStoreHandler.getKeyManagers();
 							for (int i = 0; i < keyManagers.length; i++) {
 								if (keyManagers[i] instanceof X509KeyManager) {
-									keyManagers[i] = new ArtifactAwareKeyManager((X509KeyManager) keyManagers[i], repository, getConfiguration().getSslServerMode());
+									keyManagers[i] = new ArtifactAwareKeyManager((X509KeyManager) keyManagers[i], repository, this);
 								}
 							}
 							SSLContext context = SSLContext.getInstance(SSLContextType.TLS.toString());

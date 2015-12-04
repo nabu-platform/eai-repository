@@ -17,6 +17,7 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
+import be.nabu.utils.security.BCSecurityUtils;
 import be.nabu.utils.security.KeyStoreHandler;
 import be.nabu.utils.security.StoreType;
 import be.nabu.utils.security.resources.KeyStoreManagerConfiguration.KeyStoreConfiguration;
@@ -24,6 +25,10 @@ import be.nabu.utils.security.resources.ManagedKeyStoreImpl;
 import be.nabu.utils.security.resources.ResourceConfigurationHandler;
 
 public class DefinedKeyStore implements Artifact {
+	
+	static {
+		BCSecurityUtils.loadLibrary();
+	}
 	
 	private ManagedKeyStoreImpl keystore;
 	private ResourceContainer<?> directory;
