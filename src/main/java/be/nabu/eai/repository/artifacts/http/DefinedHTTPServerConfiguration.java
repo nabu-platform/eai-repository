@@ -9,12 +9,12 @@ import be.nabu.utils.io.SSLServerMode;
 @XmlRootElement(name = "httpServer")
 @XmlType(propOrder = { "keystore", "sslServerMode", "port", "poolSize", "socketTimeout", "ioPoolSize" })
 public class DefinedHTTPServerConfiguration {
-	private int port;
+	private Integer port;
 	private DefinedKeyStore keystore;
 	private SSLServerMode sslServerMode;
 	private Integer poolSize, socketTimeout, ioPoolSize;
 
-	public int getPort() {
+	public Integer getPort() {
 		return port;
 	}
 	public DefinedKeyStore getKeystore() {
@@ -26,7 +26,7 @@ public class DefinedHTTPServerConfiguration {
 	public Integer getSocketTimeout() {
 		return socketTimeout;
 	}
-	public void setPort(int port) {
+	public void setPort(Integer port) {
 		this.port = port;
 	}
 	public void setKeystore(DefinedKeyStore keystore) {

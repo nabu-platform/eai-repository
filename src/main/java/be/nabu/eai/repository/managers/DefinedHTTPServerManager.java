@@ -14,7 +14,7 @@ public class DefinedHTTPServerManager extends JAXBArtifactManager<DefinedHTTPSer
 
 	@Override
 	protected DefinedHTTPServer newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new DefinedHTTPServer(id, container);
+		return new DefinedHTTPServer(id, container, repository);
 	}
 
 }

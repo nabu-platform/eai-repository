@@ -14,7 +14,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "hosts", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "restServices" })
+@XmlType(propOrder = { "httpServer", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "hosts", "keyAlias", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "restServices" })
 public class WebArtifactConfiguration {
 
 	private CacheProviderArtifact cacheProvider;
@@ -24,6 +24,7 @@ public class WebArtifactConfiguration {
 	private String charset;
 	private String realm;
 	private String whitelistedCodes;
+	private String keyAlias;
 	
 	private DefinedService passwordAuthenticationService, secretAuthenticationService;
 	private DefinedService permissionService;
@@ -185,6 +186,14 @@ public class WebArtifactConfiguration {
 
 	public void setSessionTimeout(Long sessionTimeout) {
 		this.sessionTimeout = sessionTimeout;
+	}
+
+	public String getKeyAlias() {
+		return keyAlias;
+	}
+
+	public void setKeyAlias(String keyAlias) {
+		this.keyAlias = keyAlias;
 	}
 
 }
