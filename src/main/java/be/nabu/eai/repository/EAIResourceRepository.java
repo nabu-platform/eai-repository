@@ -103,6 +103,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
 	
+	private boolean isLoading;
+	
 	private Map<Class<? extends Artifact>, Map<String, Node>> nodesByType;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
@@ -406,10 +408,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@SuppressWarnings({ "rawtypes" })
 	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
-		// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
-		entry.refresh();
-		// reset this to make sure any newly loaded entries are picked up or old entries are deleted
-		reset();
+		// don't refresh on initial load, this messes up performance for remote file systems
+		if (!isLoading) {
+			// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
+			entry.refresh();
+			// reset this to make sure any newly loaded entries are picked up or old entries are deleted
+			reset();
+		}
 		if (entry.isNode()) {
 			logger.info("Loading entry: " + entry.getId());
 			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
@@ -837,7 +842,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		isLoading = true;
 		load(repositoryRoot);
+		isLoading = false;
 		// the load can remove maven artifacts
 		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);

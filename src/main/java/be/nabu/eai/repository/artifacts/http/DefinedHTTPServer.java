@@ -11,11 +11,13 @@ import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.X509KeyManager;
 
+import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
+import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -88,6 +90,9 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 							);
 						}
 						server.setExceptionFormatter(new RepositoryExceptionFormatter());
+						if (!EAIResourceRepository.isDevelopment()) {
+							server.getDispatcher().subscribe(HTTPResponse.class, HTTPServerUtils.ensureContentEncoding());
+						}
 					}
 					catch (KeyManagementException e) {
 						throw new RuntimeException(e);
