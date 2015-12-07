@@ -90,8 +90,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	}
 	
 	@Override
-	public void refresh() {
-		children = null;
+	public void refresh(boolean recursive) {
 		lastLoaded = null;
 		if (container instanceof CacheableResource) {
 			try {
@@ -101,22 +100,35 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 				logger.error("Could not refresh resource: " + container, e);
 			}
 		}
+		rescan(recursive);
 	}
 	
 	private Map<String, Entry> getChildren() {
 		if (children == null) {
-			rescan();
+			rescan(false);
 		}
 		return children;
 	}
 
-	private void rescan() {
-		children = new LinkedHashMap<String, Entry>();
+	private void rescan(boolean refreshChildren) {
+		if (children == null) {
+			children = new LinkedHashMap<String, Entry>();
+		}
 		if (!isLeaf()) {
+			List<String> existing = new ArrayList<String>(children.keySet());
 			for (Resource child : container) {
-				if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
+				if (existing.contains(child.getName())) {
+					existing.remove(child.getName());
+					if (refreshChildren) {
+						children.get(child.getName()).refresh(refreshChildren);
+					}
+				}
+				else if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
 					children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
 				}
+			}
+			for (String deleted : existing) {
+				children.remove(deleted);
 			}
 		}
 	}
@@ -145,6 +157,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	
 	public RepositoryEntry createNode(String name, ArtifactManager<?> manager) throws IOException {
 		if (getRepository().isValidName(getContainer(), name)) {
+			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, null, State.CREATE, false), this);
 			ManageableContainer<?> nodeContainer = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);
 			EAINode node = new EAINode();
 			node.setArtifactManager(manager.getClass());
@@ -156,6 +169,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			if (repository instanceof EAIResourceRepository) {
 				((EAIResourceRepository) repository).scanForTypes(this);
 			}
+			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
 			return entry;
 		}
 		else {

@@ -108,7 +108,7 @@ public class MemoryEntry implements ModifiableEntry {
 	}
 
 	@Override
-	public void refresh() {
+	public void refresh(boolean recursive) {
 		// do nothing
 	}
 }

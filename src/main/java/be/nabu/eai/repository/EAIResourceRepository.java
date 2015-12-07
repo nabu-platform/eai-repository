@@ -49,6 +49,7 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.resources.api.features.CacheableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
@@ -256,7 +257,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		Entry entry = getEntry(id);
 		if (entry != null) {
 			unload(entry);
-			entry.getParent().refresh();
+			entry.getParent().refresh(false);
 		}
 	}
 	
@@ -335,6 +336,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
 		}
 		Entry entry = getEntry(id);
+		// if we have an entry on the root which is not found, it could be new, reset the root (if possible) and try again
+		// alternatively we can reload the entire root folder but this would have massive performance repercussions
+		if (entry == null && !id.contains(".")) {
+			getRoot().refresh(false);
+			entry = getEntry(id);
+		}
 		while (entry == null && id.contains(".")) {
 			int index = id.lastIndexOf('.');
 			id = id.substring(0, index);
@@ -411,7 +418,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// don't refresh on initial load, this messes up performance for remote file systems
 		if (!isLoading) {
 			// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
-			entry.refresh();
+			entry.refresh(false);
 			// reset this to make sure any newly loaded entries are picked up or old entries are deleted
 			reset();
 		}
@@ -542,11 +549,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		ResourceEntry entry = (ResourceEntry) sourceEntry;
 		// make sure we have the latest view on the system
-		entry.refresh();
+		entry.refresh(true);
 		// copy the contents to the new location
 		ResourceUtils.copy(entry.getContainer(), (ManageableContainer<?>) parent.getContainer(), targetName);
 		// we need to refresh the parent entry as it can cache the children and not see the new addition
-		targetParent.refresh();
+		targetParent.refresh(true);
 		// load the new node
 		Entry newEntry = getEntry(newId);
 		if (newEntry == null) {

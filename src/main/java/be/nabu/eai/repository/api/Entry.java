@@ -9,7 +9,7 @@ public interface Entry extends ResourceContainer<Entry> {
 	public boolean isNode();
 	public Node getNode();
 	public Repository getRepository();
-	public void refresh();
+	public void refresh(boolean recursive);
 	
 	@Override
 	public Entry getParent();

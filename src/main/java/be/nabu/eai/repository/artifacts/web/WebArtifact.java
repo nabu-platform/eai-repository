@@ -120,7 +120,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	@Override
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
-		if (!started) {
+		if (!started && getConfiguration().getHttpServer() != null) {
 			String realm = getRealm();
 			String serverPath = getServerPath();
 

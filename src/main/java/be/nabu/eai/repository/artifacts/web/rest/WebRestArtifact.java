@@ -19,6 +19,7 @@ import be.nabu.libs.types.base.ComplexElementImpl;
 import be.nabu.libs.types.base.SimpleElementImpl;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.properties.MaxOccursProperty;
+import be.nabu.libs.types.properties.MinOccursProperty;
 import be.nabu.libs.types.structure.Structure;
 
 public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> implements DefinedServiceInterface {
@@ -80,27 +81,27 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 		try {
 			if (getConfiguration().getQueryParameters() != null && !getConfiguration().getQueryParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getQueryParameters().split("[\\s,]+")) {
-					query.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), query, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0)));
+					query.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), query, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0), new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 				}
-				input.add(new ComplexElementImpl("query", query, input));
+				input.add(new ComplexElementImpl("query", query, input, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 			}
 			if (getConfiguration().getHeaderParameters() != null && !getConfiguration().getHeaderParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getHeaderParameters().split("[\\s,]+")) {
-					header.add(new SimpleElementImpl<String>(headerToField(name), SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), header, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0)));
+					header.add(new SimpleElementImpl<String>(headerToField(name), SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), header, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0), new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 				}
-				input.add(new ComplexElementImpl("header", header, input));
+				input.add(new ComplexElementImpl("header", header, input, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 			}
 			if (getConfiguration().getSessionParameters() != null && !getConfiguration().getSessionParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getSessionParameters().split("[\\s,]+")) {
-					session.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), session));
+					session.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), session, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 				}
-				input.add(new ComplexElementImpl("session", session, input));
+				input.add(new ComplexElementImpl("session", session, input, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 			}
 			if (getConfiguration().getCookieParameters() != null && !getConfiguration().getCookieParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getCookieParameters().split("[\\s,]+")) {
-					cookie.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), cookie, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0)));
+					cookie.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), cookie, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0), new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 				}
-				input.add(new ComplexElementImpl("cookie", cookie, input));
+				input.add(new ComplexElementImpl("cookie", cookie, input, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
 			}
 			if (getConfiguration().getPath() != null) {
 				for (String name : GlueListener.analyzePath(getConfiguration().getPath()).getParameters()) {
