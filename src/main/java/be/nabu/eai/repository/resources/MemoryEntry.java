@@ -5,13 +5,14 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
+import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.resources.api.Resource;
 
-public class MemoryEntry implements ModifiableEntry {
+public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 
 	private String id;
 	private String name;
@@ -19,8 +20,14 @@ public class MemoryEntry implements ModifiableEntry {
 	private Repository repository;
 	private Node node;
 	private List<Entry> children;
-
+	private Entry originator;
+	
 	public MemoryEntry(Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
+		this(parent, repository, parent, node, id, name, children);
+	}
+	
+	public MemoryEntry(Entry originator, Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
+		this.originator = originator;
 		this.repository = repository;
 		this.node = node;
 		this.id = id;
@@ -111,4 +118,14 @@ public class MemoryEntry implements ModifiableEntry {
 	public void refresh(boolean recursive) {
 		// do nothing
 	}
+
+	@Override
+	public Entry getOriginatingEntry() {
+		return originator;
+	}
+
+	public Entry getOriginator() {
+		return originator;
+	}
+
 }

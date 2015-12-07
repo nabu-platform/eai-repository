@@ -11,7 +11,7 @@ public class ClassAdapter extends XmlAdapter<String, Class<?>> {
 		if (v == null) {
 			return null;
 		}
-		Class<?> clazz = EAIResourceRepository.getInstance().getMavenClass(v);
+		Class<?> clazz = EAIResourceRepository.getInstance().loadClass(v);
 		if (clazz == null) {
 			clazz = Thread.currentThread().getContextClassLoader().loadClass(v);
 		}

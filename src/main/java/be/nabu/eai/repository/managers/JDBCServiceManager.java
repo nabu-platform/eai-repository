@@ -209,7 +209,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 				node.setArtifactClass(DefinedType.class);
 				node.setArtifact((DefinedType) artifact.getParameters());
 				node.setLeaf(true);
-				Entry parameters = new MemoryEntry(parent.getRepository(), parent, node, parent.getId() + "." + JDBCService.PARAMETERS, JDBCService.PARAMETERS);
+				Entry parameters = new MemoryEntry(parent, parent.getRepository(), parent, node, parent.getId() + "." + JDBCService.PARAMETERS, JDBCService.PARAMETERS);
 				// need to explicitly set id (it was loaded from file)
 				((DefinedStructure) artifact.getParameters()).setId(parameters.getId());
 				node.setEntry(parameters);

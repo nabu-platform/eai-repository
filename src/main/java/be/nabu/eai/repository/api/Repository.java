@@ -25,4 +25,5 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public List<String> getReferences(String id);
 	public List<String> getDependencies(String id);
 	public void start();
+	public ClassLoader newClassLoader(String artifact);
 }

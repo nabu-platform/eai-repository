@@ -49,7 +49,6 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
-import be.nabu.libs.resources.api.features.CacheableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
@@ -90,6 +89,14 @@ import be.nabu.utils.io.api.WritableContainer;
  * - first load all the nodes, then load all the artifact repositories
  * - in the artifact repository loading, we make a very rough distinction between those that have dependencies (very few of them) and those that don't, the ones without can be safely loaded
  * - if we add more hybrids like JDBC we will likely have to optimize this and perform actual dependency calculation, so for instance if a JDBC service requires "path.to.node" and only "path" exists which is a repository, load that one first
+ * 
+ * 
+ * Classloading is tricky business. Consider this: we have maven artifacts that don't know each other by definition.
+ * We have a repository that knows all maven artifacts.
+ * The maven classloader still has the capability of depending on another module (a higher level dependency)
+ * So the maven classloader has one parent classloader: the repository. Because it sees everything (native code + other maven classloaders)
+ * But we don't want to recurse from maven classloader > repository class loader > maven classloader
+ * For this reason we added a "non recursive" load for maven classloader
  */
 public class EAIResourceRepository implements ResourceRepository, MavenRepository {
 	
@@ -723,7 +730,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void startMavenArtifact(MavenManager mavenManager, be.nabu.libs.maven.api.Artifact internal) {
 		try {
 			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
-			MavenArtifact artifact = mavenManager.load(internal, localMavenServer, updateMavenSnapshots);
+			MavenArtifact artifact = mavenManager.load(this, internal, localMavenServer, updateMavenSnapshots);
 			mavenArtifacts.add(artifact);
 			mavenManager.removeChildren(getRoot(), artifact);
 			mavenManager.addChildren(getRoot(), artifact);
@@ -911,19 +918,32 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return implementations;
 	}
 	
-	public Class<?> getMavenClass(String className) throws IOException {
+	@Override
+	public ClassLoader newClassLoader(String artifact) {
+		return new RepositoryClassLoader(this, getClass().getClassLoader(), artifact);
+	}
+	
+	public Class<?> loadClass(String className) {
+		return loadClass(className, new ArrayList<String>());
+	}
+	
+	public Class<?> loadClass(String className, List<String> blacklist) {
 		for (MavenArtifact artifact : mavenArtifacts) {
-			for (List<Class<?>> list : artifact.getImplementations().values()) {
-				for (Class<?> clazz : list) {
-					if (clazz.getName().equals(className)) {
+			if (!blacklist.contains(artifact.getId())) {
+				try {
+					Class<?> clazz = artifact.getClassLoader().loadClassNonRecursively(className);
+					if (clazz != null) {
 						return clazz;
 					}
+				}
+				catch (ClassNotFoundException e) {
+					// ignore
 				}
 			}
 		}
 		return null;
 	}
-	
+
 	public InputStream getMavenResource(String name) {
 		for (MavenArtifact artifact : mavenArtifacts) {
 			InputStream stream = artifact.getClassLoader().getResourceAsStream(name);

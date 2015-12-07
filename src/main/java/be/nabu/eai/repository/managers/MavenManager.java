@@ -19,6 +19,7 @@ import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
@@ -45,13 +46,22 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		this.definedTypeResolver = definedTypeResolver;	
 	}
 	
-	public MavenArtifact load(Artifact artifact, URI mavenServer, boolean updateSnapshots) {
+	public MavenArtifact load(Repository repository, Artifact artifact, URI mavenServer, boolean updateSnapshots) {
 		try {
 			DependencyResolver dependencyResolver = mavenServer == null 
 				? new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2"))
 				: new DependencyResolver(mavenServer, new URI("http://mirrors.ibiblio.org/maven2"));
 			dependencyResolver.setUpdateSnapshots(updateSnapshots);
-			return new MavenArtifact(definedTypeResolver, dependencyResolver, repository, artifact.getGroupId() + "." + artifact.getArtifactId(), artifact);
+			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
+			MavenArtifact mavenArtifact = new MavenArtifact(
+				repository.newClassLoader(id),
+				definedTypeResolver, 
+				dependencyResolver, 
+				this.repository, 
+				id, 
+				artifact
+			);
+			return mavenArtifact;
 		}
 		catch (URISyntaxException e) {
 			throw new RuntimeException(e);
@@ -76,7 +86,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			throw new IOException("Can not find the artifact " + id);
 		}
 		try {
-			return new MavenArtifact(definedTypeResolver, new DependencyResolver(new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
+			return new MavenArtifact(entry.getRepository().newClassLoader(entry.getId()), definedTypeResolver, new DependencyResolver(new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
 		}
 		catch (URISyntaxException e) {
 			logger.error("Could not load: " + id, e);
@@ -135,7 +145,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					}
 				}
 				node.setLeaf(true);
-				MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, entryId, childName);
+				MemoryEntry child = new MemoryEntry(root, root.getRepository(), parent, node, entryId, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
 				if (!hidden) {
@@ -154,7 +164,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			Entry entry = root.getChild(prettify(path.getName()));
 			// if it's null, create a new entry
 			if (entry == null) {
-				entry = new MemoryEntry(root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
+				entry = new MemoryEntry(root, root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
 				root.addChildren(entry);
 			}
 			else if (entry.isNode()) {
