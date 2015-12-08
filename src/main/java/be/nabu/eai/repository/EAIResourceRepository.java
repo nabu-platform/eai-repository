@@ -97,6 +97,9 @@ import be.nabu.utils.io.api.WritableContainer;
  * So the maven classloader has one parent classloader: the repository. Because it sees everything (native code + other maven classloaders)
  * But we don't want to recurse from maven classloader > repository class loader > maven classloader
  * For this reason we added a "non recursive" load for maven classloader
+ * 
+ * Note: in the future we should have "modules" which are zip files containing _everything_ for a module (jar files, flow services, sql,...). These "modules" are core in that they have to be loaded before everything else because they contain artifacts etc.
+ * The second type will be simple "maven artifacts" created by the user which do not expose new module-level functionality and as such can be part of the normal boot (and deployment) process.
  */
 public class EAIResourceRepository implements ResourceRepository, MavenRepository {
 	
@@ -696,7 +699,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@Override
 	public void loadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
 		if (mavenManager.getRepository().isInternal(artifact)) {
-			startMavenArtifact(mavenManager, artifact);
+			startMavenArtifact(mavenManager, artifact, false);
 		}
 	}
 	
@@ -719,7 +722,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		try {
 			// do an initial load of all internal artifacts
 			for (be.nabu.libs.maven.api.Artifact internal : mavenRepository.getInternalArtifacts()) {
-				startMavenArtifact(mavenManager, internal);
+				startMavenArtifact(mavenManager, internal, true);
 			}
 		}
 		catch (IOException e) {
@@ -727,13 +730,24 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 
-	private void startMavenArtifact(MavenManager mavenManager, be.nabu.libs.maven.api.Artifact internal) {
+	private void startMavenArtifact(MavenManager mavenManager, be.nabu.libs.maven.api.Artifact internal, boolean initial) {
 		try {
 			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
 			MavenArtifact artifact = mavenManager.load(this, internal, localMavenServer, updateMavenSnapshots);
 			mavenArtifacts.add(artifact);
-			mavenManager.removeChildren(getRoot(), artifact);
-			mavenManager.addChildren(getRoot(), artifact);
+			// there are two stages in the loading of a maven artifact:
+			// - create a classloader capable of looking for classes/resources
+			// - scan the package to check for any classes (services or beans) that have to be exposed
+			// The first step is triggered by creating the artifact (in the few lines above this)
+			// The second step is triggered by adding the children of the artifact to the tree
+			// The "problem" with the second step is that some maven artifacts are interdependent on other artifacts and there is no "trivial" way to find out (we'd have to scan the poms and determine dependencies that way)
+			// Due to the dependencies it is key that the modules are scanned in the correct order because triggering a "load" on a class could trigger the resolution of the dependent class
+			// To (quickly) circumvent this issue, we simply don't attach the children on startup. In the startup sequence there was already a "reattach" at the very end because other loading can reset the initial attach anyway
+			// This is still a rather dirty hack and it would be better to have the dependency checking or really split up the two stages cleanly
+			if (!initial) {
+				mavenManager.removeChildren(getRoot(), artifact);
+				mavenManager.addChildren(getRoot(), artifact);
+			}
 			mavenIfaceResolvers.put(artifact, new POJOInterfaceResolver(artifact.getClassLoader()));
 			DefinedServiceInterfaceResolverFactory.getInstance().addResolver(mavenIfaceResolvers.get(artifact));
 		}
