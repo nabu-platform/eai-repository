@@ -3,7 +3,6 @@ package be.nabu.eai.repository.api;
 import java.nio.charset.Charset;
 import java.util.List;
 
-import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
@@ -12,7 +11,7 @@ import be.nabu.libs.services.api.ExecutionContextProvider;
 import be.nabu.libs.services.api.ServiceRunner;
 
 public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister {
-	public RepositoryEntry getRoot();
+	public Entry getRoot();
 	public Entry getEntry(String id);
 	public Charset getCharset();
 	public EventDispatcher getEventDispatcher();

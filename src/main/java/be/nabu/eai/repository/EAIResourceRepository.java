@@ -162,6 +162,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		ResourceFactory.getInstance().addResourceResolver(new RepositoryResourceResolver(this));
 	}
 	
+	/**
+	 * This is mostly used by java services to find the repository
+	 * As long as java services are limited to modules, this is acceptable as we don't stream modules from remote servers
+	 * It however becomes slightly trickier once we have user-maven modules that are coming from remote servers...
+	 * They would need access to their own (remote) repository...
+	 */
 	public static EAIResourceRepository getInstance() {
 		return instance;
 	}
@@ -263,6 +269,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return charset;
 	}
 	
+	@Override
 	public void unload(String id) {
 		Entry entry = getEntry(id);
 		if (entry != null) {
@@ -336,6 +343,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 	
+	@Override
 	public void reload(String id) {
 		reload(id, true);
 	}
@@ -855,6 +863,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return ServiceRunnerFactory.getInstance().getServiceRunner();
 	}
 
+	@Override
 	public void setServiceRunner(ServiceRunner serviceRunner) {
 		ServiceRunnerFactory.getInstance().setServiceRunner(serviceRunner);
 		serviceRunner.setCacheProvider(new EAIRepositoryCacheProvider(this));

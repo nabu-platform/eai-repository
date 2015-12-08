@@ -407,29 +407,29 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	public Authenticator getAuthenticator() throws IOException {
 		PasswordAuthenticator passwordAuthenticator = null;
 		if (getConfiguration().getPasswordAuthenticationService() != null) {
-			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
+			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
 		}
 		SecretAuthenticator sharedSecretAuthenticator = null;
 		if (getConfiguration().getSecretAuthenticationService() != null) {
-			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
+			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
 		}
 		return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 	}
 	public RoleHandler getRoleHandler() throws IOException {
 		if (getConfiguration().getRoleService() != null) {
-			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public PermissionHandler getPermissionHandler() throws IOException {
 		if (getConfiguration().getPermissionService() != null) {
-			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public TokenValidator getTokenValidator() throws IOException {
 		if (getConfiguration().getTokenValidatorService() != null) {
-			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), getServiceTracker(), EAIResourceRepository.getInstance(), SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
 		}
 		return null;
 	}
