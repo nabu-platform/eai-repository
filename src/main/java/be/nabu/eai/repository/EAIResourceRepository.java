@@ -9,6 +9,7 @@ import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -51,12 +52,12 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
+import be.nabu.libs.services.ListableServiceContext;
 import be.nabu.libs.services.SPIDefinedServiceInterfaceResolver;
 import be.nabu.libs.services.ServiceRunnerFactory;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.DefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.ExecutionContext;
-import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.services.pojo.POJOInterfaceResolver;
@@ -779,12 +780,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return mavenManager != null ? mavenManager.getRepository() : null;
 	}
 	
-	public ServiceContext getServiceContext() {
-		return new ServiceContext() {
+	public ListableServiceContext getServiceContext() {
+		return new ListableServiceContext() {
 			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends Artifact> ArtifactResolver<T> getResolver(Class<T> arg0) {
 				return (ArtifactResolver<T>) EAIResourceRepository.this;
+			}
+			@Override
+			public <T extends Artifact> Collection<T> getArtifacts(Class<T> artifactType) {
+				return EAIResourceRepository.this.getArtifacts(artifactType);
 			}
 		};
 	}

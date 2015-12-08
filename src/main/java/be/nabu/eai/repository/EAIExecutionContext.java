@@ -28,7 +28,6 @@ public class EAIExecutionContext implements ExecutionContext {
 
 	@Override
 	public ServiceContext getServiceContext() {
-		// TODO: need to wrap services with an intelligent wrapper that allows for service stacks, security checks,...
 		return repository.getServiceContext();
 	}
 
