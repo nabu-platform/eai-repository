@@ -6,6 +6,7 @@ import java.io.InputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.http.glue.GlueListener;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -27,8 +28,8 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private Structure input, output;
 	
-	public WebRestArtifact(String id, ResourceContainer<?> directory) {
-		super(id, directory, "webrestartifact.xml", WebRestArtifactConfiguration.class);
+	public WebRestArtifact(String id, ResourceContainer<?> directory, Repository repository) {
+		super(id, directory, repository, "webrestartifact.xml", WebRestArtifactConfiguration.class);
 	}
 	
 	@Override

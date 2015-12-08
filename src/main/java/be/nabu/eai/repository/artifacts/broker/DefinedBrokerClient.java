@@ -8,6 +8,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 
 import be.nabu.eai.broker.client.BrokerClient;
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.artifacts.keystore.DefinedKeyStore;
 import be.nabu.libs.artifacts.api.StartableArtifact;
@@ -28,8 +29,8 @@ public class DefinedBrokerClient extends JAXBArtifact<BrokerConfiguration> imple
 	
 	private BrokerClient brokerClient;
 
-	public DefinedBrokerClient(String id, ResourceContainer<?> directory) {
-		super(id, directory, "broker.xml", BrokerConfiguration.class);
+	public DefinedBrokerClient(String id, ResourceContainer<?> directory, Repository repository) {
+		super(id, directory, repository, "broker.xml", BrokerConfiguration.class);
 	}
 
 	public BrokerClient getBrokerClient() throws IOException {

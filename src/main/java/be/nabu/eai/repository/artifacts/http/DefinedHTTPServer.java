@@ -29,11 +29,9 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 	private static final String HTTP_IO_POOL_SIZE = "be.nabu.eai.http.ioPoolSize";
 	private static final String HTTP_PROCESS_POOL_SIZE = "be.nabu.eai.http.processPoolSize";
 	private Thread thread;
-	private Repository repository;
 	
 	public DefinedHTTPServer(String id, ResourceContainer<?> directory, Repository repository) {
-		super(id, directory, "httpServer.xml", DefinedHTTPServerConfiguration.class);
-		this.repository = repository;
+		super(id, directory, repository, "httpServer.xml", DefinedHTTPServerConfiguration.class);
 	}
 
 	private HTTPServer server;
@@ -75,7 +73,7 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 							KeyManager[] keyManagers = keyStoreHandler.getKeyManagers();
 							for (int i = 0; i < keyManagers.length; i++) {
 								if (keyManagers[i] instanceof X509KeyManager) {
-									keyManagers[i] = new ArtifactAwareKeyManager((X509KeyManager) keyManagers[i], repository, this);
+									keyManagers[i] = new ArtifactAwareKeyManager((X509KeyManager) keyManagers[i], getRepository(), this);
 								}
 							}
 							SSLContext context = SSLContext.getInstance(SSLContextType.TLS.toString());

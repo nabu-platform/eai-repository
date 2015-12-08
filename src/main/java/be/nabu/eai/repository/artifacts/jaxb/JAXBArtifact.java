@@ -7,6 +7,7 @@ import java.io.OutputStream;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -27,10 +28,12 @@ public class JAXBArtifact<T> implements Artifact {
 	private String fileName;
 	private Class<T> configurationClazz;
 	private T configuration;
+	private Repository repository;
 
-	public JAXBArtifact(String id, ResourceContainer<?> directory, String fileName, Class<T> configurationClazz) {
+	public JAXBArtifact(String id, ResourceContainer<?> directory, Repository repository, String fileName, Class<T> configurationClazz) {
 		this.id = id;
 		this.directory = directory;
+		this.repository = repository;
 		this.fileName = fileName;
 		this.configurationClazz = configurationClazz;
 	}
@@ -123,4 +126,9 @@ public class JAXBArtifact<T> implements Artifact {
 	public String toString() {
 		return getId() + " [" + getClass().getName() + "]";
 	}
+
+	public Repository getRepository() {
+		return repository;
+	}
+	
 }

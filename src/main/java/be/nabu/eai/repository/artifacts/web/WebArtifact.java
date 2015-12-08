@@ -79,14 +79,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	private List<EventSubscription<?, ?>> subscriptions = new ArrayList<EventSubscription<?, ?>>();
 	private GlueListener listener;
 	private Logger logger = LoggerFactory.getLogger(getClass());
-	private Repository repository;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	private SessionProvider sessionProvider;
 	private boolean started;
 	
 	public WebArtifact(String id, ResourceContainer<?> directory, Repository repository) {
-		super(id, directory, "webartifact.xml", WebArtifactConfiguration.class);
-		this.repository = repository;
+		super(id, directory, repository, "webartifact.xml", WebArtifactConfiguration.class);
 	}
 
 	@Override
@@ -127,7 +125,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 			ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
 			
-			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(this.repository, this.repository, new AnyThreadTracker());
+			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(getRepository(), getRepository(), new AnyThreadTracker());
 			
 			ResourceContainer<?> meta = privateDirectory == null ? null : (ResourceContainer<?>) privateDirectory.getChild("meta");
 			ScriptRepository metaRepository = null;
@@ -350,7 +348,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 						logger.debug("Adding rest handler for service: " + service.getId());
 						WebRestListener listener = new WebRestListener(
 							getServiceTracker(),
-							this.repository, 
+							getRepository(), 
 							serverPath, 
 							realm, 
 							sessionProvider, 
@@ -393,12 +391,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		if (EAIResourceRepository.isDevelopment()) {
 			trackers.add(new AnyThreadTracker());
 			if (getConfiguration().getTrackerService() != null) {
-				FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new AnyThreadTracker(), repository, SystemPrincipal.ROOT);
+				FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new AnyThreadTracker(), getRepository(), SystemPrincipal.ROOT);
 				trackers.add(new FlatServiceTrackerWrapper(flatServiceTracker));
 			}
 		}
 		else if (getConfiguration().getTrackerService() != null) {
-			FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new EmptyServiceRuntimeTracker(), repository, SystemPrincipal.ROOT);
+			FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new EmptyServiceRuntimeTracker(), getRepository(), SystemPrincipal.ROOT);
 			trackers.add(new FlatServiceTrackerWrapper(flatServiceTracker));
 		}
 		return new MultipleVMServiceRuntimeTracker(trackers.toArray(new ServiceRuntimeTracker[trackers.size()]));
@@ -407,29 +405,29 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	public Authenticator getAuthenticator() throws IOException {
 		PasswordAuthenticator passwordAuthenticator = null;
 		if (getConfiguration().getPasswordAuthenticationService() != null) {
-			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
+			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getServiceTracker(), getRepository(), SystemPrincipal.ROOT);
 		}
 		SecretAuthenticator sharedSecretAuthenticator = null;
 		if (getConfiguration().getSecretAuthenticationService() != null) {
-			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
+			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getServiceTracker(), getRepository(), SystemPrincipal.ROOT);
 		}
 		return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 	}
 	public RoleHandler getRoleHandler() throws IOException {
 		if (getConfiguration().getRoleService() != null) {
-			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(RoleHandler.class, getConfiguration().getRoleService(), getServiceTracker(), getRepository(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public PermissionHandler getPermissionHandler() throws IOException {
 		if (getConfiguration().getPermissionService() != null) {
-			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(PermissionHandler.class, getConfiguration().getPermissionService(), getServiceTracker(), getRepository(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}
 	public TokenValidator getTokenValidator() throws IOException {
 		if (getConfiguration().getTokenValidatorService() != null) {
-			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), getServiceTracker(), repository, SystemPrincipal.ROOT);
+			return POJOUtils.newProxy(TokenValidator.class, getConfiguration().getTokenValidatorService(), getServiceTracker(), getRepository(), SystemPrincipal.ROOT);
 		}
 		return null;
 	}

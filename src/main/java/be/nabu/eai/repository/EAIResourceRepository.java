@@ -63,7 +63,6 @@ import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.services.pojo.POJOInterfaceResolver;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
-import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
 import be.nabu.libs.validator.api.Validation;
@@ -101,6 +100,18 @@ import be.nabu.utils.io.api.WritableContainer;
  * 
  * Note: in the future we should have "modules" which are zip files containing _everything_ for a module (jar files, flow services, sql,...). These "modules" are core in that they have to be loaded before everything else because they contain artifacts etc.
  * The second type will be simple "maven artifacts" created by the user which do not expose new module-level functionality and as such can be part of the normal boot (and deployment) process.
+ * 
+ * 
+ * 
+ * TODO: Factory pattern: a number of the factories are either shared (e.g. low level converters because code is considered in sync)
+ * Or only a runtime issue (e.g. type conversion). Runtime is not a problem as actually running stuff is done on the remote server anyway (which has the correct repository)
+ * The artifact classes (e.g. the actual MethodService etc) have to be loaded only once (otherwise we could do classloader trickery) otherwise it would break diff/merge
+ * Any factory that resolves an artifact though (pretty much any factory explicitly updated by the repository) is affected by the context it runs in
+ * For all these entry points (vm services, structures,...) I need to make sure we can set a context-aware factory instead of the generic getInstance()
+ * This is a process that will take some time and is currently only required for diffing and deployment
+ * But e.g. as long as there is no diff/merge of a vm service, we don't need to load it in a context-aware fashion
+ * Currently the most important thing for diff/merge deploying is jaxbartifacts, so we will focus on those because they are easy to set
+ * 
  */
 public class EAIResourceRepository implements ResourceRepository, MavenRepository {
 	
@@ -151,15 +162,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		this.resourceRoot = repositoryRoot;
 		this.mavenRoot = mavenRoot;
 		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
+		// important for clusters
 		ArtifactResolverFactory.getInstance().addResolver(this);
+		// important for clusters
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
 		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
+		// important for clusters
 		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
 		// service interface resolvers
+		// this is important for clusters
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceInterfaceResolver(this));
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new SPIDefinedServiceInterfaceResolver());
 		instance = this;
+		// only important at runtime to resolve data
+		// should not impact clusters
 		ResourceFactory.getInstance().addResourceResolver(new RepositoryResourceResolver(this));
 	}
 	
@@ -224,8 +241,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@Override
 	public Node getNode(String id) {
-		Entry entry = getEntry(id);
-		return entry != null && entry.isNode() ? entry.getNode() : null;
+		return EAIRepositoryUtils.getNode(this, id);
 	}
 	
 	public void updateReferences(String id, List<String> references) {
@@ -477,27 +493,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public Entry getEntry(String id) {
-		ParsedPath path = new ParsedPath(id.replace('.', '/'));
-		Entry entry = getRoot();
-		while (entry != null && path != null) {
-			entry = entry.getChild(path.getName());
-			path = path.getChildPath();
-		}
-		return entry;
+		return EAIRepositoryUtils.getEntry(getRoot(), id);
 	}
 	
 	@Override
 	public Artifact resolve(String id) {
-		Entry entry = getEntry(id);
-		try {
-			return entry != null && entry.isNode() ? entry.getNode().getArtifact() : null;
-		}
-		catch (IOException e) {
-			throw new RuntimeException(e);
-		}
-		catch (ParseException e) {
-			throw new RuntimeException(e);
-		}
+		return EAIRepositoryUtils.resolve(this, id);
 	}
 	
 	public List<String> rebuildReferences(String id, boolean recursive) {
@@ -766,9 +767,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	private void reattachMavenArtifacts() {
+		reattachMavenArtifacts(getRoot());
+	}
+
+	public void reattachMavenArtifacts(ModifiableEntry entry) {
 		for (MavenArtifact artifact : mavenArtifacts) {
 			try {
-				MavenManager.attachChildren(getRoot(), artifact);
+				MavenManager.attachChildren(entry, artifact);
 			}
 			catch (IOException e) {
 				logger.error("Could not reattach maven artifact: " + artifact, e);
@@ -799,18 +804,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return new EAIExecutionContext(this, principal, isDevelopment());
 	}
 
-	@SuppressWarnings("unchecked")
+	@Override
 	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
-		List<T> artifacts = new ArrayList<T>();
-		for (Node node : getNodes(artifactClazz)) {
-			try {
-				artifacts.add((T) node.getArtifact());
-			}
-			catch (Exception e) {
-				logger.error("Could not load node: " + node);
-			}
-		}
-		return artifacts;
+		return EAIRepositoryUtils.getArtifacts(this, artifactClazz);
 	}
 	
 	@Override
@@ -935,12 +931,19 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return services;
 	}
 	
-	public List<Class<?>> getMavenImplementationsFor(Class<?> clazz) throws IOException {
-		List<Class<?>> implementations = new ArrayList<Class<?>>();
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@Override
+	public <T> List<Class<T>> getImplementationsFor(Class<T> clazz) {
+		List<Class<T>> implementations = new ArrayList<Class<T>>();
 		for (MavenArtifact artifact : mavenArtifacts) {
-			List<Class<?>> provided = artifact.getImplementations().get(clazz);
-			if (provided != null) {
-				implementations.addAll(provided);
+			try {
+				List provided = artifact.getImplementations().get(clazz);
+				if (provided != null) {
+					implementations.addAll(provided);
+				}
+			}
+			catch (IOException e) {
+				logger.error("Could not search artifact for implementations", e);
 			}
 		}
 		return implementations;

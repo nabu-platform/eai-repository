@@ -31,20 +31,18 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 	private static final String DELAY_INITIAL = "be.nabu.eai.broker.delayInitial";
 	private static final String DELAY_DELTA = "be.nabu.eai.broker.delayDelta";
 	private static final String DELAY_MAX = "be.nabu.eai.broker.delayMax";
-	private Repository repository;
 	private boolean enabled;
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	public DefinedSubscription(String id, ResourceContainer<?> directory, Repository repository) {
-		super(id, directory, "subscription.xml", SubscriptionConfiguration.class);
-		this.repository = repository;
+		super(id, directory, repository, "subscription.xml", SubscriptionConfiguration.class);
 	}
 	
 	@Override
 	public void start() throws IOException {
 		final SubscriptionConfiguration configuration = getConfiguration();
-		if (repository.getServiceRunner() != null && notNull(configuration.getBrokerClient(), configuration.getService(), configuration.getSelector()) && !Boolean.TRUE.equals(configuration.getDisabled())) {
+		if (getRepository().getServiceRunner() != null && notNull(configuration.getBrokerClient(), configuration.getService(), configuration.getSelector()) && !Boolean.TRUE.equals(configuration.getDisabled())) {
 			try {
 				String selector = configuration.getSelector().toString().toLowerCase();
 				if (Selector.PARALLEL.equals(configuration.getSelector()) && configuration.getMaxParallel() != null && configuration.getMaxParallel() >= 0) {
@@ -89,7 +87,7 @@ public class DefinedSubscription extends JAXBArtifact<SubscriptionConfiguration>
 							input.set(inputFields.get(typeId), content);
 							// the interface allows both sync and async execution, the server is currently implemented as sync
 							// but even if it is async, we need to send back information so this thread will hang until the server one is done
-							Future<ServiceResult> result = repository.getServiceRunner().run(configuration.getService(), repository.newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())), input, null);
+							Future<ServiceResult> result = getRepository().getServiceRunner().run(configuration.getService(), getRepository().newExecutionContext(new InternalPrincipal(configuration.getUserId(), getId())), input, null);
 							try {
 								ServiceResult serviceResult = result.get();
 								if (serviceResult.getException() != null) {

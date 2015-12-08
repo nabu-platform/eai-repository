@@ -14,7 +14,7 @@ public class WebRestArtifactManager extends JAXBArtifactManager<WebRestArtifactC
 
 	@Override
 	protected WebRestArtifact newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new WebRestArtifact(id, container);
+		return new WebRestArtifact(id, container, repository);
 	}
 
 }

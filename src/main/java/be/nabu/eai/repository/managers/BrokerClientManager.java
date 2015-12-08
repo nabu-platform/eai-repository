@@ -14,7 +14,7 @@ public class BrokerClientManager extends JAXBArtifactManager<BrokerConfiguration
 
 	@Override
 	protected DefinedBrokerClient newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new DefinedBrokerClient(id, container);
+		return new DefinedBrokerClient(id, container, repository);
 	}
 
 }

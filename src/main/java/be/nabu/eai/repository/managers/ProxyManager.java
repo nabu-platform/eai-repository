@@ -14,7 +14,7 @@ public class ProxyManager extends JAXBArtifactManager<ProxyConfiguration, Define
 
 	@Override
 	protected DefinedProxy newInstance(String id, ResourceContainer<?> container, Repository repository) {
-		return new DefinedProxy(id, container);
+		return new DefinedProxy(id, container, repository);
 	}
 
 }
