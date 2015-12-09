@@ -298,6 +298,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
 		logger.info("Unloading: " + entry.getId());
+		// TODO: don't actually remove the entry? perhaps use "modifiableentry" to remove the children from the parent? no issue so far though...
+		// this is "partially" solved by the refresh we do in the parent unload(), because we usually unload in case of delete (then the refresh gets it) or update (in that case the load afterwards updates it)
 		reset();
 		if (entry.isNode()) {
 			unbuildReferenceMap(entry.getId());
@@ -319,7 +321,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
 				}
 			}
-			// TODO: remove from reference map?
 		}
 		if (entry instanceof ResourceEntry) {
 			Iterator<be.nabu.libs.maven.ResourceRepository> iterator = mavenRepositories.iterator();
@@ -564,7 +565,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			throw new IOException("The source parent is not manageable: " + sourceEntry.getId());
 		}
 		ResourceEntry parent = (ResourceEntry) targetParent;
-		if (!isValidName(parent.getContainer(), targetName)) {
+		if (parent.getContainer().getChild(targetName) != null || !isValidName(parent.getContainer(), targetName)) {
 			throw new IOException("The name is not valid: " + targetName);
 		}
 		ResourceEntry entry = (ResourceEntry) sourceEntry;
@@ -675,9 +676,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public boolean isValidName(ResourceContainer<?> parent, String name) {
-		if (parent.getChild(name) != null) {
-			return false;
-		}
 		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	

@@ -18,6 +18,7 @@ import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
@@ -42,7 +43,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * A repository entry is basically a container that can either contain a node, child entries or both
  * In the simplest case this maps to a "folder" on the file system
  */
-public class RepositoryEntry implements ResourceEntry, ModifiableEntry, ModifiableNodeEntry {
+public class RepositoryEntry implements ResourceEntry, ModifiableEntry, ModifiableNodeEntry, ExtensibleEntry {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -145,36 +146,111 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		return container.getChild("node.xml") != null;
 	}
 	
+	@Override
+	public void deleteChild(String name, boolean recursive) throws IOException {
+		Entry entry = getChildren().get(name);
+		if (entry != null) {
+			// if it is resource-based, delete the files
+			if (entry instanceof ResourceEntry) {
+				// if recursive, just delete everything
+				if (recursive) {
+					((ManageableContainer<?>) getContainer()).delete(name);
+					getChildren().remove(name);
+				}
+				// else be more specific about the deletes
+				else {
+					// first delete the necessary files
+					List<String> toDelete = new ArrayList<String>();
+					boolean hasOthers = false;
+					for (Resource resource : ((ResourceEntry) entry).getContainer()) {
+						if (!(resource instanceof ResourceContainer) || getRepository().isInternal((ResourceContainer<?>) resource)) {
+							toDelete.add(resource.getName());
+						}
+						else {
+							hasOthers = true;
+						}
+					}
+					if (!hasOthers) {
+						((ManageableContainer<?>) getContainer()).delete(name);
+						getChildren().remove(name);	
+					}
+					else {
+						for (String delete : toDelete) {
+							((ManageableContainer<?>) ((ResourceEntry) entry).getContainer()).delete(delete);
+						}
+						getChildren().put(name, createDirectory(name));
+					}
+				}
+			}
+			// in memory
+			else {
+				getChildren().remove(name);
+			}
+			// make sure we see the change at the resource level
+			if (getContainer() instanceof CacheableResource) {
+				((CacheableResource) getContainer()).resetCache();
+			}
+		}
+	}
+	
+	@Override
 	public RepositoryEntry createDirectory(String name) throws IOException {
 		if (!getRepository().isValidName(getContainer(), name)) {
 			throw new IOException("Invalid name: " + name);
 		}
-		ManageableContainer<?> newDirectory = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);
-		RepositoryEntry entry = new RepositoryEntry(getRepository(), newDirectory, this, name);
-		children.put(name, entry);
-		return entry;
-	}
-	
-	public RepositoryEntry createNode(String name, ArtifactManager<?> manager) throws IOException {
-		if (getRepository().isValidName(getContainer(), name)) {
-			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, null, State.CREATE, false), this);
-			ManageableContainer<?> nodeContainer = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);
-			EAINode node = new EAINode();
-			node.setArtifactManager(manager.getClass());
-			node.setLeaf(true);
-			writeNode(nodeContainer, node);
-			RepositoryEntry entry = new RepositoryEntry(getRepository(), nodeContainer, this, name);
-			children.put(name, entry);
-			// update the cached scan-typed list
-			if (repository instanceof EAIResourceRepository) {
-				((EAIResourceRepository) repository).scanForTypes(this);
+		else if (getChildren().containsKey(name)) {
+			Entry child = getChild(name);
+			if (child instanceof RepositoryEntry) {
+				if (child.isLeaf()) {
+					((RepositoryEntry) child).getNode().setLeaf(false);
+					// update the leaf property in repo
+					writeNode(((RepositoryEntry) child).getContainer(), ((RepositoryEntry) child).getNode());
+				}
+				return (RepositoryEntry) child;
 			}
-			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
-			return entry;
+			else {
+				throw new IOException("The child already exists and is not a repository entry");
+			}
 		}
 		else {
-			throw new IOException("Invalid name: " + name);
+			ManageableContainer<?> newDirectory = (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY);
+			RepositoryEntry entry = new RepositoryEntry(getRepository(), newDirectory, this, name);
+			getChildren().put(name, entry);
+			repository.reload(entry.getId());
+			return entry;
 		}
+	}
+	
+	@Override
+	public RepositoryEntry createNode(String name, ArtifactManager<?> manager) throws IOException {
+		Entry child = getChild(name);
+		if (child != null && child.isNode()) {
+			throw new IOException("A node with the name '" + name + "' already exists");
+		}
+		else if (child != null && !(child instanceof RepositoryEntry)) {
+			throw new IOException("A directory with the name '" + name + "' already exists and it is not a repository entry");
+		}
+		else if (child == null && !getRepository().isValidName(getContainer(), name)) {
+			throw new IOException("The name '" + name + "' is not valid");
+		}
+	
+		repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, null, State.CREATE, false), this);
+		ManageableContainer<?> nodeContainer = child == null ? (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY) : (ManageableContainer<?>) ((RepositoryEntry) child).getContainer();
+		EAINode node = child == null ? new EAINode() : ((RepositoryEntry) child).getNode();
+		node.setArtifactManager(manager.getClass());
+		node.setLeaf(child == null);
+		writeNode(nodeContainer, node);
+		if (child == null) {
+			child = new RepositoryEntry(getRepository(), nodeContainer, this, name);
+			getChildren().put(name, child);
+		}
+		repository.reload(child.getId());
+//			// update the cached scan-typed list
+//			if (repository instanceof EAIResourceRepository) {
+//				((EAIResourceRepository) repository).scanForTypes(this);
+//			}
+		repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
+		return (RepositoryEntry) child;
 	}
 
 	private void writeNode(ResourceContainer<?> nodeContainer, EAINode node) throws IOException {

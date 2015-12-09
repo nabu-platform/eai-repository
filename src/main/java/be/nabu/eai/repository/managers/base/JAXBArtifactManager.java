@@ -10,7 +10,6 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
-import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.types.ComplexContentWrapperFactory;
@@ -108,7 +107,7 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 					if (child.getType().isList(child.getProperties())) {
 						List<Artifact> referencedArtifacts = (List<Artifact>) content.get(child.getName());
 						if (referencedArtifacts != null) {
-							Artifact resolved = ArtifactResolverFactory.getInstance().getResolver().resolve(to);
+							Artifact resolved = artifact.getRepository().resolve(to);
 							if (resolved == null) {
 								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated in: " + artifact.getId()));
 							}
@@ -124,7 +123,7 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 					else {
 						Artifact referencedArtifact = (Artifact) content.get(child.getName());
 						if (referencedArtifact != null && referencedArtifact.getId().equals(from)) {
-							Artifact resolved = ArtifactResolverFactory.getInstance().getResolver().resolve(to);
+							Artifact resolved = artifact.getRepository().resolve(to);
 							if (resolved == null) {
 								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated in: " + artifact.getId()));
 							}

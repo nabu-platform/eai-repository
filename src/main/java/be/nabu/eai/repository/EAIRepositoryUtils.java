@@ -9,8 +9,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.ParsedPath;
 
@@ -58,5 +60,21 @@ public class EAIRepositoryUtils {
 		}
 		return artifacts;
 	}
-	
+
+	public static Entry getDirectoryEntry(ResourceRepository repository, String id, boolean create) throws IOException {
+		ParsedPath path = new ParsedPath(id.replace(".", "/"));
+		Entry entry = repository.getRoot();
+		while (path != null) {
+			Entry child = entry.getChild(path.getName());
+			if (child == null && create && entry instanceof ExtensibleEntry) {
+				child = ((ExtensibleEntry) entry).createDirectory(path.getName());
+			}
+			if (child == null) {
+				return null;
+			}
+			entry = child;
+			path = path.getChildPath();
+		}
+		return entry;
+	}
 }

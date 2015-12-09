@@ -6,8 +6,11 @@ import java.io.OutputStream;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
 
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -46,12 +49,16 @@ public class JAXBArtifact<T> implements Artifact {
 	@SuppressWarnings("unchecked")
 	public T unmarshal(InputStream input) throws JAXBException {
 		JAXBContext context = JAXBContext.newInstance(configurationClazz);
-		return (T) context.createUnmarshaller().unmarshal(input);
+		Unmarshaller unmarshaller = context.createUnmarshaller();
+		unmarshaller.setAdapter(new ArtifactXMLAdapter(getRepository()));
+		return (T) unmarshaller.unmarshal(input);
 	}
 	
 	public void marshal(T configuration, OutputStream output) throws JAXBException {
 		JAXBContext context = JAXBContext.newInstance(configurationClazz);
-		context.createMarshaller().marshal(configuration, output);
+		Marshaller marshaller = context.createMarshaller();
+		marshaller.setAdapter(new ArtifactXMLAdapter(getRepository()));
+		marshaller.marshal(configuration, output);
 	}	
 
 	public T getConfiguration() throws IOException {
