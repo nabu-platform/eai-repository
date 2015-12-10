@@ -91,7 +91,11 @@ public class EAIRepositoryUtils {
 		return entry;
 	}
 	
-	public static void zip(OutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
+	public static void zip(ZipOutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
+		zipEntry(output, entry, acceptor);
+	}
+	
+	public static void zipInto(OutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
 		ZipOutputStream zip = new ZipOutputStream(output);
 		try {
 			zipEntry(zip, entry, acceptor);
