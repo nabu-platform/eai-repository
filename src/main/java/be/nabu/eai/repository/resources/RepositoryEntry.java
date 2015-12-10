@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.resources;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Iterator;
@@ -276,10 +277,20 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		node.setReferences(references == null ? new ArrayList<String>() : references);
 		node.setVersion(node.getVersion() + 1);
 		node.setLastModified(new Date());
+		node.setEnvironmentId(InetAddress.getLocalHost().getHostName());
 		writeNode(getContainer(), node);
 		if (repository instanceof EAIResourceRepository) {
 			((EAIResourceRepository) repository).updateReferences(getId(), references);
 		}
+	}
+	
+	@Override
+	public void updateNodeContext(String environmentId, long version, Date lastModified) throws IOException {
+		EAINode node = (EAINode) getNode();
+		node.setEnvironmentId(environmentId);
+		node.setVersion(version);
+		node.setLastModified(lastModified);
+		writeNode(getContainer(), node);
 	}
 	
 	public EAINode getNode() {

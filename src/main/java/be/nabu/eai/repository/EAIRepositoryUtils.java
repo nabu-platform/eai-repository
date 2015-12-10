@@ -34,6 +34,10 @@ public class EAIRepositoryUtils {
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
 	
 	public static Entry getEntry(Entry entry, String id) {
+		// sometimes java arrays (more specifically the byte "[B") get in there...
+		if (id.startsWith("[")) {
+			return null;
+		}
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		while (entry != null && path != null) {
 			entry = entry.getChild(path.getName());

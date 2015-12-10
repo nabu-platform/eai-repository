@@ -20,13 +20,13 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 	private Repository repository;
 	private Node node;
 	private List<Entry> children;
-	private Entry originator;
+	private String originator;
 	
 	public MemoryEntry(Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
-		this(parent, repository, parent, node, id, name, children);
+		this(parent.getId(), repository, parent, node, id, name, children);
 	}
 	
-	public MemoryEntry(Entry originator, Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
+	public MemoryEntry(String originator, Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
 		this.originator = originator;
 		this.repository = repository;
 		this.node = node;
@@ -120,11 +120,7 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 	}
 
 	@Override
-	public Entry getOriginatingEntry() {
-		return originator;
-	}
-
-	public Entry getOriginator() {
+	public String getOriginatingArtifact() {
 		return originator;
 	}
 

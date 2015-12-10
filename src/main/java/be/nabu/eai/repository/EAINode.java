@@ -35,6 +35,7 @@ public class EAINode implements Node {
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	private long version;
 	private Date lastModified;
+	private String environmentId;
 	
 	/**
 	 * By default all nodes are leafs
@@ -149,6 +150,14 @@ public class EAINode implements Node {
 	}
 	public void setLastModified(Date lastModified) {
 		this.lastModified = lastModified;
+	}
+
+	@Override
+	public String getEnvironmentId() {
+		return environmentId;
+	}
+	public void setEnvironmentId(String environmentId) {
+		this.environmentId = environmentId;
 	}
 	
 }

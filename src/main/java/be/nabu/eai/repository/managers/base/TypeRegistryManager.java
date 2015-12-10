@@ -67,7 +67,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						EAINode node = new EAINode();
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
-						MemoryEntry child = new MemoryEntry(root.getRepository(), parent, node, parent.getId() + "." + name, name);
+						MemoryEntry child = new MemoryEntry(artifact.getId(), root.getRepository(), parent, node, parent.getId() + "." + name, name);
 						node.setEntry(child);
 						parent.addChildren(child);
 						entries.add(child);

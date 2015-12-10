@@ -145,7 +145,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					}
 				}
 				node.setLeaf(true);
-				MemoryEntry child = new MemoryEntry(root, root.getRepository(), parent, node, entryId, childName);
+				MemoryEntry child = new MemoryEntry(root.getId(), root.getRepository(), parent, node, entryId, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
 				if (!hidden) {
@@ -164,7 +164,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			Entry entry = root.getChild(prettify(path.getName()));
 			// if it's null, create a new entry
 			if (entry == null) {
-				entry = new MemoryEntry(root, root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
+				entry = new MemoryEntry(root.getId(), root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
 				root.addChildren(entry);
 			}
 			else if (entry.isNode()) {
