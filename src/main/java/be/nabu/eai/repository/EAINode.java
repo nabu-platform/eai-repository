@@ -3,6 +3,7 @@ package be.nabu.eai.repository;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,6 +34,7 @@ public class EAINode implements Node {
 	private List<Validation<?>> messages = new ArrayList<Validation<?>>();
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	private long version;
+	private Date lastModified;
 	
 	/**
 	 * By default all nodes are leafs
@@ -139,4 +141,14 @@ public class EAINode implements Node {
 	public void setVersion(long version) {
 		this.version = version;
 	}
+
+	@Override
+	@XmlAttribute
+	public Date getLastModified() {
+		return lastModified;
+	}
+	public void setLastModified(Date lastModified) {
+		this.lastModified = lastModified;
+	}
+	
 }

@@ -275,6 +275,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		EAINode node = (EAINode) getNode();
 		node.setReferences(references == null ? new ArrayList<String>() : references);
 		node.setVersion(node.getVersion() + 1);
+		node.setLastModified(new Date());
 		writeNode(getContainer(), node);
 		if (repository instanceof EAIResourceRepository) {
 			((EAIResourceRepository) repository).updateReferences(getId(), references);
