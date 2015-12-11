@@ -20,6 +20,11 @@ import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.http.api.HTTPResponse;
 import be.nabu.libs.http.api.server.HTTPServer;
 import be.nabu.libs.http.server.HTTPServerUtils;
+import be.nabu.libs.http.server.nio.MemoryMessageDataProvider;
+import be.nabu.libs.nio.NIOServerUtils;
+import be.nabu.libs.nio.api.ConnectionAcceptor;
+import be.nabu.libs.nio.api.NIOServer;
+import be.nabu.libs.nio.impl.MaxTotalConnectionsAcceptor;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.utils.security.KeyStoreHandler;
 import be.nabu.utils.security.SSLContextType;
@@ -88,8 +93,19 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 							);
 						}
 						server.setExceptionFormatter(new RepositoryExceptionFormatter());
+						// make sure we encode responses as much as possible
 						if (!EAIResourceRepository.isDevelopment()) {
 							server.getDispatcher().subscribe(HTTPResponse.class, HTTPServerUtils.ensureContentEncoding());
+						}
+						// add connection restrictions, the 6 connections is the default for firefox & chrome
+						// IE10 apparently has 8
+						ConnectionAcceptor connectionAcceptor = NIOServerUtils.maxConnectionsPerClient(getConfiguration().getMaxConnectionsPerClient() == null ? 6 : getConfiguration().getMaxConnectionsPerClient());
+						if (getConfiguration().getMaxTotalConnections() != null) {
+							connectionAcceptor = NIOServerUtils.combine(new MaxTotalConnectionsAcceptor(getConfiguration().getMaxTotalConnections()), connectionAcceptor);
+						}
+						((NIOServer) server).setConnectionAcceptor(connectionAcceptor);
+						if (getConfiguration().getMaxSizePerRequest() != null) {
+							server.setMessageDataProvider(new MemoryMessageDataProvider(getConfiguration().getMaxSizePerRequest()));
 						}
 					}
 					catch (KeyManagementException e) {

@@ -70,6 +70,11 @@ public class ReadOnlyRepository implements ResourceRepository {
 	public void reload(String id) {
 		throw new UnsupportedOperationException();
 	}
+	
+	@Override
+	public void reloadAll() {
+		throw new UnsupportedOperationException();
+	}
 
 	@Override
 	public void unload(String id) {

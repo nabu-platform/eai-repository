@@ -27,6 +27,7 @@ public interface Node {
 	public Artifact getArtifact() throws IOException, ParseException;
 	public Class<? extends Artifact> getArtifactClass();
 	public boolean isLeaf();
+	public boolean isLoaded();
 	
 	@SuppressWarnings("rawtypes")
 	public Class<? extends ArtifactManager> getArtifactManager();

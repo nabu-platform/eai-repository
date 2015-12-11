@@ -297,6 +297,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
+		entry.refresh(false);
 		logger.info("Unloading: " + entry.getId());
 		// TODO: don't actually remove the entry? perhaps use "modifiableentry" to remove the children from the parent? no issue so far though...
 		// this is "partially" solved by the refresh we do in the parent unload(), because we usually unload in case of delete (then the refresh gets it) or update (in that case the load afterwards updates it)
@@ -304,7 +305,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (entry.isNode()) {
 			unbuildReferenceMap(entry.getId());
 			// if there is an artifact manager and it maintains a repository, remove it all
-			if (entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+			if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
 					((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
 				}
@@ -362,6 +363,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	@Override
+	public void reloadAll() {
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
+		unload(getRoot());
+		references.clear();
+		dependencies.clear();
+		reset();
+		load(getRoot());
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
+	}
+	
+	@Override
 	public void reload(String id) {
 		reload(id, true);
 	}
@@ -382,6 +394,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			int index = id.lastIndexOf('.');
 			id = id.substring(0, index);
 			entry = getEntry(id);
+			if (entry == null && !id.contains(".")) {
+				getRoot().refresh(false);
+				entry = getEntry(id);
+			}
 		}
 		if (entry != null) {
 			unload(entry);

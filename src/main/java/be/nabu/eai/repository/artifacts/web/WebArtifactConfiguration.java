@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import be.nabu.eai.api.EnvironmentSpecific;
 import be.nabu.eai.api.InterfaceFilter;
 import be.nabu.eai.api.RestServiceFilter;
 import be.nabu.eai.repository.api.CacheProviderArtifact;
@@ -35,19 +36,19 @@ public class WebArtifactConfiguration {
 	private Boolean allowBasicAuthentication;
 	private List<String> hosts;
 	
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public DefinedHTTPServer getHttpServer() {
 		return httpServer;
 	}
-
 	public void setHttpServer(DefinedHTTPServer httpServer) {
 		this.httpServer = httpServer;
 	}
 
+	@EnvironmentSpecific
 	public String getPath() {
 		return path;
 	}
-
 	public void setPath(String path) {
 		this.path = path;
 	}
@@ -55,7 +56,6 @@ public class WebArtifactConfiguration {
 	public String getCharset() {
 		return charset;
 	}
-
 	public void setCharset(String charset) {
 		this.charset = charset;
 	}
@@ -65,8 +65,7 @@ public class WebArtifactConfiguration {
 	public DefinedService getPasswordAuthenticationService() {
 		return passwordAuthenticationService;
 	}
-	public void setPasswordAuthenticationService(
-			DefinedService passwordAuthenticationService) {
+	public void setPasswordAuthenticationService(DefinedService passwordAuthenticationService) {
 		this.passwordAuthenticationService = passwordAuthenticationService;
 	}
 
@@ -75,8 +74,7 @@ public class WebArtifactConfiguration {
 	public DefinedService getSecretAuthenticationService() {
 		return secretAuthenticationService;
 	}
-	public void setSecretAuthenticationService(
-			DefinedService secretAuthenticationService) {
+	public void setSecretAuthenticationService(DefinedService secretAuthenticationService) {
 		this.secretAuthenticationService = secretAuthenticationService;
 	}
 
@@ -116,6 +114,7 @@ public class WebArtifactConfiguration {
 		this.restServices = restServices;
 	}
 
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	@InterfaceFilter(implement = "be.nabu.eai.services.api.FlatServiceTracker.track")
 	public DefinedService getTrackerService() {
@@ -125,6 +124,7 @@ public class WebArtifactConfiguration {
 		this.trackerService = serviceTrackerService;
 	}
 
+	@EnvironmentSpecific
 	public Boolean getAllowBasicAuthentication() {
 		return allowBasicAuthentication;
 	}
@@ -135,7 +135,6 @@ public class WebArtifactConfiguration {
 	public String getRealm() {
 		return realm;
 	}
-
 	public void setRealm(String realm) {
 		this.realm = realm;
 	}
@@ -143,19 +142,19 @@ public class WebArtifactConfiguration {
 	public String getWhitelistedCodes() {
 		return whitelistedCodes;
 	}
-
 	public void setWhitelistedCodes(String whitelistedCodes) {
 		this.whitelistedCodes = whitelistedCodes;
 	}
-
+	
+	@EnvironmentSpecific
 	public List<String> getHosts() {
 		return hosts;
 	}
-
 	public void setHosts(List<String> hosts) {
 		this.hosts = hosts;
 	}
 
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public CacheProviderArtifact getCacheProvider() {
 		return cacheProvider;
@@ -164,36 +163,36 @@ public class WebArtifactConfiguration {
 		this.cacheProvider = cacheProvider;
 	}
 
+	@EnvironmentSpecific
 	public Long getMaxTotalSessionSize() {
 		return maxTotalSessionSize;
 	}
-
 	public void setMaxTotalSessionSize(Long maxTotalSessionSize) {
 		this.maxTotalSessionSize = maxTotalSessionSize;
 	}
 
+	@EnvironmentSpecific
 	public Long getMaxSessionSize() {
 		return maxSessionSize;
 	}
-
 	public void setMaxSessionSize(Long maxSessionSize) {
 		this.maxSessionSize = maxSessionSize;
 	}
 
+	@EnvironmentSpecific
 	public Long getSessionTimeout() {
 		return sessionTimeout;
 	}
-
 	public void setSessionTimeout(Long sessionTimeout) {
 		this.sessionTimeout = sessionTimeout;
 	}
-
+	
+	@EnvironmentSpecific
 	public String getKeyAlias() {
 		return keyAlias;
 	}
-
 	public void setKeyAlias(String keyAlias) {
 		this.keyAlias = keyAlias;
 	}
-
+	
 }

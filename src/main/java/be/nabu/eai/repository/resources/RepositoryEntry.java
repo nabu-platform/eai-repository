@@ -296,35 +296,39 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	public EAINode getNode() {
 		Resource resource = container.getChild("node.xml");
 		if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
-			boolean isReload = false;
-			if (node != null) {
-				isReload = true;
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
-				node = null;
-			}
-			else {
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
-			}
-			try {
-				ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
-				try {
-					node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
-					node.setEntry(this);
+			synchronized(this) {
+				if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
+					boolean isReload = false;
+					if (node != null) {
+						isReload = true;
+						repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
+						node = null;
+					}
+					else {
+						repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
+					}
+					try {
+						ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
+						try {
+							node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
+							node.setEntry(this);
+						}
+						catch (JAXBException e) {
+							throw new IOException(e);
+						}
+						finally {
+							readable.close();
+						}
+						repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
+					}
+					catch (IOException e) {
+						logger.error("Could not load node " + getId(), e);
+					}
+		
+					if (resource instanceof TimestampedResource) {
+						lastLoaded = ((TimestampedResource) resource).getLastModified();
+					}
 				}
-				catch (JAXBException e) {
-					throw new IOException(e);
-				}
-				finally {
-					readable.close();
-				}
-				repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
-			}
-			catch (IOException e) {
-				logger.error("Could not load node " + getId(), e);
-			}
-
-			if (resource instanceof TimestampedResource) {
-				lastLoaded = ((TimestampedResource) resource).getLastModified();
 			}
 		}
 		return node;

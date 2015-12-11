@@ -6,6 +6,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import be.nabu.eai.api.EnvironmentSpecific;
 import be.nabu.utils.security.EncryptionXmlAdapter;
 
 @XmlRootElement(name = "proxy")
@@ -21,12 +22,16 @@ public class ProxyConfiguration {
 	public void setHost(String host) {
 		this.host = host;
 	}
+	
+	@EnvironmentSpecific
 	public String getUsername() {
 		return username;
 	}
 	public void setUsername(String username) {
 		this.username = username;
 	}
+	
+	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value=EncryptionXmlAdapter.class)
 	public String getPassword() {
 		return password;

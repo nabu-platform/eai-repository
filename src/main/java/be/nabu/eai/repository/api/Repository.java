@@ -17,6 +17,7 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public EventDispatcher getEventDispatcher();
 	public Node getNode(String id);
 	public void reload(String id);
+	public void reloadAll();
 	public void unload(String id);
 	public List<Node> getNodes(Class<? extends Artifact> artifactClazz);
 	public ServiceRunner getServiceRunner();

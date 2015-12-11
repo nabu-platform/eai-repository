@@ -1,6 +1,5 @@
 package be.nabu.eai.repository.managers;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
@@ -51,7 +50,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		JDBCService service = new JDBCService(entry.getId());
 		Resource resource = entry.getContainer().getChild("jdbcservice.xml");
 		if (resource == null) {
-			throw new FileNotFoundException("Can not find jdbcpool.properties");
+			return null;
 		}
 		XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(JDBCServiceConfig.class), Charset.forName("UTF-8"));
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);

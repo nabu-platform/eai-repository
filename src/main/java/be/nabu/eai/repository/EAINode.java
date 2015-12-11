@@ -52,8 +52,12 @@ public class EAINode implements Node {
 	@XmlTransient
 	public Artifact getArtifact() throws IOException, ParseException {
 		if (artifact == null) {
-			messages.clear();
-			artifact = newArtifactManager().load((ResourceEntry) entry, messages);
+			synchronized(this) {
+				if (artifact == null) {
+					messages.clear();
+					artifact = newArtifactManager().load((ResourceEntry) entry, messages);
+				}
+			}
 		}
 		return artifact;
 	}
@@ -158,6 +162,11 @@ public class EAINode implements Node {
 	}
 	public void setEnvironmentId(String environmentId) {
 		this.environmentId = environmentId;
+	}
+
+	@Override
+	public boolean isLoaded() {
+		return artifact != null;
 	}
 	
 }

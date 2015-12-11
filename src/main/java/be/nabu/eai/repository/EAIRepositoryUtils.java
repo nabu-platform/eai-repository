@@ -35,9 +35,6 @@ public class EAIRepositoryUtils {
 	
 	public static Entry getEntry(Entry entry, String id) {
 		// sometimes java arrays (more specifically the byte "[B") get in there...
-		if (id.startsWith("[")) {
-			return null;
-		}
 		ParsedPath path = new ParsedPath(id.replace('.', '/'));
 		while (entry != null && path != null) {
 			entry = entry.getChild(path.getName());
@@ -111,7 +108,7 @@ public class EAIRepositoryUtils {
 	
 	private static void zipEntry(ZipOutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
 		if (entry instanceof ResourceEntry && entry.isNode() && (acceptor == null || acceptor.accept((ResourceEntry) entry))) {
-			zipNode(output, entry.getId().replace(".", "/"), ((ResourceEntry) entry).getContainer(), ((ResourceEntry) entry).getRepository());
+			zipNode(output, entry.getId().replace(".", "/"), ((ResourceEntry) entry).getContainer(), ((ResourceEntry) entry).getRepository(), true);
 		}
 		if (!entry.isLeaf() && (acceptor == null || acceptor.recurse((ResourceEntry) entry))) {
 			for (Entry child : entry) {
@@ -122,7 +119,7 @@ public class EAIRepositoryUtils {
 		}
 	}
 	
-	private static void zipNode(ZipOutputStream output, String path, ResourceContainer<?> container, ResourceRepository repository) throws IOException {
+	private static void zipNode(ZipOutputStream output, String path, ResourceContainer<?> container, ResourceRepository repository, boolean limitToInternal) throws IOException {
 		for (Resource resource : container) {
 			String childPath = path + "/" + resource.getName();
 			if (resource instanceof ReadableResource) {
@@ -142,8 +139,8 @@ public class EAIRepositoryUtils {
 					readable.close();
 				}
 			}
-			else if (resource instanceof ResourceContainer && repository.isInternal((ResourceContainer<?>) resource)) {
-				zipNode(output, childPath, (ResourceContainer<?>) resource, repository);
+			else if (resource instanceof ResourceContainer && (!limitToInternal || repository.isInternal((ResourceContainer<?>) resource))) {
+				zipNode(output, childPath, (ResourceContainer<?>) resource, repository, false);
 			}
 		}
 	}
