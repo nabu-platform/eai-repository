@@ -25,7 +25,6 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.services.vm.api.Step;
-import be.nabu.libs.services.vm.api.VMServiceRuntimeTracker;
 import be.nabu.libs.types.ComplexContentWrapperFactory;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.binding.api.MarshallableBinding;
@@ -195,7 +194,7 @@ public class WebArtifactDebugger {
 		}
 	}
 	
-	public class DebugServiceTracker implements VMServiceRuntimeTracker {
+	public class DebugServiceTracker implements ServiceRuntimeTracker {
 		
 		private Stack<DebugStep> steps = new Stack<DebugStep>();
 		private DebugStep root;
@@ -210,10 +209,6 @@ public class WebArtifactDebugger {
 			steps.pop().stop(exception);
 		}
 		@Override
-		public void error(String arg0, Exception exception) {
-			// do nothing for now
-		}
-		@Override
 		public void report(Object report) {
 			steps.peek().getReports().add(report);
 		}
@@ -225,32 +220,30 @@ public class WebArtifactDebugger {
 			steps.push(debugStep);
 		}
 		@Override
-		public void start(String arg0) {
-			// do nothing for now
-		}
-		@Override
 		public void stop(Service arg0) {
 			DebugStep pop = steps.pop();
 			pop.stop(null);
 		}
 		@Override
-		public void stop(String arg0) {
-			// do nothing for now
+		public void after(Object step) {
+			if (step instanceof Step) {
+				steps.pop().stop(null);
+			}
 		}
 		@Override
-		public void after(Step arg0) {
-			steps.pop().stop(null);
+		public void before(Object step) {
+			if (step instanceof Step) {
+				DebugStepImpl debugStep = new DebugStepImpl();
+				debugStep.setStep((Step) step);
+				steps.peek().getSteps().add(debugStep);
+				steps.push(debugStep);
+			}
 		}
 		@Override
-		public void before(Step step) {
-			DebugStepImpl debugStep = new DebugStepImpl();
-			debugStep.setStep(step);
-			steps.peek().getSteps().add(debugStep);
-			steps.push(debugStep);
-		}
-		@Override
-		public void error(Step arg0, Exception exception) {
-			steps.pop().stop(exception);
+		public void error(Object step, Exception exception) {
+			if (step instanceof Step) {
+				steps.pop().stop(exception);
+			}
 		}
 
 		public DebugStep getRoot() {
@@ -419,7 +412,7 @@ public class WebArtifactDebugger {
 		return debug.get();
 	}
 	
-	public static class AnyThreadTracker implements VMServiceRuntimeTracker {
+	public static class AnyThreadTracker implements ServiceRuntimeTracker {
 
 		@Override
 		public void error(Service service, Exception exception) {
@@ -428,57 +421,39 @@ public class WebArtifactDebugger {
 			}
 		}
 		@Override
-		public void error(String arg0, Exception arg1) {
+		public void error(Object step, Exception exception) {
 			if (debug.get() != null) {
-				debug.get().error(arg0, arg1);
+				debug.get().error(step, exception);
 			}			
 		}
 		@Override
-		public void report(Object arg0) {
+		public void report(Object report) {
 			if (debug.get() != null) {
-				debug.get().report(arg0);
+				debug.get().report(report);
 			}
 		}
 		@Override
-		public void start(Service arg0) {
+		public void start(Service service) {
 			if (debug.get() != null) {
-				debug.get().start(arg0);
+				debug.get().start(service);
 			}			
 		}
 		@Override
-		public void start(String arg0) {
+		public void before(Object step) {
 			if (debug.get() != null) {
-				debug.get().start(arg0);
+				debug.get().before(step);
 			}			
 		}
 		@Override
-		public void stop(Service arg0) {
+		public void stop(Service service) {
 			if (debug.get() != null) {
-				debug.get().stop(arg0);
+				debug.get().stop(service);
 			}			
 		}
 		@Override
-		public void stop(String arg0) {
+		public void after(Object step) {
 			if (debug.get() != null) {
-				debug.get().stop(arg0);
-			}			
-		}
-		@Override
-		public void after(Step arg0) {
-			if (debug.get() != null) {
-				debug.get().after(arg0);
-			}			
-		}
-		@Override
-		public void before(Step arg0) {
-			if (debug.get() != null) {
-				debug.get().before(arg0);
-			}			
-		}
-		@Override
-		public void error(Step arg0, Exception arg1) {
-			if (debug.get() != null) {
-				debug.get().error(arg0, arg1);
+				debug.get().after(step);
 			}			
 		}
 	}

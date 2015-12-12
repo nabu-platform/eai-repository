@@ -63,12 +63,11 @@ import be.nabu.libs.http.server.SessionProviderImpl;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.libs.services.EmptyServiceRuntimeTracker;
+import be.nabu.libs.services.MultipleServiceRuntimeTracker;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.services.pojo.POJOUtils;
-import be.nabu.libs.services.vm.MultipleVMServiceRuntimeTracker;
 import be.nabu.utils.io.IOUtils;
 
 /**
@@ -397,10 +396,10 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			}
 		}
 		else if (getConfiguration().getTrackerService() != null) {
-			FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), new EmptyServiceRuntimeTracker(), getRepository(), SystemPrincipal.ROOT);
+			FlatServiceTracker flatServiceTracker = POJOUtils.newProxy(FlatServiceTracker.class, getConfiguration().getTrackerService(), null, getRepository(), SystemPrincipal.ROOT);
 			trackers.add(new FlatServiceTrackerWrapper(flatServiceTracker));
 		}
-		return new MultipleVMServiceRuntimeTracker(trackers.toArray(new ServiceRuntimeTracker[trackers.size()]));
+		return new MultipleServiceRuntimeTracker(trackers.toArray(new ServiceRuntimeTracker[trackers.size()]));
 	}
 	
 	public Authenticator getAuthenticator() throws IOException {
