@@ -806,6 +806,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public ListableServiceContext getServiceContext() {
 		return new ListableServiceContext() {
+			private EAIRepositoryServiceTrackerProvider trackerProvider = new EAIRepositoryServiceTrackerProvider(EAIResourceRepository.this);
 			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends Artifact> ArtifactResolver<T> getResolver(Class<T> arg0) {
@@ -821,7 +822,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 			@Override
 			public ServiceRuntimeTrackerProvider getServiceTrackerProvider() {
-				return new EAIRepositoryServiceTrackerProvider(EAIResourceRepository.this);
+				return trackerProvider;
 			}
 		};
 	}

@@ -1,6 +1,8 @@
 package be.nabu.eai.repository.util;
 
-import be.nabu.eai.services.api.FlatServiceTracker;
+import java.util.Stack;
+
+import be.nabu.eai.repository.api.FlatServiceTracker;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.Service;
@@ -10,7 +12,9 @@ import be.nabu.libs.services.pojo.POJOUtils;
 public class FlatServiceTrackerWrapper implements ServiceRuntimeTracker {
 
 	private FlatServiceTracker tracker;
-
+	private Stack<String> services = new Stack<String>();
+	private boolean servicesOnly;
+	
 	public FlatServiceTrackerWrapper(Service service, ExecutionContext context) {
 		// force an empty tracker to prevent recursive tracker calls
 		this.tracker = POJOUtils.newProxy(FlatServiceTracker.class, service, context);
@@ -22,15 +26,16 @@ public class FlatServiceTrackerWrapper implements ServiceRuntimeTracker {
 	
 	@Override
 	public void error(Service service, Exception exception) {
-		if (service instanceof DefinedService) {
+		if (!services.isEmpty() && service instanceof DefinedService) {
 			tracker.track(false, ((DefinedService) service).getId(), null, exception);
+			services.pop();
 		}
 	}
 
 	@Override
 	public void error(Object step, Exception exception) {
-		if (step instanceof String) {
-			tracker.track(false, null, (String) step, exception);
+		if (!servicesOnly && !services.isEmpty() && step instanceof String) {
+			tracker.track(false, services.peek(), (String) step, exception);
 		}
 	}
 
@@ -38,26 +43,28 @@ public class FlatServiceTrackerWrapper implements ServiceRuntimeTracker {
 	public void start(Service service) {
 		if (service instanceof DefinedService) {
 			tracker.track(true, ((DefinedService) service).getId(), null, null);
+			services.push(((DefinedService) service).getId());
 		}
 	}
 
 	@Override
 	public void before(Object step) {
-		if (step instanceof String) {
+		if (!servicesOnly && !services.isEmpty() && step instanceof String) {
 			tracker.track(true, null, (String) step, null);
 		}
 	}
 
 	@Override
 	public void stop(Service service) {
-		if (service instanceof DefinedService) {
+		if (!services.isEmpty() && service instanceof DefinedService) {
 			tracker.track(false, ((DefinedService) service).getId(), null, null);
+			services.pop();
 		}
 	}
 
 	@Override
 	public void after(Object step) {
-		if (step instanceof String) {
+		if (!servicesOnly && !services.isEmpty() && step instanceof String) {
 			tracker.track(false, null, (String) step, null);
 		}
 	}
@@ -65,6 +72,18 @@ public class FlatServiceTrackerWrapper implements ServiceRuntimeTracker {
 	@Override
 	public void report(Object arg0) {
 		// do nothing
+	}
+
+	public Stack<String> getServices() {
+		return services;
+	}
+
+	public boolean isServicesOnly() {
+		return servicesOnly;
+	}
+
+	public void setServicesOnly(boolean servicesOnly) {
+		this.servicesOnly = servicesOnly;
 	}
 	
 }
