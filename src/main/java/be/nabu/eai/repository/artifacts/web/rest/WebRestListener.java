@@ -36,7 +36,6 @@ import be.nabu.libs.resources.URIUtils;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ServiceException;
-import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.types.TypeUtils;
 import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
@@ -72,10 +71,8 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 	private boolean allowEncoding;
 	private Repository repository;
 	private WebRestArtifact webArtifact;
-	private ServiceRuntimeTracker tracker;
 
-	public WebRestListener(ServiceRuntimeTracker tracker, Repository repository, String serverPath, String realm, SessionProvider sessionProvider, PermissionHandler permissionHandler, RoleHandler roleHandler, TokenValidator tokenValidator, WebRestArtifact webArtifact, DefinedService service, Charset charset, boolean allowEncoding) throws IOException {
-		this.tracker = tracker;
+	public WebRestListener(Repository repository, String serverPath, String realm, SessionProvider sessionProvider, PermissionHandler permissionHandler, RoleHandler roleHandler, TokenValidator tokenValidator, WebRestArtifact webArtifact, DefinedService service, Charset charset, boolean allowEncoding) throws IOException {
 		this.repository = repository;
 		this.serverPath = serverPath;
 		this.realm = realm;
@@ -220,12 +217,11 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			}
 			
 			if (webArtifact.getConfiguration().getAsynchronous() != null && webArtifact.getConfiguration().getAsynchronous()) {
-				repository.getServiceRunner().run(service, repository.newExecutionContext(token), input, tracker);
+				repository.getServiceRunner().run(service, repository.newExecutionContext(token), input);
 				return HTTPUtils.newEmptyResponse(request);
 			}
 			else {
 				ServiceRuntime runtime = new ServiceRuntime(service, repository.newExecutionContext(token));
-				runtime.setRuntimeTracker(tracker);
 				runtime.getContext().put("session", session);
 				ComplexContent output = runtime.run(input);
 				List<Header> headers = new ArrayList<Header>();

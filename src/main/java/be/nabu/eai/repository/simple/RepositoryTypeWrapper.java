@@ -13,7 +13,7 @@ public class RepositoryTypeWrapper implements SimpleTypeWrapper {
 			return new ArtifactSimpleType(arg0);
 		}
 		else if (Class.class.isAssignableFrom(arg0)) {
-			return new ClassSimpleType();
+			return (DefinedSimpleType<T>) new ClassSimpleType();
 		}
 		else {
 			return null;

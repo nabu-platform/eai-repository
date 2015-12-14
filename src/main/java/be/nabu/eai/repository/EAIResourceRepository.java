@@ -39,6 +39,7 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.resources.ResourceFactory;
@@ -59,6 +60,7 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.DefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.ServiceRunner;
+import be.nabu.libs.services.api.ServiceRuntimeTrackerProvider;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.services.pojo.POJOInterfaceResolver;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
@@ -120,6 +122,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	private List<be.nabu.libs.maven.ResourceRepository> mavenRepositories = new ArrayList<be.nabu.libs.maven.ResourceRepository>();
 	private List<String> internalDomains;
+	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
 	
 	private static EAIResourceRepository instance;
 	
@@ -144,6 +147,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<MavenArtifact> mavenArtifacts = new ArrayList<MavenArtifact>();
 	private MavenManager mavenManager;
 	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
+	private CacheProvider cacheProvider;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -178,6 +182,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// only important at runtime to resolve data
 		// should not impact clusters
 		ResourceFactory.getInstance().addResourceResolver(new RepositoryResourceResolver(this));
+		this.cacheProvider = new EAIRepositoryCacheProvider(this);
 	}
 	
 	/**
@@ -810,14 +815,40 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			public <T extends Artifact> Collection<T> getArtifacts(Class<T> artifactType) {
 				return EAIResourceRepository.this.getArtifacts(artifactType);
 			}
+			@Override
+			public CacheProvider getCacheProvider() {
+				return cacheProvider;
+			}
+			@Override
+			public ServiceRuntimeTrackerProvider getServiceTrackerProvider() {
+				return new EAIRepositoryServiceTrackerProvider(EAIResourceRepository.this);
+			}
 		};
 	}
 	
+	public CacheProvider getCacheProvider() {
+		return cacheProvider;
+	}
+
 	@Override
 	public ExecutionContext newExecutionContext(Principal principal) {
 		return new EAIExecutionContext(this, principal, isDevelopment());
 	}
 
+	@SuppressWarnings("unchecked")
+	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
+		List<T> results = new ArrayList<T>();
+		if (nodesByType == null) {
+			scanForTypes();
+		}
+		for (Class<?> clazz : nodesByType.keySet()) {
+			if (ifaceClass.isAssignableFrom(clazz)) {
+				results.addAll((Collection<? extends T>) nodesByType.get(clazz).values());
+			}
+		}
+		return results;
+	}
+	
 	@Override
 	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
 		return EAIRepositoryUtils.getArtifacts(this, artifactClazz);
@@ -881,7 +912,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@Override
 	public void setServiceRunner(ServiceRunner serviceRunner) {
 		ServiceRunnerFactory.getInstance().setServiceRunner(serviceRunner);
-		serviceRunner.setCacheProvider(new EAIRepositoryCacheProvider(this));
 	}
 
 	@Override
@@ -894,10 +924,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		catch (IOException e) {
 			throw new RuntimeException(e);
 		}
+		// before we start loading everything else, first do an initial attach so all the artifacts are loaded (for dependencies)
+		reattachMavenArtifacts();
 		isLoading = true;
 		load(repositoryRoot);
 		isLoading = false;
-		// the load can remove maven artifacts
+		// the load can remove maven artifacts, so attach again
 		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, true), this);
 	}
@@ -1014,5 +1046,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		return manageableNodes;
+	}
+
+	public List<ServiceRuntimeTrackerProvider> getDynamicRuntimeTrackers() {
+		return dynamicRuntimeTrackers;
 	}
 }

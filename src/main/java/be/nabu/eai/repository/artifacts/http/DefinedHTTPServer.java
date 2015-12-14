@@ -99,11 +99,17 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 						}
 						// add connection restrictions, the 6 connections is the default for firefox & chrome
 						// IE10 apparently has 8
-						ConnectionAcceptor connectionAcceptor = NIOServerUtils.maxConnectionsPerClient(getConfiguration().getMaxConnectionsPerClient() == null ? 6 : getConfiguration().getMaxConnectionsPerClient());
-						if (getConfiguration().getMaxTotalConnections() != null) {
-							connectionAcceptor = NIOServerUtils.combine(new MaxTotalConnectionsAcceptor(getConfiguration().getMaxTotalConnections()), connectionAcceptor);
+						ConnectionAcceptor connectionAcceptor = null;
+						if (getConfiguration().getMaxConnectionsPerClient() != null) {
+							connectionAcceptor = NIOServerUtils.maxConnectionsPerClient(getConfiguration().getMaxConnectionsPerClient());
 						}
-						((NIOServer) server).setConnectionAcceptor(connectionAcceptor);
+						if (getConfiguration().getMaxTotalConnections() != null) {
+							MaxTotalConnectionsAcceptor maxTotalConnectionsAcceptor = new MaxTotalConnectionsAcceptor(getConfiguration().getMaxTotalConnections());
+							connectionAcceptor = connectionAcceptor == null ? maxTotalConnectionsAcceptor : NIOServerUtils.combine(maxTotalConnectionsAcceptor, connectionAcceptor);
+						}
+						if (connectionAcceptor != null) {
+							((NIOServer) server).setConnectionAcceptor(connectionAcceptor);
+						}
 						if (getConfiguration().getMaxSizePerRequest() != null) {
 							server.setMessageDataProvider(new MemoryMessageDataProvider(getConfiguration().getMaxSizePerRequest()));
 						}

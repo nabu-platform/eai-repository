@@ -5,15 +5,14 @@ import be.nabu.libs.types.api.Unmarshallable;
 import be.nabu.libs.types.base.BaseMarshallableSimpleType;
 
 @SuppressWarnings("rawtypes")
-public class ClassSimpleType<T extends Class> extends BaseMarshallableSimpleType<T> implements Unmarshallable<T> {
+public class ClassSimpleType extends BaseMarshallableSimpleType<Class> implements Unmarshallable<Class> {
 
-	@SuppressWarnings("unchecked")
 	public ClassSimpleType() {
-		super((Class<T>) Class.class);
+		super(Class.class);
 	}
 
 	@Override
-	public String marshal(T arg0, Value<?>...arg1) {
+	public String marshal(Class arg0, Value<?>...arg1) {
 		return arg0 == null ? null : arg0.getName();
 	}
 	
@@ -27,11 +26,10 @@ public class ClassSimpleType<T extends Class> extends BaseMarshallableSimpleType
 		return null;
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
-	public T unmarshal(String arg0, Value<?>... arg1) {
+	public Class unmarshal(String arg0, Value<?>... arg1) {
 		try {
-			return (T) (arg0 == null ? null : Thread.currentThread().getContextClassLoader().loadClass(arg0));
+			return (Class) (arg0 == null ? null : Thread.currentThread().getContextClassLoader().loadClass(arg0));
 		}
 		catch (ClassNotFoundException e) {
 			throw new RuntimeException(e);

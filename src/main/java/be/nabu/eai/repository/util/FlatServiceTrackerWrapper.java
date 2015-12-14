@@ -13,7 +13,7 @@ public class FlatServiceTrackerWrapper implements ServiceRuntimeTracker {
 
 	public FlatServiceTrackerWrapper(Service service, ExecutionContext context) {
 		// force an empty tracker to prevent recursive tracker calls
-		this.tracker = POJOUtils.newProxy(FlatServiceTracker.class, service, null, context);
+		this.tracker = POJOUtils.newProxy(FlatServiceTracker.class, service, context);
 	}
 	
 	public FlatServiceTrackerWrapper(FlatServiceTracker tracker) {
