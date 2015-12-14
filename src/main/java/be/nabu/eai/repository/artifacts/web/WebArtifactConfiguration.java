@@ -116,7 +116,7 @@ public class WebArtifactConfiguration {
 
 	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	@InterfaceFilter(implement = "be.nabu.eai.services.api.FlatServiceTracker.track")
+	@InterfaceFilter(implement = "be.nabu.eai.repository.api.FlatServiceTracker.track")
 	public DefinedService getTrackerService() {
 		return trackerService;
 	}
