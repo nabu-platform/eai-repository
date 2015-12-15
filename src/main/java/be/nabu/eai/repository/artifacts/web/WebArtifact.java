@@ -57,8 +57,10 @@ import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.http.server.SessionProviderImpl;
+import be.nabu.libs.resources.CombinedContainer;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
+import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.ServiceInterface;
@@ -110,6 +112,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		}
 	}
 
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
@@ -263,6 +266,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
 				if (resources != null) {
 					logger.debug("Adding resource listener for folder: " + resources);
+					if (isDevelopment && privateDirectory != null) {
+						Resource child = privateDirectory.getChild("resources");
+						if (child != null) {
+							resources = new CombinedContainer(null, "resources", resources, (ResourceContainer<?>) child);
+						}
+					}
 					String resourcePath = serverPath.equals("/") ? "/resources" : serverPath + "/resources";
 					ResourceHandler handler = new ResourceHandler(resources, resourcePath, !isDevelopment);
 					EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, handler);
