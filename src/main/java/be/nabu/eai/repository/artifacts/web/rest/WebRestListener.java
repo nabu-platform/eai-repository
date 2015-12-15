@@ -294,7 +294,15 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			throw new HTTPException(500, e);
 		}
 		catch (ServiceException e) {
-			throw new HTTPException(500, e);
+			if (ServiceRuntime.NO_AUTHORIZATION.equals(e.getCode())) {
+				throw new HTTPException(403, e);
+			}
+			else if (ServiceRuntime.NO_AUTHENTICATION.equals(e.getCode())) {
+				throw new HTTPException(401, e);
+			}
+			else {
+				throw new HTTPException(500, e);
+			}
 		}
 	}
 
