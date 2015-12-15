@@ -59,6 +59,7 @@ import be.nabu.libs.services.ServiceRunnerFactory;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.DefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ServiceAuthorizerProvider;
 import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.api.ServiceRuntimeTrackerProvider;
 import be.nabu.libs.services.maven.MavenArtifact;
@@ -807,6 +808,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public ListableServiceContext getServiceContext() {
 		return new ListableServiceContext() {
 			private EAIRepositoryServiceTrackerProvider trackerProvider = new EAIRepositoryServiceTrackerProvider(EAIResourceRepository.this);
+			private EAIRepositoryServiceAuthorizerProvider authorizerProvider = new EAIRepositoryServiceAuthorizerProvider(EAIResourceRepository.this);
 			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends Artifact> ArtifactResolver<T> getResolver(Class<T> arg0) {
@@ -823,6 +825,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			@Override
 			public ServiceRuntimeTrackerProvider getServiceTrackerProvider() {
 				return trackerProvider;
+			}
+			@Override
+			public ServiceAuthorizerProvider getServiceAuthorizerProvider() {
+				return authorizerProvider;
 			}
 		};
 	}
