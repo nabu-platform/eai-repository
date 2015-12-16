@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -305,9 +306,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void unload(Entry entry) {
 		entry.refresh(false);
 		logger.info("Unloading: " + entry.getId());
+		reset();
 		// TODO: don't actually remove the entry? perhaps use "modifiableentry" to remove the children from the parent? no issue so far though...
 		// this is "partially" solved by the refresh we do in the parent unload(), because we usually unload in case of delete (then the refresh gets it) or update (in that case the load afterwards updates it)
-		reset();
+		if (entry.getParent() != null) {
+			entry.getParent().refresh(false);
+		}
 		if (entry.isNode()) {
 			unbuildReferenceMap(entry.getId());
 			// if there is an artifact manager and it maintains a repository, remove it all
@@ -384,6 +388,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		reload(id, true);
 	}
 
+	private void reloadAll(Collection<String> ids) {
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
+		Set<String> dependenciesToReload = new HashSet<String>();
+		for (String id : ids) {
+			Set<String> calculateDependenciesToReload = calculateDependenciesToReload(id);
+			dependenciesToReload.removeAll(calculateDependenciesToReload);
+			dependenciesToReload.addAll(calculateDependenciesToReload);
+		}
+		for (String id : dependenciesToReload) {
+			reload(id, false);
+		}
+		reattachMavenArtifacts();
+		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
+	}
+	
 	private void reload(String id, boolean recursiveReload) {
 		logger.info("Reloading: " + id);
 		if (recursiveReload) {
@@ -396,13 +415,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			getRoot().refresh(false);
 			entry = getEntry(id);
 		}
-		while (entry == null && id.contains(".")) {
-			int index = id.lastIndexOf('.');
-			id = id.substring(0, index);
-			entry = getEntry(id);
-			if (entry == null && !id.contains(".")) {
-				getRoot().refresh(false);
+		// when we are reloading recursively, we are in the first reload iteration (not iterative)
+		// if the artifact does not exist at this level, get a parent
+		if (recursiveReload) {
+			while (entry == null && id.contains(".")) {
+				int index = id.lastIndexOf('.');
+				id = id.substring(0, index);
 				entry = getEntry(id);
+				if (entry == null && !id.contains(".")) {
+					getRoot().refresh(false);
+					entry = getEntry(id);
+				}
 			}
 		}
 		if (entry != null) {
@@ -411,7 +434,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// also reload all the dependencies
 			// prevent concurrent modification
 			if (recursiveReload) {
-				Set<String> dependenciesToReload = calculateDependenciesToReload(entry.getId());
+				Set<String> dependenciesToReload = calculateDependenciesToReload(entry);
 				for (String dependency : dependenciesToReload) {
 					reload(dependency, false);
 				}
@@ -422,6 +445,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			reattachMavenArtifacts();
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 		}
+	}
+	
+	private Set<String> calculateDependenciesToReload(Entry entry) {
+		Set<String> dependencies = new HashSet<String>();
+		if (entry.isNode()) {
+			dependencies.addAll(calculateDependenciesToReload(entry.getId()));
+		}
+		if (!entry.isLeaf()) {
+			for (Entry child : entry) {
+				Set<String> calculateDependenciesToReload = calculateDependenciesToReload(child);
+				dependencies.removeAll(calculateDependenciesToReload);
+				dependencies.addAll(calculateDependenciesToReload);
+			}
+		}
+		return dependencies;
 	}
 	
 	private Set<String> calculateDependenciesToReload(String id) {
@@ -607,20 +645,24 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// remove the contents from the old location if necessary
 		if (delete) {
 			// move the dependencies
-			relink(entry, newEntry, validations);
+			relink(entry, newEntry, validations, true);
 			// unload the node
 			unload(entry.getId());
 			// delete the original contents
 			((ManageableContainer<?>) entry.getContainer().getParent()).delete(entry.getName());
+			// refresh the parent so it picks up the file system change
+			if (entry.getParent() != null) {
+				entry.getParent().refresh(false);
+			}
 		}
 		scanForTypes();
 		return validations;
 	}
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void relink(Entry from, Entry to, List<Validation<?>> validations) {
+	private Set<String> relink(Entry from, Entry to, List<Validation<?>> validations, boolean reload) {
 		logger.debug("Relinking: " + from.getId() + " to " + to.getId());
-		List<String> dependencies = new ArrayList<String>(getDependencies(from.getId()));
+		Set<String> dependencies = new HashSet<String>(getDependencies(from.getId()));
 		if (dependencies != null) {
 			for (String dependency : dependencies) {
 				logger.debug("Relinking dependency: " + dependency);
@@ -635,10 +677,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 							// save the updated references
 							artifactManager.save((ResourceEntry) dependencyEntry, node.getArtifact());
 							// reload the new artifact
-							reload(dependency);
+							reload(dependency, false);
 						}
 						catch (Exception e) {
-							logger.error("Could not update reference for dependency '" + dependency + "' from '" + from.getId() + "' to '" + to.getId() + "'");
+							logger.error("Could not update reference for dependency '" + dependency + "' from '" + from.getId() + "' to '" + to.getId() + "'", e);
 						}
 					}
 				}
@@ -655,10 +697,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					validations.add(new ValidationMessage(Severity.ERROR, "Can not find moved copy of " + child.getId() + " in " + to.getId()));
 				}
 				else {
-					relink(child, target, validations);
+					dependencies.addAll(relink(child, target, validations, false));
 				}
 			}
 		}
+		if (reload) {
+			reloadAll(dependencies);
+		}
+		return dependencies;
 	}
 	
 	public String getId(ResourceContainer<?> container) {

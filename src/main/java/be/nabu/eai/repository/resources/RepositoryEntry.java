@@ -83,7 +83,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 
 	@Override
 	public Iterator<Entry> iterator() {
-		return getChildren().values().iterator();
+		return new ArrayList<Entry>(getChildren().values()).iterator();
 	}
 
 	@Override
@@ -191,6 +191,8 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			if (getContainer() instanceof CacheableResource) {
 				((CacheableResource) getContainer()).resetCache();
 			}
+			// unload it from the repository to remove references/dependencies
+			repository.unload(entry.getId());
 		}
 	}
 	

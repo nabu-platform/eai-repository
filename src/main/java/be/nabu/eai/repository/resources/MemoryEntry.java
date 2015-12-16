@@ -65,7 +65,7 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 
 	@Override
 	public Iterator<Entry> iterator() {
-		return children.iterator();
+		return new ArrayList<Entry>(children).iterator();
 	}
 
 	@Override
