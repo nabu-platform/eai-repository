@@ -2,6 +2,7 @@ package be.nabu.eai.repository;
 
 import java.security.Principal;
 
+import be.nabu.libs.metrics.api.MetricInstance;
 import be.nabu.libs.services.ListableServiceContext;
 import be.nabu.libs.services.SimpleSecurityContext;
 import be.nabu.libs.services.api.ExecutionContext;
@@ -46,5 +47,10 @@ public class EAIExecutionContext implements ExecutionContext {
 
 	public EAIResourceRepository getRepository() {
 		return repository;
+	}
+
+	@Override
+	public MetricInstance getMetricInstance(String id) {
+		return repository.getMetricInstance(id);
 	}
 }
