@@ -44,6 +44,7 @@ import be.nabu.libs.types.api.SimpleType;
 import be.nabu.libs.types.binding.api.MarshallableBinding;
 import be.nabu.libs.types.binding.api.UnmarshallableBinding;
 import be.nabu.libs.types.binding.api.Window;
+import be.nabu.libs.types.binding.form.FormBinding;
 import be.nabu.libs.types.binding.json.JSONBinding;
 import be.nabu.libs.types.binding.xml.XMLBinding;
 import be.nabu.utils.io.IOUtils;
@@ -197,8 +198,11 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 						else if (contentType.equalsIgnoreCase("application/xml") || contentType.equalsIgnoreCase("text/xml")) {
 							binding = new XMLBinding((ComplexType) input.getType().get("content").getType(), charset);
 						}
-						else if (contentType.equalsIgnoreCase("application/json")) {
+						else if (contentType.equalsIgnoreCase("application/json") || contentType.equalsIgnoreCase("application/javascript")) {
 							binding = new JSONBinding((ComplexType) input.getType().get("content").getType(), charset);
+						}
+						else if (contentType.equalsIgnoreCase(WebResponseType.FORM_ENCODED.getMimeType())) {
+							binding = new FormBinding((ComplexType) input.getType().get("content").getType(), charset);
 						}
 						else {
 							throw new HTTPException(400, "Unsupported request content type: " + contentType);	
@@ -262,11 +266,14 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					acceptedContentTypes.retainAll(ResponseMethods.allowedTypes);
 					String contentType = acceptedContentTypes.isEmpty() ? webArtifact.getConfiguration().getPreferredResponseType().getMimeType() : acceptedContentTypes.get(0);
 					MarshallableBinding binding;
-					if (contentType.equalsIgnoreCase("application/xml")) {
+					if (contentType.equalsIgnoreCase(WebResponseType.XML.getMimeType())) {
 						binding = new XMLBinding(output.getType(), charset);
 					}
-					else if (contentType.equalsIgnoreCase("application/json")) {
+					else if (contentType.equalsIgnoreCase(WebResponseType.JSON.getMimeType())) {
 						binding = new JSONBinding(output.getType(), charset);
+					}
+					else if (contentType.equalsIgnoreCase(WebResponseType.FORM_ENCODED.getMimeType())) {
+						binding = new FormBinding(output.getType(), charset);
 					}
 					else {
 						throw new HTTPException(500, "Unsupported response content type: " + contentType);
