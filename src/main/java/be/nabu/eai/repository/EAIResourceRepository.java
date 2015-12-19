@@ -43,6 +43,7 @@ import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
+import be.nabu.libs.metrics.codahale.CodahaleMetricInstance;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -150,6 +151,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private MavenManager mavenManager;
 	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
 	private CacheProvider cacheProvider;
+
+	private Map<String, CodahaleMetricInstance> metrics;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1110,5 +1113,37 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public List<ServiceRuntimeTrackerProvider> getDynamicRuntimeTrackers() {
 		return dynamicRuntimeTrackers;
+	}
+
+	@Override
+	public CodahaleMetricInstance getMetricInstance(String id) {
+		if (metrics != null) {
+			if (!metrics.containsKey(id)) {
+				synchronized(metrics) {
+					if (!metrics.containsKey(id)) {
+						metrics.put(id, new CodahaleMetricInstance(id));
+					}
+				}
+			}
+			return metrics.get(id);
+		}
+		return null;
+	}
+	
+	public void enableMetrics(boolean enable) {
+		if (enable && metrics == null) {
+			synchronized(this) {
+				if (metrics == null) {
+					metrics = new HashMap<String, CodahaleMetricInstance>();
+				}
+			}
+		}
+		else if (!enable) {
+			metrics = null;
+		}
+	}
+	
+	public Collection<String> getMetricInstances() {
+		return metrics == null ? null : metrics.keySet();
 	}
 }

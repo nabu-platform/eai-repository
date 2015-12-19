@@ -6,11 +6,12 @@ import java.util.List;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
+import be.nabu.libs.metrics.api.MetricProvider;
 import be.nabu.libs.services.api.DefinedServiceLister;
 import be.nabu.libs.services.api.ExecutionContextProvider;
 import be.nabu.libs.services.api.ServiceRunner;
 
-public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister {
+public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister, MetricProvider {
 	public Entry getRoot();
 	public Entry getEntry(String id);
 	public Charset getCharset();

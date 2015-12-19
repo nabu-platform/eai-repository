@@ -97,18 +97,6 @@
 			<version>1.1-SNAPSHOT</version>
 		</dependency>
 
-		<!-- General artifacts -->
-		<dependency>
-			<groupId>be.nabu.libs.artifacts</groupId>
-			<artifactId>artifacts-jdbc</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.artifacts</groupId>
-			<artifactId>artifacts-jdbc-postgresql</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
 		<!-- Maven dependencies -->
 		<dependency>
 			<groupId>be.nabu.libs.maven</groupId>
@@ -123,6 +111,12 @@
 		<dependency>
 			<groupId>be.nabu.libs.artifacts</groupId>
 			<artifactId>artifacts-maven</artifactId>
+			<version>1.0-SNAPSHOT</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>be.nabu.libs.metrics</groupId>
+			<artifactId>metrics-codahale</artifactId>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
@@ -204,28 +198,6 @@
 			<groupId>be.nabu.eai</groupId>
 			<artifactId>eai-broker</artifactId>
 			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
-		<!-- Frameworks -->
-		<dependency>
-			<groupId>be.nabu.libs.datastore</groupId>
-			<artifactId>datastore-urn-database</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.datatransactions</groupId>
-			<artifactId>datatransactions-database</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.datastore</groupId>
-			<artifactId>datastore-resources</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>be.nabu.libs.channels</groupId>
-			<artifactId>channels-resources</artifactId>
-			<version>1.1-SNAPSHOT</version>
 		</dependency>
 
 		<!-- Glue dependencies -->
