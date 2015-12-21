@@ -44,6 +44,7 @@ import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.metrics.codahale.CodahaleMetricInstance;
+import be.nabu.libs.metrics.impl.SystemMetrics;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -119,6 +120,8 @@ import be.nabu.utils.io.api.WritableContainer;
  * 
  */
 public class EAIResourceRepository implements ResourceRepository, MavenRepository {
+	
+	public static final String METRICS_SYSTEM = "system";
 	
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
@@ -1135,6 +1138,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			synchronized(this) {
 				if (metrics == null) {
 					metrics = new HashMap<String, CodahaleMetricInstance>();
+					synchronized(metrics) {
+						CodahaleMetricInstance metric = new CodahaleMetricInstance(METRICS_SYSTEM);
+						metrics.put(METRICS_SYSTEM, metric);
+						SystemMetrics.record(metric);
+					}
 				}
 			}
 		}
