@@ -92,6 +92,7 @@ public class DefinedHTTPServer extends JAXBArtifact<DefinedHTTPServerConfigurati
 								new EventDispatcherImpl()
 							);
 						}
+						server.setMetrics(getRepository().getMetricInstance(getId()));
 						server.setExceptionFormatter(new RepositoryExceptionFormatter());
 						// make sure we encode responses as much as possible
 						if (!EAIResourceRepository.isDevelopment()) {
