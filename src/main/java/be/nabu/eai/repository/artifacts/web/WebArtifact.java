@@ -145,7 +145,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			}
 			else {
 				for (String host : getConfiguration().getHosts()) {
-					System.out.println("ROUTING " + host + " on " + server);
 					server.route(host, dispatcher);
 				}
 			}
