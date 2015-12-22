@@ -49,8 +49,8 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	public MavenArtifact load(Repository repository, Artifact artifact, URI mavenServer, boolean updateSnapshots) {
 		try {
 			DependencyResolver dependencyResolver = mavenServer == null 
-				? new DependencyResolver(new URI("http://mirrors.ibiblio.org/maven2"), new URI("http://central.maven.org/maven2"))
-				: new DependencyResolver(mavenServer, new URI("http://mirrors.ibiblio.org/maven2"), new URI("http://central.maven.org/maven2"));
+				? new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://mirrors.ibiblio.org/maven2"))
+				: new DependencyResolver(mavenServer, new URI("http://central.maven.org/maven2"), new URI("http://mirrors.ibiblio.org/maven2"));
 			dependencyResolver.setUpdateSnapshots(updateSnapshots);
 			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
 			MavenArtifact mavenArtifact = new MavenArtifact(
@@ -86,7 +86,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			throw new IOException("Can not find the artifact " + id);
 		}
 		try {
-			return new MavenArtifact(entry.getRepository().newClassLoader(entry.getId()), definedTypeResolver, new DependencyResolver(new URI("http://ibiblio.org/maven2"), new URI("http://central.maven.org/maven2")), repository, id, mavenArtifact);
+			return new MavenArtifact(entry.getRepository().newClassLoader(entry.getId()), definedTypeResolver, new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
 		}
 		catch (URISyntaxException e) {
 			logger.error("Could not load: " + id, e);

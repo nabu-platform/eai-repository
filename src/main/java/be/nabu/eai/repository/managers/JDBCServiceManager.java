@@ -27,6 +27,7 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.jdbc.JDBCService;
 import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Type;
@@ -55,7 +56,9 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 		XMLBinding binding = new XMLBinding((ComplexType) BeanResolver.getInstance().resolve(JDBCServiceConfig.class), Charset.forName("UTF-8"));
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 		try {
-			JDBCServiceConfig config = TypeUtils.getAsBean(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), JDBCServiceConfig.class);
+			ComplexContent content = binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]);
+			// the content can be null if it contains nothing but xsi:nil
+			JDBCServiceConfig config = content == null ? new JDBCServiceConfig() : TypeUtils.getAsBean(content, JDBCServiceConfig.class);
 			service.setSql(config.getSql());
 			service.setConnectionId(config.getConnectionId());
 			service.setGeneratedColumn(config.getGeneratedColumn());
