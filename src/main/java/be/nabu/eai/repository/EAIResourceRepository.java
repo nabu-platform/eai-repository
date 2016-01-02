@@ -181,15 +181,18 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		// important for clusters
-		DefinedServiceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceResolver(this));
+		DefinedServiceResolverFactory.getInstance().addResolver(new RepositoryServiceResolver(this));
 		// service interface resolvers
 		// this is important for clusters
-		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new EAIRepositoryServiceInterfaceResolver(this));
+		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new RepositoryServiceInterfaceResolver(this));
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new SPIDefinedServiceInterfaceResolver());
 		instance = this;
 		// only important at runtime to resolve data
 		// should not impact clusters
 		ResourceFactory.getInstance().addResourceResolver(new RepositoryResourceResolver(this));
+		// resolving of simple types
+		// TODO: could include type registries?
+		SimpleTypeWrapperFactory.getInstance().addWrapper(new RepositorySimpleTypeWrapper(this));
 		this.cacheProvider = new EAIRepositoryCacheProvider(this);
 	}
 	

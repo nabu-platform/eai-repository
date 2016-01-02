@@ -29,7 +29,7 @@ public class KeyValueMapAdapter extends XmlAdapter<KeyValueMapAdapter.MapRoot, M
 			return map;
 		}
 		for (KeyValuePair pair : v.getProperties()) {
-			map.put(pair.getKey(), pair.getValue());
+			map.put(pair.getKey(), pair.getValue() == null || pair.getValue().trim().isEmpty() ? null : pair.getValue());
 		}
 		return map;
 	}
