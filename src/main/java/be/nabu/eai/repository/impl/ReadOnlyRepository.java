@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -297,5 +298,10 @@ public class ReadOnlyRepository implements ResourceRepository {
 	@Override
 	public MetricInstance getMetricInstance(String id) {
 		return null;
+	}
+
+	@Override
+	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
+		return local.getArtifactManager(artifactClass);
 	}
 }

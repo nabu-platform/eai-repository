@@ -16,6 +16,8 @@ import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -43,7 +45,12 @@ import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
-import be.nabu.libs.metrics.codahale.CodahaleMetricInstance;
+import be.nabu.libs.metrics.api.GroupLevelProvider;
+import be.nabu.libs.metrics.core.MetricInstanceImpl;
+import be.nabu.libs.metrics.core.api.Sink;
+import be.nabu.libs.metrics.core.api.SinkProvider;
+import be.nabu.libs.metrics.core.sinks.LimitedHistorySink;
+import be.nabu.libs.metrics.impl.MetricGrouper;
 import be.nabu.libs.metrics.impl.SystemMetrics;
 import be.nabu.libs.resources.ResourceFactory;
 import be.nabu.libs.resources.ResourceReadableContainer;
@@ -119,7 +126,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * Currently the most important thing for diff/merge deploying is jaxbartifacts, so we will focus on those because they are easy to set
  * 
  */
-public class EAIResourceRepository implements ResourceRepository, MavenRepository {
+public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider, GroupLevelProvider {
 	
 	public static final String METRICS_SYSTEM = "system";
 	
@@ -131,6 +138,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
 	
 	private static EAIResourceRepository instance;
+	
+	private List<ArtifactManager<?>> artifactManagers;
 	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
@@ -155,7 +164,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
 	private CacheProvider cacheProvider;
 
-	private Map<String, CodahaleMetricInstance> metrics;
+	private Map<String, MetricGrouper> metrics;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1122,12 +1131,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 
 	@Override
-	public CodahaleMetricInstance getMetricInstance(String id) {
+	public MetricGrouper getMetricInstance(String id) {
 		if (metrics != null) {
 			if (!metrics.containsKey(id)) {
 				synchronized(metrics) {
 					if (!metrics.containsKey(id)) {
-						metrics.put(id, new CodahaleMetricInstance(id));
+						metrics.put(id, new MetricGrouper(new MetricInstanceImpl(id, this), this));
 					}
 				}
 			}
@@ -1136,13 +1145,41 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return null;
 	}
 	
+	private Properties metricsProperties;
+	
+	public int getMetricsLevel(String name) {
+		if (metricsProperties == null) {
+			synchronized(this) {
+				if (metricsProperties == null) {
+					Properties properties = new Properties();
+					InputStream input = getClass().getClassLoader().getResourceAsStream("metrics.properties");
+					if (input != null) {
+						try {
+							try {
+								properties.load(input);
+							}
+							finally {
+								input.close();
+							}
+						}
+						catch (IOException e) {
+							logger.error("Could not load metrics file", e);
+						}
+					}
+					this.metricsProperties = properties;
+				}
+			}
+		}
+		return Integer.parseInt(metricsProperties.getProperty(name, "1"));
+	}
+	
 	public void enableMetrics(boolean enable) {
 		if (enable && metrics == null) {
 			synchronized(this) {
 				if (metrics == null) {
-					metrics = new HashMap<String, CodahaleMetricInstance>();
+					metrics = new HashMap<String, MetricGrouper>();
 					synchronized(metrics) {
-						CodahaleMetricInstance metric = new CodahaleMetricInstance(METRICS_SYSTEM);
+						MetricGrouper metric = new MetricGrouper(new MetricInstanceImpl(METRICS_SYSTEM, this), this);
 						metrics.put(METRICS_SYSTEM, metric);
 						SystemMetrics.record(metric);
 					}
@@ -1157,4 +1194,48 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public Collection<String> getMetricInstances() {
 		return metrics == null ? null : metrics.keySet();
 	}
+
+	@Override
+	public Sink newSink(String id, String category) {
+		return new LimitedHistorySink(1000);
+	}
+
+	@Override
+	public Integer getLevel(String group) {
+		return getMetricsLevel(group);
+	}
+	
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	@Override
+	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
+		if (artifactManagers == null) {
+			synchronized (this) {
+				if (artifactManagers == null) {
+					List<ArtifactManager<?>> managers = new ArrayList<ArtifactManager<?>>();
+					for (ArtifactManager<?> manager : ServiceLoader.load(ArtifactManager.class)) {
+						managers.add(manager);
+					}
+					for (Class<ArtifactManager> manager : getImplementationsFor(ArtifactManager.class)) {
+						try {
+							managers.add(manager.newInstance());
+						}
+						catch (Exception e) {
+							logger.error("Could not load manager: " + manager, e);
+						}
+					}
+					this.artifactManagers = managers;
+				}
+			}
+		}
+		ArtifactManager<T> closest = null;
+		for (ArtifactManager<?> manager : artifactManagers) {
+			if (manager.getArtifactClass().isAssignableFrom(artifactClass)) {
+				if (closest == null || closest.getArtifactClass().isAssignableFrom(manager.getArtifactClass())) {
+					closest = (ArtifactManager<T>) manager;
+				}
+			}
+		}
+		return closest;
+	}
+
 }

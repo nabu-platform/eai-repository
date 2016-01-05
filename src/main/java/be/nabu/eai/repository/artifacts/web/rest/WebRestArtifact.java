@@ -44,7 +44,7 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 	public ComplexType getInputDefinition() {
 		if (input == null) {
 			synchronized(this) {
-				if (output == null) {
+				if (input == null) {
 					rebuildInterface();
 				}
 			}

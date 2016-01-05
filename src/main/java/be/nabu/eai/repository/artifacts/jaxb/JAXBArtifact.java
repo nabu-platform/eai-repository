@@ -99,7 +99,6 @@ public class JAXBArtifact<T> implements Artifact {
 		T configuration = getConfiguration();
 		Resource target = directory.getChild(fileName);
 		if (target == null) {
-			try{throw new RuntimeException("wtf: " + configuration);}catch(Exception e){e.printStackTrace();}
 			target = ((ManageableContainer<?>) directory).create(fileName, "application/xml");
 		}
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);

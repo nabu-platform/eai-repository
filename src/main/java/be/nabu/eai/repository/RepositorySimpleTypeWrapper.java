@@ -20,6 +20,9 @@ public class RepositorySimpleTypeWrapper implements SimpleTypeWrapper {
 
 	@Override
 	public DefinedSimpleType<?> getByName(String name) {
+		if (name.startsWith("[")) {
+			return null;
+		}
 		Node node = repository.getNode(name);
 		if (node != null && DefinedSimpleType.class.isAssignableFrom(node.getArtifactClass())) {
 			try {

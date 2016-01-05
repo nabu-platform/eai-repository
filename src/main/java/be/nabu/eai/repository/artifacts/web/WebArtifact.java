@@ -110,6 +110,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		if (getConfiguration().getCacheProvider() != null) {
 			getConfiguration().getCacheProvider().remove(getId());
 		}
+		List<WebFragment> webFragments = getConfiguration().getWebFragments();
+		if (webFragments != null) {
+			for (WebFragment fragment : webFragments) {
+				fragment.stop(this);
+			}
+		}
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -144,6 +150,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				server.route(null, dispatcher);
 			}
 			else {
+				// route dispatcher for all hosts
 				for (String host : getConfiguration().getHosts()) {
 					server.route(host, dispatcher);
 				}
@@ -170,28 +177,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				sessionProvider = new SessionProviderImpl(getConfiguration().getSessionTimeout() == null ? 1000l*60*60 : getConfiguration().getSessionTimeout());
 			}
 			
-			// load properties
-			Properties properties = new Properties();
-			if (getDirectory().getChild(".properties") instanceof ReadableResource) {
-				logger.debug("Adding properties found in: " + getDirectory().getChild(".properties"));
-				InputStream input = IOUtils.toInputStream(new ResourceReadableContainer((ReadableResource) getDirectory().getChild(".properties")));
-				try {
-					properties.load(input);
-				}
-				finally {
-					input.close();
-				}
-			}
-			
-			Map<String, String> environment = new HashMap<String, String>();
-			if (!properties.isEmpty()) {
-				for (Object key : properties.keySet()) {
-					if (key == null) {
-						continue;
-					}
-					environment.put(key.toString().trim(), properties.getProperty(key.toString()).trim());
-				}
-			}
+			Map<String, String> environment = getProperties();
 			if (isDevelopment) {
 				environment.put("development", "true");
 			}
@@ -219,8 +205,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			}
 			
 			// set up a basic authentication listener which optionally interprets that, it allows for REST-based access
+			Authenticator authenticator = getAuthenticator();
 			if (getConfiguration().getAllowBasicAuthentication() != null && getConfiguration().getAllowBasicAuthentication()) {
-				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(getAuthenticator(), HTTPServerUtils.newFixedRealmHandler(realm));
+				BasicAuthenticationHandler basicAuthenticationHandler = new BasicAuthenticationHandler(authenticator, HTTPServerUtils.newFixedRealmHandler(realm));
 				// make sure it is not mandatory
 				basicAuthenticationHandler.setRequired(false);
 				EventSubscription<HTTPRequest, HTTPResponse> authenticationSubscription = dispatcher.subscribe(HTTPRequest.class, basicAuthenticationHandler);
@@ -236,6 +223,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			// after the base authentication but before anything else, allow for rewriting
 			if (metaRepository != null) {
 				GluePreprocessListener preprocessListener = new GluePreprocessListener(
+					authenticator,
 					sessionProvider, 
 					metaRepository, 
 					new SimpleExecutionEnvironment(environmentName, environment),
@@ -323,7 +311,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				listener.getContentRewriters().addAll(rewriters);
 				listener.setRefreshScripts(isDevelopment);
 				listener.setAllowEncoding(!isDevelopment);
-				listener.setAuthenticator(getAuthenticator());
+				listener.setAuthenticator(authenticator);
 				listener.setTokenValidator(getTokenValidator());
 				listener.setPermissionHandler(getPermissionHandler());
 				listener.setRoleHandler(getRoleHandler());
@@ -360,7 +348,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 							getTokenValidator(), 
 							((WebRestArtifact) serviceInterface), 
 							service, 
-							Charset.forName(getConfiguration().getCharset()), 
+							getConfiguration().getCharset() == null ? Charset.defaultCharset() : Charset.forName(getConfiguration().getCharset()), 
 							!isDevelopment
 						);
 						EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
@@ -369,9 +357,40 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					}
 				}
 			}
+			List<WebFragment> webFragments = getConfiguration().getWebFragments();
+			if (webFragments != null) {
+				for (WebFragment fragment : webFragments) {
+					fragment.start(this);
+				}
+			}
 			started = true;
 			logger.info("Started " + subscriptions.size() + " subscriptions");
 		}
+	}
+
+	public Map<String, String> getProperties() throws IOException {
+		// load properties
+		Properties properties = new Properties();
+		if (getDirectory().getChild(".properties") instanceof ReadableResource) {
+			logger.debug("Adding properties found in: " + getDirectory().getChild(".properties"));
+			InputStream input = IOUtils.toInputStream(new ResourceReadableContainer((ReadableResource) getDirectory().getChild(".properties")));
+			try {
+				properties.load(input);
+			}
+			finally {
+				input.close();
+			}
+		}
+		Map<String, String> environment = new HashMap<String, String>();
+		if (!properties.isEmpty()) {
+			for (Object key : properties.keySet()) {
+				if (key == null) {
+					continue;
+				}
+				environment.put(key.toString().trim(), properties.getProperty(key.toString()).trim());
+			}
+		}
+		return environment;
 	}
 
 	public String getRealm() throws IOException {

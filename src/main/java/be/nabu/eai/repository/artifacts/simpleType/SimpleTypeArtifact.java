@@ -19,12 +19,13 @@ import be.nabu.libs.types.api.DefinedSimpleType;
 import be.nabu.libs.types.api.Marshallable;
 import be.nabu.libs.types.api.SimpleType;
 import be.nabu.libs.types.api.Type;
+import be.nabu.libs.types.api.Unmarshallable;
 import be.nabu.libs.types.base.ValueImpl;
 import be.nabu.libs.types.converters.StringToSimpleType;
 import be.nabu.libs.types.properties.EnumerationProperty;
 import be.nabu.libs.validator.api.Validator;
 
-public class SimpleTypeArtifact<T> extends JAXBArtifact<SimpleTypeConfiguration> implements DefinedSimpleType<T>, Marshallable<T> {
+public class SimpleTypeArtifact<T> extends JAXBArtifact<SimpleTypeConfiguration> implements DefinedSimpleType<T>, Marshallable<T>, Unmarshallable<T> {
 
 	public SimpleTypeArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, repository, "simpleType.xml", SimpleTypeConfiguration.class);
@@ -43,6 +44,11 @@ public class SimpleTypeArtifact<T> extends JAXBArtifact<SimpleTypeConfiguration>
 	@Override
 	public String marshal(T object, Value<?>... values) {
 		return object == null ? null : ((Marshallable<T>) getParent()).marshal(object);
+	}
+	
+	@Override
+	public T unmarshal(String content, Value<?>... values) {
+		return content == null ? null : ((Unmarshallable<T>) getParent()).unmarshal(content, values);
 	}
 
 	@Override

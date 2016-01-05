@@ -1,5 +1,9 @@
 package be.nabu.eai.repository;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import be.nabu.libs.services.MultipleServiceAuthorizer;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.ServiceAuthorizer;
 import be.nabu.libs.services.api.ServiceAuthorizerProvider;
@@ -14,8 +18,14 @@ public class EAIRepositoryServiceAuthorizerProvider implements ServiceAuthorizer
 	
 	@Override
 	public ServiceAuthorizer getAuthorizer(ServiceRuntime runtime) {
-		// TODO Auto-generated method stub
-		return null;
+		List<ServiceAuthorizer> authorizers = new ArrayList<ServiceAuthorizer>();
+		for (ServiceAuthorizerProvider authorizerProvider : repository.getArtifactsThatImplement(ServiceAuthorizerProvider.class)) {
+			ServiceAuthorizer authorizer = authorizerProvider.getAuthorizer(runtime);
+			if (authorizer != null) {
+				authorizers.add(authorizer);
+			}
+		}
+		return new MultipleServiceAuthorizer(authorizers, true);
 	}
 
 	public EAIResourceRepository getRepository() {

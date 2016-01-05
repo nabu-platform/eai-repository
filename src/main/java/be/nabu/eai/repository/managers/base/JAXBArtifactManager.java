@@ -31,7 +31,6 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 	
 	abstract protected T newInstance(String id, ResourceContainer<?> container, Repository repository);
 
-	
 	@Override
 	public List<String> getReferences(T artifact) throws IOException {
 		return getObjectReferences(artifact);

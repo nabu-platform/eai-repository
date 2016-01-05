@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import be.nabu.eai.repository.api.ArtifactManager;
@@ -121,10 +120,13 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 
 	private static List<String> getInterfaceReferences(VMService artifact) {
 		DefinedServiceInterface value = ValueUtils.getValue(PipelineInterfaceProperty.getInstance(), artifact.getPipeline().getProperties());
+		List<String> references = new ArrayList<String>();
 		if (value != null) {
-			return Arrays.asList(value.getId());
+			references.add(value.getId());
+			references.addAll(StructureManager.getComplexReferences(value.getInputDefinition()));
+			references.addAll(StructureManager.getComplexReferences(value.getOutputDefinition()));
 		}
-		return new ArrayList<String>();
+		return references;
 	}
 	
 	public static List<String> getReferencesForStep(StepGroup steps) {
