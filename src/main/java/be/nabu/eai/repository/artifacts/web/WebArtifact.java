@@ -42,7 +42,6 @@ import be.nabu.libs.cache.impl.SerializableSerializer;
 import be.nabu.libs.cache.impl.StringSerializer;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.api.EventSubscription;
-import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.http.api.ContentRewriter;
 import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
@@ -76,7 +75,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	private List<EventSubscription<?, ?>> subscriptions = new ArrayList<EventSubscription<?, ?>>();
 	private GlueListener listener;
 	private Logger logger = LoggerFactory.getLogger(getClass());
-	private EventDispatcher dispatcher = new EventDispatcherImpl();
 	private SessionProvider sessionProvider;
 	private boolean started;
 	
@@ -94,18 +92,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		}
 		subscriptions.clear();
 		// unregister codes
-		HTTPServer server = getConfiguration().getHttpServer().getServer();
+		HTTPServer server = getConfiguration().getVirtualHost().getConfiguration().getServer().getServer();
 		if (server != null && server.getExceptionFormatter() instanceof RepositoryExceptionFormatter) {
 			((RepositoryExceptionFormatter) server.getExceptionFormatter()).unregister(getId());
-		}
-		// first make sure we route the server correctly
-		if (getConfiguration().getHosts() == null || getConfiguration().getHosts().isEmpty()) {
-			server.unroute(null);
-		}
-		else {
-			for (String host : getConfiguration().getHosts()) {
-				server.unroute(host);
-			}
 		}
 		if (getConfiguration().getCacheProvider() != null) {
 			getConfiguration().getCacheProvider().remove(getId());
@@ -122,7 +111,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	@Override
 	public void start() throws IOException {
 		boolean isDevelopment = EAIResourceRepository.isDevelopment();
-		if (!started && getConfiguration().getHttpServer() != null) {
+		if (!started && getConfiguration().getVirtualHost() != null) {
 			String realm = getRealm();
 			String serverPath = getServerPath();
 
@@ -140,20 +129,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			// build repository
 			MultipleRepository repository = new MultipleRepository(null);
 			List<ContentRewriter> rewriters = new ArrayList<ContentRewriter>();
-			HTTPServer server = getConfiguration().getHttpServer().getServer();
+			HTTPServer server = getConfiguration().getVirtualHost().getConfiguration().getServer().getServer();
 			if (server.getExceptionFormatter() instanceof RepositoryExceptionFormatter && getConfiguration().getWhitelistedCodes() != null) {
 				((RepositoryExceptionFormatter) server.getExceptionFormatter()).register(getId(), Arrays.asList(getConfiguration().getWhitelistedCodes().split("[\\s]*,[\\s]*")));
-			}
-
-			// first make sure we route the server correctly
-			if (getConfiguration().getHosts() == null || getConfiguration().getHosts().isEmpty()) {
-				server.route(null, dispatcher);
-			}
-			else {
-				// route dispatcher for all hosts
-				for (String host : getConfiguration().getHosts()) {
-					server.route(host, dispatcher);
-				}
 			}
 
 			// create session provider
@@ -190,6 +168,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				environmentName = "root";
 			}
 			
+			EventDispatcher dispatcher = getConfiguration().getVirtualHost().getDispatcher();
 			// before the base authentication required authenticate header rewriter, add a rewriter for the response (if applicable)
 			if (metaRepository != null) {
 				GluePostProcessListener postprocessListener = new GluePostProcessListener(
@@ -456,7 +435,12 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 	}
 
 	public EventDispatcher getDispatcher() {
-		return dispatcher;
+		try {
+			return getConfiguration().getVirtualHost() != null ? getConfiguration().getVirtualHost().getDispatcher() : null;
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 }

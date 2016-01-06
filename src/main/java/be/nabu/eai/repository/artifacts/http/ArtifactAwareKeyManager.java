@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
-import be.nabu.eai.repository.artifacts.web.WebArtifact;
+import be.nabu.eai.repository.artifacts.http.virtual.VirtualHostArtifact;
 import be.nabu.utils.io.SSLServerMode;
 
 /**
@@ -44,7 +44,7 @@ import be.nabu.utils.io.SSLServerMode;
 public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 
 	private Repository repository;
-	private List<WebArtifact> webArtifacts;
+	private List<VirtualHostArtifact> virtualHosts;
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private X509KeyManager parent;
 	private DefinedHTTPServer server;
@@ -60,11 +60,11 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 	 */
 	@Override
 	public String chooseEngineServerAlias(String keyType, Principal[] issuers, SSLEngine engine) {
-		List<WebArtifact> webArtifacts = getWebArtifacts();
-		Iterator<WebArtifact> iterator = webArtifacts.iterator();
+		List<VirtualHostArtifact> virtualHosts = getVirtualHosts();
+		Iterator<VirtualHostArtifact> iterator = virtualHosts.iterator();
 		while (iterator.hasNext()) {
 			try {
-				if (!server.equals(iterator.next().getConfiguration().getHttpServer())) {
+				if (!server.equals(iterator.next().getConfiguration().getServer())) {
 					iterator.remove();
 				}
 			}
@@ -74,13 +74,13 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 			}
 		}
 		// no valid webartifacts
-		if (webArtifacts.isEmpty()) {
+		if (virtualHosts.isEmpty()) {
 			return null;
 		}
 		// just one, return that
-		else if (webArtifacts.size() == 1) {
+		else if (virtualHosts.size() == 1) {
 			try {
-				return webArtifacts.get(0).getConfiguration().getKeyAlias();
+				return virtualHosts.get(0).getConfiguration().getKeyAlias();
 			}
 			catch (IOException e) {
 				logger.error("Could not get alias", e);
@@ -106,30 +106,35 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 					logger.error("Multiple web artifacts on a secure connection but no SNI in the original request");
 					return null;
 				}
-				for (WebArtifact artifact : getWebArtifacts()) {
+				for (VirtualHostArtifact artifact : getVirtualHosts()) {
 					try {
-						if (artifact.getConfiguration().getHosts() != null) {
-							for (String host : artifact.getConfiguration().getHosts()) {
-								SNIHostName sniHostName = new SNIHostName(host);
-								if (sniHostName.equals(hostName)) {
-									if (artifact.getConfiguration().getKeyAlias() == null) {
-										logger.error("No key alias set on web artifact: " + artifact.getId());
-										return null;
-									}
-									return artifact.getConfiguration().getKeyAlias();
+						List<String> hosts = new ArrayList<String>();
+						if (artifact.getConfiguration().getHost() != null) {
+							hosts.add(artifact.getConfiguration().getHost());
+						}
+						if (artifact.getConfiguration().getAliases() != null) {
+							hosts.addAll(artifact.getConfiguration().getAliases());
+						}
+						for (String host : hosts) {
+							SNIHostName sniHostName = new SNIHostName(host);
+							if (sniHostName.equals(hostName)) {
+								if (artifact.getConfiguration().getKeyAlias() == null) {
+									logger.error("No key alias set on virtual host: " + artifact.getId());
+									return null;
 								}
+								return artifact.getConfiguration().getKeyAlias();
 							}
 						}
 					}
 					catch (Exception e) {
-						logger.error("Could not check web artifact for SNI hostname matches", e);
+						logger.error("Could not check virtual host for SNI hostname matches", e);
 					}
 				}
-				logger.error("Found multiple web artifacts but none had a host that matches: " + hostName);
+				logger.error("Found multiple virtual hosts but none had a host that matches: " + hostName);
 				return null;
 			}
 			catch (Exception e) {
-				logger.error("Could not determine web artifact", e);
+				logger.error("Could not determine virtual host", e);
 				return null;
 			}
 		}
@@ -148,24 +153,24 @@ public class ArtifactAwareKeyManager extends X509ExtendedKeyManager {
 		return parent.getServerAliases(keyType, issuers);
 	}
 
-	private List<WebArtifact> getWebArtifacts() {
-		if (webArtifacts == null || EAIResourceRepository.isDevelopment()) {
+	private List<VirtualHostArtifact> getVirtualHosts() {
+		if (virtualHosts == null || EAIResourceRepository.isDevelopment()) {
 			synchronized(this) {
-				if (webArtifacts == null || EAIResourceRepository.isDevelopment()) {
-					List<WebArtifact> webArtifacts = new ArrayList<WebArtifact>();
-					for (Node node : repository.getNodes(WebArtifact.class)) {
+				if (virtualHosts == null || EAIResourceRepository.isDevelopment()) {
+					List<VirtualHostArtifact> virtualHosts = new ArrayList<VirtualHostArtifact>();
+					for (Node node : repository.getNodes(VirtualHostArtifact.class)) {
 						try {
-							webArtifacts.add((WebArtifact) node.getArtifact());
+							virtualHosts.add((VirtualHostArtifact) node.getArtifact());
 						}
 						catch (Exception e) {
-							logger.error("Could not load web artifact", e);
+							logger.error("Could not load virtual host: " + node, e);
 						}
 					}
-					this.webArtifacts = webArtifacts;
+					this.virtualHosts = virtualHosts;
 				}
 			}
 		}
-		return webArtifacts;
+		return virtualHosts;
 	}
 
 	/**

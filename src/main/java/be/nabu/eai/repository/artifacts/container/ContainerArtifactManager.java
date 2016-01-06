@@ -61,7 +61,14 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		ResourceContainer<?> privateDirectory = (ResourceContainer<?>) entry.getContainer().getChild(EAIResourceRepository.PRIVATE);
 		if (privateDirectory != null) {
 			T newInstance = newInstance(entry.getId());
-			for (ResourceContainer childToLoad : getChildrenToLoad(privateDirectory)) {
+			// also load the root container, there could be a "main" artifact
+			List<ResourceContainer<?>> childrenToLoad = new ArrayList<ResourceContainer<?>>(getChildrenToLoad(privateDirectory));
+			childrenToLoad.add(entry.getContainer());
+			for (ResourceContainer childToLoad : childrenToLoad) {
+				// not all artifacts are required
+				if (childToLoad == null) {
+					continue;
+				}
 				try {
 					ReadableResource containerConfig = (ReadableResource) childToLoad.getChild("container.xml");
 					if (containerConfig != null) {
@@ -74,15 +81,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 						finally {
 							readable.close();
 						}
+						String name = entry.getContainer().equals(childToLoad) ? "main" : childToLoad.getName();
 						ArtifactManager artifactManager = (ArtifactManager) configuration.getArtifactManagerClass().newInstance();
 						// we already need repository-based resolving because of remote repositories so we reuse that here to dynamically add the already loaded artifacts to be visible for resolving
-//							RepositoryEntry newEntry = new RepositoryEntry(new ContainerRepository(entry.getId(), (RepositoryEntry) entry, artifacts), (ResourceContainer) child, (RepositoryEntry) entry, child.getName()) {
-//								@Override
-//								public String getId() {
-//									return entry.getId() + ":" + getName();
-//								}
-//							};
-						Artifact artifact = artifactManager.load(new WrapperEntry(new ContainerRepository(entry.getId(), (RepositoryEntry) entry, newInstance.getContainedArtifacts()), entry, childToLoad), messages);
+						Artifact artifact = artifactManager.load(new WrapperEntry(new ContainerRepository(entry.getId(), (RepositoryEntry) entry, newInstance.getContainedArtifacts()), entry, childToLoad, name), messages);
 						if (artifact != null) {
 							newInstance.addArtifact(artifact, configuration.getConfiguration());
 						}
@@ -108,7 +110,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 		for (Artifact child : artifact.getContainedArtifacts()) {
 			String name = child.getId().replaceAll("^.*:", "");
-			ResourceContainer<?> target = (ResourceContainer<?>) privateDirectory.getChild(name);
+			ResourceContainer<?> target = name.equals("main") ? entry.getContainer() : (ResourceContainer<?>) privateDirectory.getChild(name);
 			if (target == null) {
 				target = ResourceUtils.mkdirs(privateDirectory, name);	
 			}
@@ -117,7 +119,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			if (artifactManager == null) {
 				throw new RuntimeException("Can not save artifact " + child + ", no manager found");
 			}
-			List<Validation<?>> childMessages = artifactManager.save(new WrapperEntry(entry.getRepository(), entry, target), child);
+			List<Validation<?>> childMessages = artifactManager.save(new WrapperEntry(entry.getRepository(), entry, target, name), child);
 			if (childMessages != null) {
 				messages.addAll(childMessages);
 			}
@@ -149,16 +151,18 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		private ResourceRepository repository;
 		private ResourceContainer target;
 		private Entry parent;
+		private String name;
 
-		public WrapperEntry(ResourceRepository repository, Entry parent, ResourceContainer target) {
+		public WrapperEntry(ResourceRepository repository, Entry parent, ResourceContainer target, String name) {
 			this.repository = repository;
 			this.parent = parent;
 			this.target = target;
+			this.name = name;
 		}
 		
 		@Override
 		public String getId() {
-			return parent.getId() + ":" + target.getName();
+			return parent.getId() + ":" + getName();
 		}
 
 		@Override
@@ -203,7 +207,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 
 		@Override
 		public String getName() {
-			return target.getName();
+			return name;
 		}
 
 		@Override

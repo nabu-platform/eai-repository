@@ -12,3 +12,4 @@ be.nabu.eai.repository.managers.WebArtifactManager
 be.nabu.eai.repository.managers.WebRestArtifactManager
 be.nabu.eai.repository.managers.WSDLClientManager
 be.nabu.eai.repository.managers.XMLSchemaRegistryManager
+be.nabu.eai.repository.artifacts.http.virtual.VirtualHostManager

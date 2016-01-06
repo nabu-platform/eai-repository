@@ -10,22 +10,21 @@ import be.nabu.eai.api.EnvironmentSpecific;
 import be.nabu.eai.api.InterfaceFilter;
 import be.nabu.eai.api.RestServiceFilter;
 import be.nabu.eai.repository.api.CacheProviderArtifact;
-import be.nabu.eai.repository.artifacts.http.DefinedHTTPServer;
+import be.nabu.eai.repository.artifacts.http.virtual.VirtualHostArtifact;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "httpServer", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "hosts", "keyAlias", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "restServices", "webFragments" })
+@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "restServices", "webFragments" })
 public class WebArtifactConfiguration {
 
 	private CacheProviderArtifact cacheProvider;
 	private Long maxTotalSessionSize, maxSessionSize, sessionTimeout; 
-	private DefinedHTTPServer httpServer;
+	private VirtualHostArtifact virtualHost;
 	private String path;
 	private String charset;
 	private String realm;
 	private String whitelistedCodes;
-	private String keyAlias;
 	
 	private DefinedService passwordAuthenticationService, secretAuthenticationService;
 	private DefinedService permissionService;
@@ -34,18 +33,8 @@ public class WebArtifactConfiguration {
 	private DefinedService trackerService;
 	private List<DefinedService> restServices;
 	private Boolean allowBasicAuthentication;
-	private List<String> hosts;
 	private List<WebFragment> webFragments;
 	
-	@EnvironmentSpecific
-	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	public DefinedHTTPServer getHttpServer() {
-		return httpServer;
-	}
-	public void setHttpServer(DefinedHTTPServer httpServer) {
-		this.httpServer = httpServer;
-	}
-
 	@EnvironmentSpecific
 	public String getPath() {
 		return path;
@@ -146,14 +135,6 @@ public class WebArtifactConfiguration {
 	public void setWhitelistedCodes(String whitelistedCodes) {
 		this.whitelistedCodes = whitelistedCodes;
 	}
-	
-	@EnvironmentSpecific
-	public List<String> getHosts() {
-		return hosts;
-	}
-	public void setHosts(List<String> hosts) {
-		this.hosts = hosts;
-	}
 
 	@EnvironmentSpecific
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
@@ -188,19 +169,20 @@ public class WebArtifactConfiguration {
 		this.sessionTimeout = sessionTimeout;
 	}
 	
-	@EnvironmentSpecific
-	public String getKeyAlias() {
-		return keyAlias;
-	}
-	public void setKeyAlias(String keyAlias) {
-		this.keyAlias = keyAlias;
-	}
-	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	public List<WebFragment> getWebFragments() {
 		return webFragments;
 	}
 	public void setWebFragments(List<WebFragment> webFragments) {
 		this.webFragments = webFragments;
+	}
+	
+	@EnvironmentSpecific
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	public VirtualHostArtifact getVirtualHost() {
+		return virtualHost;
+	}
+	public void setVirtualHost(VirtualHostArtifact virtualHost) {
+		this.virtualHost = virtualHost;
 	}
 }
