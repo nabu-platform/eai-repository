@@ -339,7 +339,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			List<WebFragment> webFragments = getConfiguration().getWebFragments();
 			if (webFragments != null) {
 				for (WebFragment fragment : webFragments) {
-					fragment.start(this);
+					if (fragment != null) {
+						fragment.start(this);
+					}
 				}
 			}
 			started = true;

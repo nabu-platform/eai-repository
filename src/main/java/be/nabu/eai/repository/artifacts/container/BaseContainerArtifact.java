@@ -1,17 +1,21 @@
 package be.nabu.eai.repository.artifacts.container;
 
-import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import be.nabu.eai.repository.api.ContainerArtifact;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.artifacts.api.LazyArtifact;
 
 public class BaseContainerArtifact implements ContainerArtifact {
 
 	private String id;
-	private List<Artifact> artifacts = new ArrayList<Artifact>();
+	/**
+	 * The insertion order is important as it should dictate how the references are resolved internally
+	 */
+	private Map<String, Artifact> artifacts = new LinkedHashMap<String, Artifact>();
 	private Map<Artifact, Map<String, String>> configurations = new HashMap<Artifact, Map<String,String>>();
 
 	public BaseContainerArtifact(String id) {
@@ -24,8 +28,8 @@ public class BaseContainerArtifact implements ContainerArtifact {
 	}
 
 	@Override
-	public List<Artifact> getContainedArtifacts() {
-		return artifacts;
+	public Collection<Artifact> getContainedArtifacts() {
+		return artifacts.values();
 	}
 
 	@Override
@@ -35,7 +39,7 @@ public class BaseContainerArtifact implements ContainerArtifact {
 	
 	@SuppressWarnings("unchecked")
 	protected <T extends Artifact> T getArtifact(Class<T> clazz) {
-		for (Artifact artifact : artifacts) {
+		for (Artifact artifact : artifacts.values()) {
 			if (clazz.isAssignableFrom(artifact.getClass())) {
 				return (T) artifact;
 			}
@@ -44,18 +48,40 @@ public class BaseContainerArtifact implements ContainerArtifact {
 	}
 
 	@Override
-	public void addArtifact(Artifact artifact, Map<String, String> configuration) {
+	public void addArtifact(String name, Artifact artifact, Map<String, String> configuration) {
 		configurations.put(artifact, configuration);
-		artifacts.add(artifact);
+		artifacts.put(name, artifact);
 	}
 	
 	@SuppressWarnings("unchecked")
 	public <T extends Artifact> T getArtifact(String name) {
-		for (Artifact artifact : artifacts) {
-			if (artifact.getId().endsWith(":" + name)) {
-				return (T) artifact;
+		return (T) artifacts.get(name);
+	}
+
+	@Override
+	public String getPartName(Artifact artifact) {
+		for (String key : artifacts.keySet()) {
+			if (artifact.equals(artifacts.get(key))) {
+				return key;
 			}
 		}
-		return null;
+		return artifact.getId().replaceAll("^.*:", "");
 	}
+	
+	public void removeArtifact(String name) {
+		if (artifacts.containsKey(name)) {
+			configurations.remove(artifacts.get(name));
+			artifacts.remove(name);
+		}
+	}
+
+	@Override
+	public void forceLoad() {
+		for (Artifact artifact : artifacts.values()) {
+			if (artifact instanceof LazyArtifact) {
+				((LazyArtifact) artifact).forceLoad();
+			}
+		}
+	}
+	
 }

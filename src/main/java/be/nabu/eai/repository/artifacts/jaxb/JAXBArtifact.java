@@ -11,7 +11,7 @@ import javax.xml.bind.Unmarshaller;
 
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
-import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.artifacts.api.LazyArtifact;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
@@ -24,7 +24,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class JAXBArtifact<T> implements Artifact {
+public class JAXBArtifact<T> implements LazyArtifact {
 
 	private ResourceContainer<?> directory;
 	private String id;
@@ -136,6 +136,16 @@ public class JAXBArtifact<T> implements Artifact {
 
 	public Repository getRepository() {
 		return repository;
+	}
+
+	@Override
+	public void forceLoad() {
+		try {
+			getConfiguration();
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 }

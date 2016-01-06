@@ -5,8 +5,11 @@ import java.nio.charset.Charset;
 import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
 
@@ -17,6 +20,7 @@ import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ContainerArtifact;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
@@ -86,7 +90,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 						// we already need repository-based resolving because of remote repositories so we reuse that here to dynamically add the already loaded artifacts to be visible for resolving
 						Artifact artifact = artifactManager.load(new WrapperEntry(new ContainerRepository(entry.getId(), (RepositoryEntry) entry, newInstance.getContainedArtifacts()), entry, childToLoad, name), messages);
 						if (artifact != null) {
-							newInstance.addArtifact(artifact, configuration.getConfiguration());
+							newInstance.addArtifact(name, artifact, configuration.getConfiguration());
 						}
 					}
 				}
@@ -109,7 +113,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			privateDirectory = ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PRIVATE);
 		}
 		for (Artifact child : artifact.getContainedArtifacts()) {
-			String name = child.getId().replaceAll("^.*:", "");
+			String name = artifact.getPartName(child);
 			ResourceContainer<?> target = name.equals("main") ? entry.getContainer() : (ResourceContainer<?>) privateDirectory.getChild(name);
 			if (target == null) {
 				target = ResourceUtils.mkdirs(privateDirectory, name);	
@@ -142,6 +146,9 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			catch (Exception e) {
 				throw new RuntimeException(e);
 			}
+		}
+		if (entry instanceof ModifiableNodeEntry) {
+			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
 		return messages;
 	}
@@ -258,9 +265,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		
 		private String id;
 		private RepositoryEntry parent;
-		private List<Artifact> additionalArtifacts;
+		private Collection<Artifact> additionalArtifacts;
+		private Map<String, String> aliasedArtifacts = new HashMap<String, String>();
 
-		public ContainerRepository(String id, RepositoryEntry parent, List<Artifact> additionalArtifacts) {
+		public ContainerRepository(String id, RepositoryEntry parent, Collection<Artifact> additionalArtifacts) {
 			this.id = id;
 			this.parent = parent;
 			this.additionalArtifacts = additionalArtifacts;
@@ -361,7 +369,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 
 		@Override
 		public Artifact resolve(String id) {
-			if (id.contains(":") && id.split(":")[0].equals(this.id)) {
+			if (aliasedArtifacts.containsKey(id)) {
+				return resolve(aliasedArtifacts.get(id));
+			}
+			else if (id.contains(":") && id.split(":")[0].equals(this.id)) {
 				for (Artifact artifact : additionalArtifacts) {
 					if (id.equals(artifact.getId())) {
 						return artifact;
@@ -405,6 +416,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		@Override
 		public boolean isValidName(ResourceContainer<?> parent, String name) {
 			return this.parent.getRepository().isValidName(parent, name);
+		}
+		
+		public void alias(String original, String newName) {
+			aliasedArtifacts.put(newName, original);
 		}
 	}
 }

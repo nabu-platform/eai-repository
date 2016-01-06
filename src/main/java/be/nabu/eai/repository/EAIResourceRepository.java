@@ -916,7 +916,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			if (ifaceClass.isAssignableFrom(clazz)) {
 				for (Node node : nodesByType.get(clazz).values()) {
 					try {
-						results.add((T) node.getArtifact());
+						Artifact artifact = node.getArtifact();
+						if (artifact != null) {
+							results.add((T) artifact);
+						}
 					}
 					catch (Exception e) {
 						logger.error("Could not load artifact", e);
