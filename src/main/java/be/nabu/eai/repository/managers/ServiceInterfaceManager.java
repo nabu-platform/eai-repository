@@ -3,20 +3,13 @@ package be.nabu.eai.repository.managers;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
-import be.nabu.eai.repository.EAIResourceRepository;
-import be.nabu.eai.repository.RepositoryServiceInterfaceResolver;
-import be.nabu.eai.repository.RepositoryServiceResolver;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.converter.ConverterFactory;
-import be.nabu.libs.converter.MultipleConverter;
-import be.nabu.libs.converter.base.ConverterImpl;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
@@ -25,8 +18,6 @@ import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.services.api.ModifiableServiceInterface;
 import be.nabu.libs.services.api.ServiceInterface;
-import be.nabu.libs.services.pojo.converters.StringToDefinedService;
-import be.nabu.libs.services.pojo.converters.StringToDefinedServiceInterface;
 import be.nabu.libs.services.vm.Pipeline;
 import be.nabu.libs.services.vm.PipelineInterfaceProperty;
 import be.nabu.libs.types.api.ComplexType;
@@ -44,15 +35,7 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 
 	public Pipeline loadPipeline(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
-		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
-		// if we are not in the "main" repository (which has already injected resolvers), add resolvers for the actual repository
-		// these will be used for example to find the interfaces related to this repository
-		if (!entry.getRepository().equals(EAIResourceRepository.getInstance())) {
-			ConverterImpl converter = new ConverterImpl();
-			converter.addProvider(new StringToDefinedServiceInterface(new RepositoryServiceInterfaceResolver(entry.getRepository())));
-			converter.addProvider(new StringToDefinedService(new RepositoryServiceResolver(entry.getRepository())));
-			unmarshaller.setConverter(new MultipleConverter(Arrays.asList(converter, ConverterFactory.getInstance().getConverter())));
-		}
+		XMLDefinitionUnmarshaller unmarshaller = StructureManager.getLocalizedUnmarshaller(entry);
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) VMServiceManager.getResource(entry, "pipeline.xml", false));
 		Pipeline pipeline = new Pipeline(null, null);
 		try {

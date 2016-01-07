@@ -7,9 +7,11 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.bind.JAXBContext;
 
@@ -112,12 +114,20 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		if (privateDirectory == null) {
 			privateDirectory = ResourceUtils.mkdirs(entry.getContainer(), EAIResourceRepository.PRIVATE);
 		}
+		// at the end we need to delete unused directories, it could be that an artifact was removed from the container
+		List<String> unused = new ArrayList<String>();
+		for (Resource resource : privateDirectory) {
+			if (resource instanceof ResourceContainer) {
+				unused.add(resource.getName());
+			}
+		}
 		for (Artifact child : artifact.getContainedArtifacts()) {
 			String name = artifact.getPartName(child);
 			ResourceContainer<?> target = name.equals("main") ? entry.getContainer() : (ResourceContainer<?>) privateDirectory.getChild(name);
 			if (target == null) {
 				target = ResourceUtils.mkdirs(privateDirectory, name);	
 			}
+			unused.remove(name);
 			ContainerArtifactConfiguration container = new ContainerArtifactConfiguration();
 			ArtifactManager artifactManager = entry.getRepository().getArtifactManager(child.getClass());
 			if (artifactManager == null) {
@@ -146,6 +156,9 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			catch (Exception e) {
 				throw new RuntimeException(e);
 			}
+		}
+		for (String toDelete : unused) {
+			((ManageableContainer<?>) privateDirectory).delete(toDelete);
 		}
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
@@ -236,14 +249,14 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 
 	@Override
 	public List<String> getReferences(T artifact) throws IOException {
-		List<String> references = new ArrayList<String>();
+		Set<String> references = new HashSet<String>();
 		for (Artifact child : artifact.getContainedArtifacts()) {
 			ArtifactManager artifactManager = EAIResourceRepository.getInstance().getArtifactManager(child.getClass());
 			if (artifactManager != null) {
 				references.addAll(artifactManager.getReferences(child));
 			}
 		}
-		return references;
+		return new ArrayList<String>(references);
 	}
 
 	@Override
@@ -420,6 +433,11 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		
 		public void alias(String original, String newName) {
 			aliasedArtifacts.put(newName, original);
+		}
+
+		@Override
+		public void reloadAll(Collection<String> ids) {
+			this.parent.getRepository().reloadAll(ids);
 		}
 	}
 }

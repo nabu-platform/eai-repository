@@ -1,15 +1,16 @@
 package be.nabu.eai.repository;
 
+import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.DefinedTypeResolver;
 
-public class EAIRepositoryTypeResolver implements DefinedTypeResolver {
+public class RepositoryTypeResolver implements DefinedTypeResolver {
 
-	private EAIResourceRepository repository;
+	private Repository repository;
 	
-	public EAIRepositoryTypeResolver(EAIResourceRepository repository) {
+	public RepositoryTypeResolver(Repository repository) {
 		this.repository = repository;
 	}
 	

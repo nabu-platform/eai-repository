@@ -14,7 +14,6 @@ import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
-import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
@@ -65,19 +64,19 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 			service.setValidateInput(config.getValidateInput());
 			service.setValidateOutput(config.getValidateOutput());
 			if (config.getInputDefinition() != null) {
-				Node node = entry.getRepository().getNode(config.getInputDefinition());
-				if (node == null) {
-					throw new IllegalArgumentException("Could not find referenced input node: " + config.getInputDefinition());
+				Artifact artifact = entry.getRepository().resolve(config.getInputDefinition());
+				if (!(artifact instanceof ComplexType)) {
+					throw new IllegalArgumentException("Could not find referenced output node: " + config.getInputDefinition() + " or it is not a complex type");
 				}
-				service.setParameters((ComplexType) node.getArtifact());
+				service.setParameters((ComplexType) artifact);
 				service.setInputGenerated(false);
 			}
 			if (config.getOutputDefinition() != null) {
-				Node node = entry.getRepository().getNode(config.getOutputDefinition());
-				if (node == null) {
-					throw new IllegalArgumentException("Could not find referenced output node: " + config.getOutputDefinition());
+				Artifact artifact = entry.getRepository().resolve(config.getOutputDefinition());
+				if (!(artifact instanceof ComplexType)) {
+					throw new IllegalArgumentException("Could not find referenced output node: " + config.getOutputDefinition() + " or it is not a complex type");
 				}
-				service.setResults((ComplexType) node.getArtifact());
+				service.setResults((ComplexType) artifact);
 				service.setOutputGenerated(false);
 			}
 		}
@@ -203,7 +202,7 @@ public class JDBCServiceManager implements ArtifactManager<JDBCService>, Artifac
 	@Override
 	public List<Entry> addChildren(ModifiableEntry parent, JDBCService artifact) {
 		List<Entry> entries = new ArrayList<Entry>();
-		if (artifact.isInputGenerated() || artifact.isOutputGenerated()) {
+		if (artifact != null && (artifact.isInputGenerated() || artifact.isOutputGenerated())) {
 			boolean isLeaf = true;
 			if (artifact.isInputGenerated() && TypeUtils.getAllChildren(artifact.getParameters()).size() > 0) {
 				isLeaf = false;

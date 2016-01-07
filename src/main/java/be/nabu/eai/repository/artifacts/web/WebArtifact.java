@@ -19,8 +19,6 @@ import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.artifacts.http.RepositoryExceptionFormatter;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
-import be.nabu.eai.repository.artifacts.web.rest.WebRestArtifact;
-import be.nabu.eai.repository.artifacts.web.rest.WebRestListener;
 import be.nabu.eai.repository.impl.CacheSessionProvider;
 import be.nabu.eai.repository.util.CombinedAuthenticator;
 import be.nabu.eai.repository.util.SystemPrincipal;
@@ -61,8 +59,6 @@ import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
-import be.nabu.libs.services.api.DefinedService;
-import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.utils.io.IOUtils;
 
@@ -72,11 +68,15 @@ import be.nabu.utils.io.IOUtils;
  */
 public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact {
 
+	private Map<ResourceContainer<?>, ScriptRepository> additionalRepositories = new HashMap<ResourceContainer<?>, ScriptRepository>();
 	private List<EventSubscription<?, ?>> subscriptions = new ArrayList<EventSubscription<?, ?>>();
 	private GlueListener listener;
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private SessionProvider sessionProvider;
 	private boolean started;
+	private MultipleRepository repository;
+	private ServiceMethodProvider serviceMethodProvider;
+	private ResourceHandler resourceHandler;
 	
 	public WebArtifact(String id, ResourceContainer<?> directory, Repository repository) {
 		super(id, directory, repository, "webartifact.xml", WebArtifactConfiguration.class);
@@ -102,7 +102,9 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		List<WebFragment> webFragments = getConfiguration().getWebFragments();
 		if (webFragments != null) {
 			for (WebFragment fragment : webFragments) {
-				fragment.stop(this);
+				if (fragment != null) {
+					fragment.stop(this, null);
+				}
 			}
 		}
 	}
@@ -118,7 +120,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			ResourceContainer<?> publicDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PUBLIC);
 			ResourceContainer<?> privateDirectory = (ResourceContainer<?>) getDirectory().getChild(EAIResourceRepository.PRIVATE);
 			
-			ServiceMethodProvider serviceMethodProvider = new ServiceMethodProvider(getRepository(), getRepository());
+			serviceMethodProvider = new ServiceMethodProvider(getRepository(), getRepository());
 			
 			ResourceContainer<?> meta = privateDirectory == null ? null : (ResourceContainer<?>) privateDirectory.getChild("meta");
 			ScriptRepository metaRepository = null;
@@ -126,8 +128,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				metaRepository = new ScannableScriptRepository(null, meta, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset());
 			}
 			
-			// build repository
-			MultipleRepository repository = new MultipleRepository(null);
+			repository = new MultipleRepository(null);
 			List<ContentRewriter> rewriters = new ArrayList<ContentRewriter>();
 			HTTPServer server = getConfiguration().getVirtualHost().getConfiguration().getServer().getServer();
 			if (server.getExceptionFormatter() instanceof RepositoryExceptionFormatter && getConfiguration().getWhitelistedCodes() != null) {
@@ -159,6 +160,8 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			if (isDevelopment) {
 				environment.put("development", "true");
 			}
+			// always set the id of the web artifact (need it to introspect artifact)
+			environment.put("webArtifactId", getId());
 			
 			String environmentName = serverPath;
 			if (environmentName.startsWith("/")) {
@@ -226,10 +229,10 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				// the response listener
 				subscriptions.add(dispatcher.subscribe(HTTPResponse.class, debugger.getResponseListener()));
 			}
-			boolean hasPages = false;
+			ResourceContainer<?> resources = null;
 			if (publicDirectory != null) {
 				// check if there is a resource directory
-				ResourceContainer<?> resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
+				resources = (ResourceContainer<?>) publicDirectory.getChild("resources");
 				if (resources != null) {
 					logger.debug("Adding resource listener for folder: " + resources);
 					if (isDevelopment && privateDirectory != null) {
@@ -238,11 +241,6 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 							resources = new CombinedContainer(null, "resources", resources, (ResourceContainer<?>) child);
 						}
 					}
-					String resourcePath = serverPath.equals("/") ? "/resources" : serverPath + "/resources";
-					ResourceHandler handler = new ResourceHandler(resources, resourcePath, !isDevelopment);
-					EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, handler);
-					subscription.filter(HTTPServerUtils.limitToPath(resourcePath));
-					subscriptions.add(subscription);
 					// add optimizations if it is not development
 					if (!isDevelopment) {
 //						logger.debug("Adding javascript merger");
@@ -263,13 +261,19 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				ResourceContainer<?> pages = (ResourceContainer<?>) publicDirectory.getChild("pages");
 				if (pages != null) {
 					logger.debug("Adding public scripts found in: " + pages);
-					hasPages = true;
 					// the configured charset is for the end user, NOT for the local glue scripts, that should be the system default
 					ScannableScriptRepository scannableScriptRepository = new ScannableScriptRepository(repository, pages, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset());
 					scannableScriptRepository.setGroup(GlueListener.PUBLIC);
 					repository.add(scannableScriptRepository);
 				}
 			}
+
+			String resourcePath = serverPath.equals("/") ? "/resources" : serverPath + "/resources";
+			resourceHandler = new ResourceHandler(resources, resourcePath, !isDevelopment);
+			EventSubscription<HTTPRequest, HTTPResponse> resourceSubscription = dispatcher.subscribe(HTTPRequest.class, resourceHandler);
+			resourceSubscription.filter(HTTPServerUtils.limitToPath(resourcePath));
+			subscriptions.add(resourceSubscription);
+
 			// the private directory houses the scripts
 			if (privateDirectory != null) {
 				// currently only a scripts folder, but we may want to add more private folders later on
@@ -279,68 +283,29 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					repository.add(new ScannableScriptRepository(repository, scripts, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset()));
 				}
 			}
-			// only set up a glue listener if there are any public pages
-			if (hasPages) {
-				listener = new GlueListener(
-					sessionProvider, 
-					repository, 
-					new SimpleExecutionEnvironment(environmentName, environment),
-					serverPath
-				);
-				listener.getContentRewriters().addAll(rewriters);
-				listener.setRefreshScripts(isDevelopment);
-				listener.setAllowEncoding(!isDevelopment);
-				listener.setAuthenticator(authenticator);
-				listener.setTokenValidator(getTokenValidator());
-				listener.setPermissionHandler(getPermissionHandler());
-				listener.setRoleHandler(getRoleHandler());
-				listener.setRealm(realm);
-				listener.setAlwaysCreateSession(true);
-				EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
-				subscription.filter(HTTPServerUtils.limitToPath(serverPath));
-				subscriptions.add(subscription);
-			}
-			// load any registered rest services
-			List<DefinedService> restServices = getConfiguration().getRestServices();
-			if (restServices != null) {
-				for (DefinedService service : restServices) {
-					if (service == null) {
-						continue;
-					}
-					ServiceInterface serviceInterface = service.getServiceInterface();
-					while (!(serviceInterface instanceof WebRestArtifact)) {
-						serviceInterface = serviceInterface.getParent();
-						if (serviceInterface == null) {
-							logger.error("Can not start service '" + service.getId() + "' because it does not implement a REST interface");
-							break;
-						}
-					}
-					if (serviceInterface instanceof WebRestArtifact) {
-						logger.debug("Adding rest handler for service: " + service.getId());
-						WebRestListener listener = new WebRestListener(
-							getRepository(), 
-							serverPath, 
-							realm, 
-							sessionProvider, 
-							getPermissionHandler(), 
-							getRoleHandler(), 
-							getTokenValidator(), 
-							((WebRestArtifact) serviceInterface), 
-							service, 
-							getConfiguration().getCharset() == null ? Charset.defaultCharset() : Charset.forName(getConfiguration().getCharset()), 
-							!isDevelopment
-						);
-						EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
-						subscription.filter(HTTPServerUtils.limitToPath(serverPath));
-						subscriptions.add(subscription);
-					}
-				}
-			}
+			listener = new GlueListener(
+				sessionProvider, 
+				repository, 
+				new SimpleExecutionEnvironment(environmentName, environment),
+				serverPath
+			);
+			listener.getContentRewriters().addAll(rewriters);
+			listener.setRefreshScripts(isDevelopment);
+			listener.setAllowEncoding(!isDevelopment);
+			listener.setAuthenticator(authenticator);
+			listener.setTokenValidator(getTokenValidator());
+			listener.setPermissionHandler(getPermissionHandler());
+			listener.setRoleHandler(getRoleHandler());
+			listener.setRealm(realm);
+			listener.setAlwaysCreateSession(true);
+			EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
+			subscription.filter(HTTPServerUtils.limitToPath(serverPath));
+			subscriptions.add(subscription);
 			List<WebFragment> webFragments = getConfiguration().getWebFragments();
 			if (webFragments != null) {
 				for (WebFragment fragment : webFragments) {
 					if (fragment != null) {
-						fragment.start(this);
+						fragment.start(this, null);
 					}
 				}
 			}
@@ -348,7 +313,7 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			logger.info("Started " + subscriptions.size() + " subscriptions");
 		}
 	}
-
+	
 	public Map<String, String> getProperties() throws IOException {
 		// load properties
 		Properties properties = new Properties();
@@ -444,5 +409,36 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			throw new RuntimeException(e);
 		}
 	}
+
+	public void addGlueScripts(ResourceContainer<?> parent, boolean isPublic) throws IOException {
+		if (repository != null) {
+			ScannableScriptRepository scannableScriptRepository = new ScannableScriptRepository(repository, parent, new GlueParserProvider(serviceMethodProvider), Charset.defaultCharset());
+			if (isPublic) {
+				scannableScriptRepository.setGroup(GlueListener.PUBLIC);
+			}
+			additionalRepositories.put(parent, scannableScriptRepository);
+			repository.add(scannableScriptRepository);
+		}
+	}
+	public void removeGlueScripts(ResourceContainer<?> parent) {
+		if (repository != null && additionalRepositories.containsKey(parent)) {
+			repository.remove(additionalRepositories.get(parent));
+			additionalRepositories.remove(parent);
+		}
+	}
 	
+	public void addResources(ResourceContainer<?> parent) {
+		if (resourceHandler != null) {
+			resourceHandler.addRoot(parent);
+		}
+	}
+	public void removeResources(ResourceContainer<?> parent) {
+		if (resourceHandler != null) {
+			resourceHandler.removeRoot(parent);
+		}
+	}
+	
+	public ResourceHandler getResourceHandler() {
+		return resourceHandler;
+	}
 }

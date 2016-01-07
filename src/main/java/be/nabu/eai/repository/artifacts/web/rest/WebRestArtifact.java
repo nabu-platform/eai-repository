@@ -80,6 +80,11 @@ public class WebRestArtifact extends JAXBArtifact<WebRestArtifactConfiguration> 
 		Structure path = new Structure();
 		Structure responseHeader = new Structure();
 		try {
+			// add the realm of the web artifact
+			input.add(new SimpleElementImpl<String>("realm", SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), input));
+			// add the user token (if any)
+			input.add(new SimpleElementImpl<String>("user", SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), input, new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));
+			
 			if (getConfiguration().getQueryParameters() != null && !getConfiguration().getQueryParameters().trim().isEmpty()) {
 				for (String name : getConfiguration().getQueryParameters().split("[\\s,]+")) {
 					query.add(new SimpleElementImpl<String>(name, SimpleTypeWrapperFactory.getInstance().getWrapper().wrap(String.class), query, new ValueImpl<Integer>(MaxOccursProperty.getInstance(), 0), new ValueImpl<Integer>(MinOccursProperty.getInstance(), 0)));

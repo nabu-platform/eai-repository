@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.api;
 
 import java.nio.charset.Charset;
+import java.util.Collection;
 import java.util.List;
 
 import be.nabu.libs.artifacts.api.Artifact;
@@ -19,6 +20,7 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public Node getNode(String id);
 	public void reload(String id);
 	public void reloadAll();
+	public void reloadAll(Collection<String> ids);
 	public void unload(String id);
 	public List<Node> getNodes(Class<? extends Artifact> artifactClazz);
 	public ServiceRunner getServiceRunner();

@@ -4,25 +4,42 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.RepositoryServiceInterfaceResolver;
+import be.nabu.eai.repository.RepositoryServiceResolver;
+import be.nabu.eai.repository.RepositorySimpleTypeWrapper;
+import be.nabu.eai.repository.RepositoryTypeResolver;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.converter.ConverterFactory;
+import be.nabu.libs.converter.MultipleConverter;
+import be.nabu.libs.converter.base.ConverterImpl;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.pojo.converters.StringToDefinedService;
+import be.nabu.libs.services.pojo.converters.StringToDefinedServiceInterface;
+import be.nabu.libs.types.DefinedTypeResolverFactory;
+import be.nabu.libs.types.MultipleDefinedTypeResolver;
+import be.nabu.libs.types.MultipleSimpleTypeWrapper;
+import be.nabu.libs.types.SimpleTypeWrapperFactory;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.ModifiableType;
 import be.nabu.libs.types.api.ModifiableTypeInstance;
 import be.nabu.libs.types.api.Type;
 import be.nabu.libs.types.base.ValueImpl;
+import be.nabu.libs.types.converters.StringToDefinedType;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.types.definition.xml.XMLDefinitionUnmarshaller;
 import be.nabu.libs.types.structure.DefinedStructure;
@@ -45,14 +62,38 @@ public class StructureManager implements ArtifactManager<DefinedStructure> {
 		return structure;
 	}
 
+	public static XMLDefinitionUnmarshaller getLocalizedUnmarshaller(Entry entry) {
+		XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
+		// if we are not in the "main" repository (which has already injected resolvers), add resolvers for the actual repository
+		// these will be used for example to find the interfaces related to this repository
+		if (!entry.getRepository().equals(EAIResourceRepository.getInstance())) {
+			ConverterImpl converter = new ConverterImpl();
+			converter.addProvider(new StringToDefinedType(new RepositoryTypeResolver(entry.getRepository())));
+			converter.addProvider(new StringToDefinedServiceInterface(new RepositoryServiceInterfaceResolver(entry.getRepository())));
+			converter.addProvider(new StringToDefinedService(new RepositoryServiceResolver(entry.getRepository())));
+			MultipleDefinedTypeResolver typeResolver = new MultipleDefinedTypeResolver(Arrays.asList(
+				new RepositoryTypeResolver(entry.getRepository()),
+				DefinedTypeResolverFactory.getInstance().getResolver()
+			));
+			unmarshaller.setConverter(new MultipleConverter(Arrays.asList(converter, ConverterFactory.getInstance().getConverter())));
+			MultipleSimpleTypeWrapper simpleTypeWrapper = new MultipleSimpleTypeWrapper(Arrays.asList(
+				new RepositorySimpleTypeWrapper(entry.getRepository()),
+				SimpleTypeWrapperFactory.getInstance().getWrapper()
+			));
+			unmarshaller.setSimpleTypeWrapper(simpleTypeWrapper);
+			unmarshaller.setTypeResolver(typeResolver);
+		}
+		return unmarshaller;
+	}
+	
 	public static Structure parse(ResourceEntry entry, String name) throws FileNotFoundException, IOException, ParseException {
 		Resource resource = entry.getContainer().getChild(name);
 		if (resource == null) {
 			throw new FileNotFoundException("Can not find structure.xml");
 		}
+		XMLDefinitionUnmarshaller unmarshaller = getLocalizedUnmarshaller(entry);
 		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
 		try {
-			XMLDefinitionUnmarshaller unmarshaller = new XMLDefinitionUnmarshaller();
 			unmarshaller.setIdToUnmarshal(entry.getId());
 			// evil cast!
 			Structure structure = (Structure) unmarshaller.unmarshal(IOUtils.toInputStream(readable));

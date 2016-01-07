@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -130,7 +131,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 				}
 			}
 			for (String deleted : existing) {
-				children.remove(deleted);
+				// don't auto-delete dynamic entries
+				if (!(children.get(deleted) instanceof DynamicEntry)) {
+					children.remove(deleted);
+				}
 			}
 		}
 	}
@@ -225,7 +229,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	}
 	
 	@Override
-	public RepositoryEntry createNode(String name, ArtifactManager<?> manager) throws IOException {
+	public RepositoryEntry createNode(String name, ArtifactManager<?> manager, boolean reload) throws IOException {
 		Entry child = getChild(name);
 		if (child != null && child.isNode()) {
 			throw new IOException("A node with the name '" + name + "' already exists");
@@ -236,8 +240,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		else if (child == null && !getRepository().isValidName(getContainer(), name)) {
 			throw new IOException("The name '" + name + "' is not valid");
 		}
-	
-		repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, null, State.CREATE, false), this);
+		// only send events if we want to trigger reloads etc
+		if (reload) {
+			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, null, State.CREATE, false), this);
+		}
 		ManageableContainer<?> nodeContainer = child == null ? (ManageableContainer<?>) ((ManageableContainer<?>) getContainer()).create(name, Resource.CONTENT_TYPE_DIRECTORY) : (ManageableContainer<?>) ((RepositoryEntry) child).getContainer();
 		EAINode node = child == null ? new EAINode() : ((RepositoryEntry) child).getNode();
 		node.setArtifactManager(manager.getClass());
@@ -247,12 +253,16 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			child = new RepositoryEntry(getRepository(), nodeContainer, this, name);
 			getChildren().put(name, child);
 		}
-		repository.reload(child.getId());
+		if (reload) {
+			repository.reload(child.getId());
+		}
 //			// update the cached scan-typed list
 //			if (repository instanceof EAIResourceRepository) {
 //				((EAIResourceRepository) repository).scanForTypes(this);
 //			}
-		repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
+		if (reload) {
+			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
+		}
 		return (RepositoryEntry) child;
 	}
 

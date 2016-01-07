@@ -10,17 +10,17 @@ public interface WebFragment extends Artifact {
 	/**
 	 * Start on the given web artifact
 	 */
-	public void start(WebArtifact artifact) throws IOException;
+	public void start(WebArtifact artifact, String path) throws IOException;
 	/**
 	 * Stop on the given web artifact
 	 */
-	public void stop(WebArtifact artifact);
+	public void stop(WebArtifact artifact, String path);
 	/**
 	 * List the permissions that the web fragments knows about
 	 */
-	public List<Permission> getPermissions();
+	public List<Permission> getPermissions(WebArtifact artifact, String path);
 	/**
 	 * Is it running on this web artifact?
 	 */
-	public boolean isStarted(WebArtifact artifact);
+	public boolean isStarted(WebArtifact artifact, String path);
 }

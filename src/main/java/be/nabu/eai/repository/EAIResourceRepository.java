@@ -187,7 +187,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		ArtifactResolverFactory.getInstance().addResolver(this);
 		// important for clusters
 		DefinedTypeResolverFactory.getInstance().addResolver(new DefinedSimpleTypeResolver(SimpleTypeWrapperFactory.getInstance().getWrapper()));
-		DefinedTypeResolverFactory.getInstance().addResolver(new EAIRepositoryTypeResolver(this));
+		DefinedTypeResolverFactory.getInstance().addResolver(new RepositoryTypeResolver(this));
 		DefinedTypeResolverFactory.getInstance().addResolver(new SPIDefinedTypeResolver());
 		// important for clusters
 		DefinedServiceResolverFactory.getInstance().addResolver(new RepositoryServiceResolver(this));
@@ -406,7 +406,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		reload(id, true);
 	}
 
-	private void reloadAll(Collection<String> ids) {
+	@Override
+	public void reloadAll(Collection<String> ids) {
+		reloadAll(ids, false);
+	}
+	
+	private void reloadAll(Collection<String> ids, boolean dependenciesOnly) {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
 		Set<String> dependenciesToReload = new HashSet<String>();
 		for (String id : ids) {
@@ -414,12 +419,23 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			dependenciesToReload.removeAll(calculateDependenciesToReload);
 			dependenciesToReload.addAll(calculateDependenciesToReload);
 		}
-		for (String id : dependenciesToReload) {
-			reload(id, false);
+		if (dependenciesOnly) {
+			for (String id : dependenciesToReload) {
+				reload(id, false);
+			}
+		}
+		else {
+			ArrayList<String> cores = new ArrayList<String>(ids);
+			cores.removeAll(dependenciesToReload);
+			cores.addAll(dependenciesToReload);
+			for (String id : cores) {
+				reload(id, false);
+			}
 		}
 		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 	}
+
 	
 	private void reload(String id, boolean recursiveReload) {
 		logger.info("Reloading: " + id);
@@ -720,7 +736,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		if (reload) {
-			reloadAll(dependencies);
+			reloadAll(dependencies, true);
 		}
 		return dependencies;
 	}

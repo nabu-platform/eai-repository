@@ -5,6 +5,7 @@ import java.nio.charset.Charset;
 import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -303,5 +304,10 @@ public class ReadOnlyRepository implements ResourceRepository {
 	@Override
 	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
 		return local.getArtifactManager(artifactClass);
+	}
+
+	@Override
+	public void reloadAll(Collection<String> ids) {
+		throw new UnsupportedOperationException();
 	}
 }

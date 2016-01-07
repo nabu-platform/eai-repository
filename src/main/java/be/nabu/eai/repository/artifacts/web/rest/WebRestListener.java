@@ -155,6 +155,10 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			Map<String, List<String>> queryProperties = URIUtils.getQueryProperties(uri);
 			
 			ComplexContent input = webArtifact.getInputDefinition().newInstance();
+			if (token != null) {
+				input.set("user", token.getName());
+			}
+			input.set("realm", realm);
 			if (input.getType().get("query") != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("query").getType())) {
 					input.set("query/" + element.getName(), queryProperties.get(element.getName()));

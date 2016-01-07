@@ -8,14 +8,13 @@ import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
 import be.nabu.eai.api.EnvironmentSpecific;
 import be.nabu.eai.api.InterfaceFilter;
-import be.nabu.eai.api.RestServiceFilter;
 import be.nabu.eai.repository.api.CacheProviderArtifact;
 import be.nabu.eai.repository.artifacts.http.virtual.VirtualHostArtifact;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "restServices", "webFragments" })
+@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "webFragments" })
 public class WebArtifactConfiguration {
 
 	private CacheProviderArtifact cacheProvider;
@@ -31,7 +30,6 @@ public class WebArtifactConfiguration {
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
 	private DefinedService trackerService;
-	private List<DefinedService> restServices;
 	private Boolean allowBasicAuthentication;
 	private List<WebFragment> webFragments;
 	
@@ -93,15 +91,6 @@ public class WebArtifactConfiguration {
 	}
 	public void setTokenValidatorService(DefinedService tokenValidatorService) {
 		this.tokenValidatorService = tokenValidatorService;
-	}
-
-	@RestServiceFilter
-	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
-	public List<DefinedService> getRestServices() {
-		return restServices;
-	}
-	public void setRestServices(List<DefinedService> restServices) {
-		this.restServices = restServices;
 	}
 
 	@EnvironmentSpecific
