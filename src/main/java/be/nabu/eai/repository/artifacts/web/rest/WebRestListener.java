@@ -139,26 +139,32 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					token = null;
 				}
 			}
+			// check role
+			if (roleHandler != null && webArtifact.getConfiguration().getRoles() != null) {
+				boolean hasRole = false;
+				for (String role : webArtifact.getConfiguration().getRoles()) {
+					if (roleHandler.hasRole(token, role)) {
+						hasRole = true;
+						break;
+					}
+				}
+				if (!hasRole) {
+					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have one of the allowed role: " + webArtifact.getConfiguration().getRoles());
+				}
+			}
 			// check permissions
 			if (permissionHandler != null) {
 				if (!permissionHandler.hasPermission(token, path, request.getMethod().toLowerCase())) {
 					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on: " + path);
 				}
 			}
-			// check role
-			if (roleHandler != null && webArtifact.getConfiguration().getRole() != null) {
-				if (!roleHandler.hasRole(token, webArtifact.getConfiguration().getRole())) {
-					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have the required role: " + webArtifact.getConfiguration().getRole());
-				}
-			}
 			
 			Map<String, List<String>> queryProperties = URIUtils.getQueryProperties(uri);
 			
 			ComplexContent input = webArtifact.getInputDefinition().newInstance();
-			if (token != null) {
-				input.set("user", token.getName());
+			if (input.getType().get("realm") != null) {
+				input.set("realm", realm);
 			}
-			input.set("realm", realm);
 			if (input.getType().get("query") != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("query").getType())) {
 					input.set("query/" + element.getName(), queryProperties.get(element.getName()));

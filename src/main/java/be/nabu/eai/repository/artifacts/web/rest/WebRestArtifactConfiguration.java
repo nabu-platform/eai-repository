@@ -1,5 +1,8 @@
 package be.nabu.eai.repository.artifacts.web.rest;
 
+import java.util.List;
+
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlType;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
@@ -8,15 +11,15 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webRestArtifact")
-@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "role",
-			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output" })
+@XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "roles",
+			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output", "includeRealm" })
 public class WebRestArtifactConfiguration {
 
 	private DefinedType input, output;
 	private String path, queryParameters, cookieParameters, sessionParameters, headerParameters, responseHeaders;
 	private WebMethod method;
-	private String role;
-	private Boolean asynchronous;
+	private List<String> roles;
+	private Boolean asynchronous, includeRealm;
 	private WebResponseType preferredResponseType;
 	private Boolean inputAsStream, outputAsStream;
 
@@ -26,12 +29,12 @@ public class WebRestArtifactConfiguration {
 	public void setPath(String path) {
 		this.path = path;
 	}
-
-	public String getRole() {
-		return role;
+	@XmlElement(name = "role")
+	public List<String> getRoles() {
+		return roles;
 	}
-	public void setRole(String role) {
-		this.role = role;
+	public void setRoles(List<String> roles) {
+		this.roles = roles;
 	}
 	public String getQueryParameters() {
 		return queryParameters;
@@ -107,5 +110,10 @@ public class WebRestArtifactConfiguration {
 	public void setResponseHeaders(String responseHeaders) {
 		this.responseHeaders = responseHeaders;
 	}
-	
+	public Boolean getIncludeRealm() {
+		return includeRealm;
+	}
+	public void setIncludeRealm(Boolean includeRealm) {
+		this.includeRealm = includeRealm;
+	}
 }

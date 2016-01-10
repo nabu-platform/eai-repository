@@ -126,7 +126,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 						children.get(child.getName()).refresh(refreshChildren);
 					}
 				}
-				else if (child instanceof ResourceContainer && !repository.isInternal(container) && !child.getName().startsWith(".")) {
+				else if (child instanceof ResourceContainer && !repository.isInternal((ResourceContainer<?>) child) && !child.getName().startsWith(".")) {
 					children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
 				}
 			}
