@@ -197,9 +197,11 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				subscriptions.add(authenticationSubscription);
 				
 				// for all responses, we check a 401 to see if it has the required WWW-Authenticate header
-				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
-				ensureAuthenticationSubscription.filter(HTTPServerUtils.limitToRequestPath(serverPath));
-				subscriptions.add(ensureAuthenticationSubscription);
+				// in retrospect: don't add it? (maybe configurable?)
+				// problem is it pops up a window in the browser to authenticate
+//				EventSubscription<HTTPResponse, HTTPResponse> ensureAuthenticationSubscription = dispatcher.subscribe(HTTPResponse.class, HTTPServerUtils.ensureAuthenticateHeader(realm));
+//				ensureAuthenticationSubscription.filter(HTTPServerUtils.limitToRequestPath(serverPath));
+//				subscriptions.add(ensureAuthenticationSubscription);
 			}
 			
 			// after the base authentication but before anything else, allow for rewriting
