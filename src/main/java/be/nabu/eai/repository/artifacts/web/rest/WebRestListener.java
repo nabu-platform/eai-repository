@@ -149,13 +149,13 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					}
 				}
 				if (!hasRole) {
-					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have one of the allowed role: " + webArtifact.getConfiguration().getRoles());
+					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have one of the allowed roles '" + webArtifact.getConfiguration().getRoles() + "' for service: " + service.getId());
 				}
 			}
 			// check permissions
 			if (permissionHandler != null) {
 				if (!permissionHandler.hasPermission(token, path, request.getMethod().toLowerCase())) {
-					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on: " + path);
+					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on '" + path + "' with service: " + service.getId());
 				}
 			}
 			

@@ -299,7 +299,8 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 			listener.setPermissionHandler(getPermissionHandler());
 			listener.setRoleHandler(getRoleHandler());
 			listener.setRealm(realm);
-			listener.setAlwaysCreateSession(true);
+			// always creating a session can create other issues
+//			listener.setAlwaysCreateSession(true);
 			EventSubscription<HTTPRequest, HTTPResponse> subscription = dispatcher.subscribe(HTTPRequest.class, listener);
 			subscription.filter(HTTPServerUtils.limitToPath(serverPath));
 			subscriptions.add(subscription);
