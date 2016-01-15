@@ -17,13 +17,18 @@ import be.nabu.eai.authentication.api.PasswordAuthenticator;
 import be.nabu.eai.authentication.api.SecretAuthenticator;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.api.UserLanguageProvider;
 import be.nabu.eai.repository.artifacts.http.RepositoryExceptionFormatter;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.eai.repository.impl.CacheSessionProvider;
 import be.nabu.eai.repository.util.CombinedAuthenticator;
 import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.glue.MultipleRepository;
+import be.nabu.glue.ScriptRuntime;
+import be.nabu.glue.ScriptUtils;
 import be.nabu.glue.api.ScriptRepository;
+import be.nabu.glue.api.StringSubstituter;
+import be.nabu.glue.api.StringSubstituterProvider;
 import be.nabu.glue.impl.SimpleExecutionEnvironment;
 import be.nabu.glue.impl.parsers.GlueParserProvider;
 import be.nabu.glue.repositories.ScannableScriptRepository;
@@ -33,6 +38,7 @@ import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.authentication.api.Authenticator;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.TokenValidator;
 import be.nabu.libs.cache.api.Cache;
 import be.nabu.libs.cache.impl.AccessBasedTimeoutManager;
@@ -50,6 +56,8 @@ import be.nabu.libs.http.glue.GlueListener;
 import be.nabu.libs.http.glue.GluePostProcessListener;
 import be.nabu.libs.http.glue.GluePreprocessListener;
 import be.nabu.libs.http.glue.GlueSessionResolver;
+import be.nabu.libs.http.glue.impl.RequestMethods;
+import be.nabu.libs.http.glue.impl.UserMethods;
 import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
@@ -61,6 +69,7 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.utils.io.IOUtils;
+import be.nabu.utils.mime.impl.MimeUtils;
 
 /**
  * TODO: integrate session provider to use same cache as service cache
@@ -291,6 +300,36 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				new SimpleExecutionEnvironment(environmentName, environment),
 				serverPath
 			);
+			if (getConfiguration().getTranslationService() != null) {
+				final UserLanguageProvider languageProvider = getLanguageProvider();
+				listener.getSubstituterProviders().add(new StringSubstituterProvider() {
+					@Override
+					public StringSubstituter getSubstituter(ScriptRuntime runtime) {
+						String language = null;
+						// if we have a language provider, try to get it from there
+						if (languageProvider != null) {
+							Token token = UserMethods.token();
+							// the token may be null then the provider can send back a default language
+							language = languageProvider.getLanguage(token);
+						}
+						// if there is no language provider or it does not have a language for the user, try to detect from browser settings
+						if (language == null) {
+							if (RequestMethods.content().getContent() != null) {
+								List<String> acceptedLanguages = MimeUtils.getAcceptedLanguages(RequestMethods.content().getContent().getHeaders());
+								if (!acceptedLanguages.isEmpty()) {
+									language = acceptedLanguages.get(0).replaceAll("-.*$", "");
+								}
+							}
+						}
+						try {
+							return new be.nabu.glue.impl.ImperativeSubstitutor("%", "string(" + getConfiguration().getTranslationService().getId() + "('" + ScriptUtils.getFullName(runtime.getScript()) + "', '${value}', " + (language == null ? "null" : "'" + language + "'") + ")/translation)");
+						}
+						catch (IOException e) {
+							throw new RuntimeException("Could not get translation service", e);
+						}
+					}
+				});
+			}
 			listener.getContentRewriters().addAll(rewriters);
 			listener.setRefreshScripts(isDevelopment);
 			listener.setAllowEncoding(!isDevelopment);
@@ -386,7 +425,13 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		}
 		return null;
 	}
-
+	public UserLanguageProvider getLanguageProvider() throws IOException {
+		if (getConfiguration().getLanguageProviderService() != null) {
+			return POJOUtils.newProxy(UserLanguageProvider.class, getConfiguration().getLanguageProviderService(), getRepository(), SystemPrincipal.ROOT);
+		}
+		return null;
+	}
+	
 	public GlueListener getListener() {
 		return listener;
 	}

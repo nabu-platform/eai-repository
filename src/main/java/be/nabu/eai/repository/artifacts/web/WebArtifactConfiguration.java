@@ -14,7 +14,7 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "webFragments" })
+@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "translationService", "languageProviderService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "webFragments" })
 public class WebArtifactConfiguration {
 
 	private CacheProviderArtifact cacheProvider;
@@ -30,6 +30,8 @@ public class WebArtifactConfiguration {
 	private DefinedService roleService;
 	private DefinedService tokenValidatorService;
 	private DefinedService trackerService;
+	private DefinedService translationService;
+	private DefinedService languageProviderService;
 	private Boolean allowBasicAuthentication;
 	private List<WebFragment> webFragments;
 	
@@ -48,6 +50,24 @@ public class WebArtifactConfiguration {
 		this.charset = charset;
 	}
 
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	@InterfaceFilter(implement = "be.nabu.eai.repository.api.Translator.translate")
+	public DefinedService getTranslationService() {
+		return translationService;
+	}
+	public void setTranslationService(DefinedService translationService) {
+		this.translationService = translationService;
+	}
+	
+	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
+	@InterfaceFilter(implement = "be.nabu.eai.repository.api.UserLanguageProvider.getLanguage")	
+	public DefinedService getLanguageProviderService() {
+		return languageProviderService;
+	}
+	public void setLanguageProviderService(DefinedService languageProviderService) {
+		this.languageProviderService = languageProviderService;
+	}
+	
 	@XmlJavaTypeAdapter(value = ArtifactXMLAdapter.class)
 	@InterfaceFilter(implement = "be.nabu.eai.authentication.api.PasswordAuthenticator.authenticate")
 	public DefinedService getPasswordAuthenticationService() {

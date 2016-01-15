@@ -78,6 +78,8 @@ import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
+import be.nabu.libs.types.java.BeanResolver;
+import be.nabu.libs.types.java.DomainObjectFactory;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -203,6 +205,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// TODO: could include type registries?
 		SimpleTypeWrapperFactory.getInstance().addWrapper(new RepositorySimpleTypeWrapper(this));
 		this.cacheProvider = new EAIRepositoryCacheProvider(this);
+		BeanResolver.getInstance().addFactory(new DomainObjectFactory() {
+			@Override
+			public Class<?> loadClass(String name) throws ClassNotFoundException {
+				return EAIResourceRepository.this.loadClass(name);
+			}
+		});
 	}
 	
 	/**
