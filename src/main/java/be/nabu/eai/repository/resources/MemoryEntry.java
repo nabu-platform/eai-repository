@@ -105,10 +105,11 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 
 	@Override
 	public void removeChildren(String...children) {
-		Iterator<Entry> iterator = iterator();
+		Iterator<Entry> iterator = this.children.iterator();
 		List<String> names = Arrays.asList(children);
 		while (iterator.hasNext()) {
-			if (names.contains(iterator.next().getName())) {
+			Entry next = iterator.next();
+			if (names.contains(next.getName())) {
 				iterator.remove();
 			}
 		}

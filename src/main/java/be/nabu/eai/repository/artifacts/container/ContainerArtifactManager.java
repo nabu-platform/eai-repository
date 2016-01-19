@@ -446,5 +446,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		public void reloadAll(Collection<String> ids) {
 			this.parent.getRepository().reloadAll(ids);
 		}
+
+		@Override
+		public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
+			return this.parent.getRepository().getArtifactsThatImplement(ifaceClass);
+		}
 	}
 }

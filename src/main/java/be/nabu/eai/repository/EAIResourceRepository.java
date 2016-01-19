@@ -40,11 +40,14 @@ import be.nabu.eai.repository.resources.RepositoryResourceResolver;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
+import be.nabu.libs.artifacts.api.ClassProvidingArtifact;
+import be.nabu.libs.artifacts.api.LazyArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
+import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.metrics.api.GroupLevelProvider;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
 import be.nabu.libs.metrics.core.api.Sink;
@@ -84,6 +87,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.ContentTypeMap;
+import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
@@ -135,7 +139,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
-	private List<be.nabu.libs.maven.ResourceRepository> mavenRepositories = new ArrayList<be.nabu.libs.maven.ResourceRepository>();
+	private List<DomainRepository> mavenRepositories = new ArrayList<DomainRepository>();
 	private List<String> internalDomains;
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
 	
@@ -166,6 +170,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
 	private CacheProvider cacheProvider;
 
+	private List<ClassProvidingArtifact> classProvidingArtifacts = new ArrayList<ClassProvidingArtifact>();
+	
 	private Map<String, MetricGrouper> metrics;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
@@ -285,12 +291,31 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void buildReferenceMap(String id, List<String> references) {
 		logger.debug("Loading references for '" + id + "': " + references);
 		if (references != null) {
-			this.references.put(id, references);
+			this.references.put(id, new ArrayList<String>(references));
 			for (String reference : references) {
 				if (!dependencies.containsKey(reference)) {
 					dependencies.put(reference, new ArrayList<String>());
 				}
 				dependencies.get(reference).add(id);
+			}
+			Node node = getNode(id);
+			for (ClassProvidingArtifact provider : classProvidingArtifacts) {
+				try {
+					if (provider.loadClass(node.getArtifactManager().getName()) != null) {
+						if (!this.references.get(id).contains(provider.getId())) {
+							this.references.get(id).add(provider.getId());
+						}
+						if (!dependencies.containsKey(provider.getId())) {
+							dependencies.put(provider.getId(), new ArrayList<String>());
+						}
+						if (!dependencies.get(provider.getId()).contains(id)){ 
+							dependencies.get(provider.getId()).add(id);
+						}
+					}
+				}
+				catch (Exception e) {
+					// ignore
+				}
 			}
 		}
 	}
@@ -330,20 +355,26 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
-		entry.refresh(false);
-		logger.info("Unloading: " + entry.getId());
-		reset();
-		// TODO: don't actually remove the entry? perhaps use "modifiableentry" to remove the children from the parent? no issue so far though...
-		// this is "partially" solved by the refresh we do in the parent unload(), because we usually unload in case of delete (then the refresh gets it) or update (in that case the load afterwards updates it)
-		if (entry.getParent() != null) {
-			entry.getParent().refresh(false);
-		}
 		if (entry.isNode()) {
+			// remove it from the classloading (if applicable)
+			if (entry.getNode().isLoaded() && ClassProvidingArtifact.class.isAssignableFrom(entry.getNode().getArtifactClass())) {
+				try {
+					classProvidingArtifacts.remove(entry.getNode().getArtifact());
+				}
+				catch (Exception e) {
+					logger.error("Could not remove the entry from the classloading: " + entry.getId(), e);
+				}
+			}
 			unbuildReferenceMap(entry.getId());
 			// if there is an artifact manager and it maintains a repository, remove it all
 			if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
-					((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+					List<Entry> removedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+					if (removedChildren != null) {
+						for (Entry removedChild : removedChildren) {
+							unbuildReferenceMap(removedChild.getId());
+						}
+					}
 				}
 				catch (InstantiationException e) {
 					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
@@ -359,37 +390,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
-		if (entry instanceof ResourceEntry) {
-			Iterator<be.nabu.libs.maven.ResourceRepository> iterator = mavenRepositories.iterator();
-			while (iterator.hasNext()) {
-				be.nabu.libs.maven.ResourceRepository repository = iterator.next();
-				if (((ResourceEntry) entry).getContainer().equals(repository.getRoot().getParent())) {
-					// unload all maven artifacts related to this repository
-					Iterator<MavenArtifact> artifactIterator = mavenArtifacts.iterator();
-					while (artifactIterator.hasNext()) {
-						MavenArtifact artifact = artifactIterator.next();
-						if (artifact.getRepository().equals(repository)) {
-							try {
-								MavenManager.detachChildren(getRoot(), artifact);
-							}
-							catch (IOException e) {
-								logger.error("Could not properly unload maven repository for: " + entry.getId(), e);
-							}
-							iterator.remove();
-						}
-					}
-					// unload all the maven managers related to this repository
-					Iterator<MavenManager> managerIterator = mavenManagers.iterator();
-					while (managerIterator.hasNext()) {
-						MavenManager mavenManager = managerIterator.next();
-						if (mavenManager.getRepository().equals(repository)) {
-							iterator.remove();
-						}
-					}
-					// remove the repository itself
-					iterator.remove();
-				}
-			}
+		entry.refresh(false);
+		logger.info("Unloading: " + entry.getId());
+		reset();
+		// TODO: don't actually remove the entry? perhaps use "modifiableentry" to remove the children from the parent? no issue so far though...
+		// this is "partially" solved by the refresh we do in the parent unload(), because we usually unload in case of delete (then the refresh gets it) or update (in that case the load afterwards updates it)
+		if (entry.getParent() != null) {
+			entry.getParent().refresh(false);
 		}
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
@@ -405,6 +412,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		references.clear();
 		dependencies.clear();
 		reset();
+		preload(getRoot());
 		load(getRoot());
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 	}
@@ -472,13 +480,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		if (entry != null) {
 			unload(entry);
+			preload(entry);
 			load(entry);
 			// also reload all the dependencies
 			// prevent concurrent modification
 			if (recursiveReload) {
 				Set<String> dependenciesToReload = calculateDependenciesToReload(entry);
 				for (String dependency : dependenciesToReload) {
-					reload(dependency, false);
+					// don't reload dependencies inside the entry, they have already been reloaded
+					if (!dependency.startsWith(entry.getId() + ".")) {
+						reload(dependency, false);
+					}
 				}
 			}
 		}
@@ -517,6 +529,26 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return dependenciesToReload;
 	}
 
+	private void preload(Entry entry) {
+		if (isPreload(entry)) {
+			try {
+				Artifact artifact = entry.getNode().getArtifact();
+				if (artifact instanceof LazyArtifact) {
+					((LazyArtifact) artifact).forceLoad();
+				}
+				if (artifact instanceof ClassProvidingArtifact && !classProvidingArtifacts.contains(artifact)) {
+					classProvidingArtifacts.add((ClassProvidingArtifact) artifact);
+				}
+			}
+			catch (Exception e) {
+				logger.error("Could not preload '" + entry.getId() + "'", e);
+			}
+		}
+		for (Entry child : entry) {
+			preload(child);
+		}
+	}
+	
 	private void load(Entry entry) {
 		logger.info("Loading: " + entry.getId());
 		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
@@ -551,10 +583,34 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 
+	private boolean isPreload(Entry entry) {
+		if (entry instanceof ResourceEntry) {
+			Resource resource = ((ResourceEntry) entry).getContainer().getChild("node.properties");
+			if (resource != null) {
+				Properties properties = new Properties();
+				try {
+					ReadableContainer<ByteBuffer> readable = ((ReadableResource) resource).getReadable();
+					try {
+						properties.load(IOUtils.toInputStream(readable, true));
+					}
+					finally {
+						readable.close();
+					}
+					String stage = properties.getProperty("stage", "load");
+					return "preload".equals(stage) && entry.isNode();
+				}
+				catch (Exception e) {
+					logger.error("Could not preload '" + entry.getId() + "'", e);
+				}
+			}
+		}
+		return false;
+	}
+	
 	@SuppressWarnings({ "rawtypes" })
 	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
 		// don't refresh on initial load, this messes up performance for remote file systems
-		if (!isLoading) {
+		if (!isLoading && !isPreload(entry)) {
 			// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
 			entry.refresh(false);
 			// reset this to make sure any newly loaded entries are picked up or old entries are deleted
@@ -821,6 +877,39 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 	
+	@Override
+	public void register(DomainRepository domainRepository) {
+		mavenRepositories.add(domainRepository);
+		startMavenRepository(domainRepository);
+	}
+	
+	@Override
+	public void unregister(DomainRepository domainRepository) {
+		// unload all maven artifacts related to this repository
+		Iterator<MavenArtifact> artifactIterator = mavenArtifacts.iterator();
+		while (artifactIterator.hasNext()) {
+			MavenArtifact artifact = artifactIterator.next();
+			if (artifact.getRepository().equals(domainRepository)) {
+				try {
+					MavenManager.detachChildren(getRoot(), artifact);
+				}
+				catch (IOException e) {
+					logger.error("Could not properly unload maven artifact: " + artifact.getId(), e);
+				}
+				artifactIterator.remove();
+			}
+		}
+		// unload all the maven managers related to this repository
+		Iterator<MavenManager> managerIterator = mavenManagers.iterator();
+		while (managerIterator.hasNext()) {
+			MavenManager mavenManager = managerIterator.next();
+			if (mavenManager.getRepository().equals(domainRepository)) {
+				managerIterator.remove();
+			}
+		}
+		mavenRepositories.remove(domainRepository);
+	}
+	
 	private void startMavenRepository(ResourceContainer<?> target) throws IOException {
 		logger.info("Starting maven repository located at: " + ResourceUtils.getURI(target));
 		be.nabu.libs.maven.ResourceRepository mavenRepository = new be.nabu.libs.maven.ResourceRepository(target, getEventDispatcher());
@@ -830,7 +919,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		startMavenRepository(mavenRepository);
 	}
 
-	private void startMavenRepository(be.nabu.libs.maven.ResourceRepository mavenRepository) {
+	private void startMavenRepository(DomainRepository mavenRepository) {
 		// the first maven manager is considered the root manager and the only that has modifiable artifacts
 		MavenManager mavenManager = new MavenManager(mavenRepository, DefinedTypeResolverFactory.getInstance().getResolver());
 		if (this.mavenManager == null) {
@@ -851,7 +940,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void startMavenArtifact(MavenManager mavenManager, be.nabu.libs.maven.api.Artifact internal, boolean initial) {
 		try {
 			logger.info("Loading maven artifact " + internal.getGroupId() + " > " + internal.getArtifactId());
-			MavenArtifact artifact = mavenManager.load(this, internal, localMavenServer, updateMavenSnapshots);
+			MavenArtifact artifact = mavenManager.load(this, internal, updateMavenSnapshots, localMavenServer);
 			mavenArtifacts.add(artifact);
 			// there are two stages in the loading of a maven artifact:
 			// - create a classloader capable of looking for classes/resources
@@ -931,6 +1020,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 
 	@SuppressWarnings("unchecked")
+	@Override
 	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
 		List<T> results = new ArrayList<T>();
 		if (nodesByType == null) {
@@ -1032,6 +1122,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// before we start loading everything else, first do an initial attach so all the artifacts are loaded (for dependencies)
 		reattachMavenArtifacts();
 		isLoading = true;
+		preload(repositoryRoot);
 		load(repositoryRoot);
 		isLoading = false;
 		// the load can remove maven artifacts, so attach again
@@ -1097,6 +1188,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				logger.error("Could not search artifact for implementations", e);
 			}
 		}
+		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+			try {
+				List implementationsFor = artifact.getImplementationsFor(clazz);
+				if (implementationsFor != null) {
+					implementations.addAll(implementationsFor);
+				}
+			}
+			catch (IOException e) {
+				logger.error("Could not search artifact '" + artifact.getId()  + "' for implementations", e);
+			}
+		}
 		return implementations;
 	}
 	
@@ -1123,6 +1225,19 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+			if (!blacklist.contains(artifact.getId())) {
+				try {
+					Class<?> loadClass = artifact.loadClass(className);
+					if (loadClass != null) {
+						return loadClass;
+					}
+				}
+				catch (ClassNotFoundException e) {
+					logger.error("Could not search artifact '" + artifact.getId()  + "' for classes", e);
+				}
+			}
+		}
 		return null;
 	}
 
@@ -1131,6 +1246,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			InputStream stream = artifact.getClassLoader().getResourceAsStream(name);
 			if (stream != null) {
 				return stream;
+			}
+		}
+		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+			try {
+				InputStream loadResource = artifact.loadResource(name);
+				if (loadResource != null) {
+					return loadResource;
+				}
+			}
+			catch (IOException e) {
+				logger.error("Could not search artifact '" + artifact.getId()  + "' for resources", e);
 			}
 		}
 		return null;
@@ -1264,5 +1390,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		return closest;
 	}
+
 
 }

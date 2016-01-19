@@ -69,8 +69,12 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 
 	@SuppressWarnings("unchecked")
 	public static List<String> getObjectReferences(JAXBArtifact<?> artifact) throws IOException {
+		return getObjectReferences(ComplexContentWrapperFactory.getInstance().getWrapper().wrap(artifact.getConfiguration()));
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<String> getObjectReferences(ComplexContent content) throws IOException {
 		List<String> references = new ArrayList<String>();
-		ComplexContent content = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(artifact.getConfiguration());
 		for (Element<?> child : TypeUtils.getAllChildren(content.getType())) {
 			if (child.getType() instanceof SimpleType) {
 				Class<?> instanceClass = ((SimpleType<?>) child.getType()).getInstanceClass();
@@ -97,8 +101,12 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 	
 	@SuppressWarnings("unchecked")
 	public static List<Validation<?>> updateObjectReferences(JAXBArtifact<?> artifact, String from, String to) throws IOException {
+		return updateObjectReferences(ComplexContentWrapperFactory.getInstance().getWrapper().wrap(artifact.getConfiguration()), artifact.getRepository(), from, to);
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<Validation<?>> updateObjectReferences(ComplexContent content, Repository repository, String from, String to) throws IOException {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
-		ComplexContent content = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(artifact.getConfiguration());
 		for (Element<?> child : TypeUtils.getAllChildren(content.getType())) {
 			if (child.getType() instanceof SimpleType) {
 				Class<?> instanceClass = ((SimpleType<?>) child.getType()).getInstanceClass();
@@ -106,9 +114,9 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 					if (child.getType().isList(child.getProperties())) {
 						List<Artifact> referencedArtifacts = (List<Artifact>) content.get(child.getName());
 						if (referencedArtifacts != null) {
-							Artifact resolved = artifact.getRepository().resolve(to);
+							Artifact resolved = repository.resolve(to);
 							if (resolved == null) {
-								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated in: " + artifact.getId()));
+								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated"));
 							}
 							else {
 								for (int i = 0; i < referencedArtifacts.size(); i++) {
@@ -122,9 +130,9 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 					else {
 						Artifact referencedArtifact = (Artifact) content.get(child.getName());
 						if (referencedArtifact != null && referencedArtifact.getId().equals(from)) {
-							Artifact resolved = artifact.getRepository().resolve(to);
+							Artifact resolved = repository.resolve(to);
 							if (resolved == null) {
-								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated in: " + artifact.getId()));
+								messages.add(new ValidationMessage(Severity.ERROR, "Could not find artifact '" + to + "', references not updated"));
 							}
 							else {
 								content.set(child.getName(), resolved);

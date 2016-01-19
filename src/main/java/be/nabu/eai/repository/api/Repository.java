@@ -32,4 +32,5 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	public <T> List<Class<T>> getImplementationsFor(Class<T> clazz);
 	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz);
 	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass);
+	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass);
 }

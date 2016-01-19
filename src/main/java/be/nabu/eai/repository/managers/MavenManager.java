@@ -46,11 +46,17 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		this.definedTypeResolver = definedTypeResolver;	
 	}
 	
-	public MavenArtifact load(Repository repository, Artifact artifact, URI mavenServer, boolean updateSnapshots) {
+	public MavenArtifact load(Repository repository, Artifact artifact, boolean updateSnapshots, URI...mavenServer) {
 		try {
-			DependencyResolver dependencyResolver = mavenServer == null 
-				? new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://mirrors.ibiblio.org/maven2"))
-				: new DependencyResolver(mavenServer, new URI("http://central.maven.org/maven2"), new URI("http://mirrors.ibiblio.org/maven2"));
+			List<URI> endpoints = new ArrayList<URI>();
+			if (mavenServer != null) {
+				for (URI uri : mavenServer) {
+					endpoints.add(uri);
+				}
+			}
+			endpoints.add(new URI("http://central.maven.org/maven2"));
+			endpoints.add(new URI("http://mirrors.ibiblio.org/maven2"));
+			DependencyResolver dependencyResolver = new DependencyResolver(endpoints.toArray(new URI[endpoints.size()]));
 			dependencyResolver.setUpdateSnapshots(updateSnapshots);
 			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
 			MavenArtifact mavenArtifact = new MavenArtifact(
@@ -110,6 +116,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	}
 
 	public static List<Entry> attachChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
+		return attachChildren(root, artifact, root.getId());
+	}
+	
+	public static List<Entry> attachChildren(ModifiableEntry root, MavenArtifact artifact, String parentId) throws IOException {
 		List<Entry> entries = new ArrayList<Entry>();
 		// if you are adding it to the actual repository root, first create an entry for the groupId
 		// this allows you to define maven repositories in other places than the groupId
@@ -127,6 +137,9 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 				String entryId = parent.getId() + "." + childName;
 				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
 				EAINode node = new EAINode();
+				if (parentId != null && !parentId.equals("")) {
+					node.getReferences().add(parentId);
+				}
 				node.setArtifact(artifact.getChildren().get(childId));
 				boolean hidden = false;
 				Annotation[] annotations = artifact.getAnnotations(childId);
@@ -145,13 +158,14 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					}
 				}
 				node.setLeaf(true);
-				MemoryEntry child = new MemoryEntry(root.getId(), root.getRepository(), parent, node, entryId, childName);
+				MemoryEntry child = new MemoryEntry(parentId, root.getRepository(), parent, node, entryId, childName);
 				node.setEntry(child);
 	//			node.setEntry(parent);
 				if (!hidden) {
 					parent.addChildren(child);
 				}
 				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
+				entries.add(child);
 			}
 		}
 		return entries;
@@ -195,12 +209,15 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			int index = id.lastIndexOf('.');
 			ModifiableEntry parent = index < 0 ? root : getParent(root, id, false);
 			String name = prettify(index < 0 ? id : id.substring(index + 1));
-			parent.removeChildren(name);
-			// if no children are remaining, remove parent as well
-			if (!parent.iterator().hasNext()) {
-				if (parent.getParent() instanceof ModifiableEntry) {
-					entries.add(parent);
-					((ModifiableEntry) parent.getParent()).removeChildren(parent.getName());
+			if (parent.getChild(name) != null) {
+				entries.add(parent.getChild(name));
+				parent.removeChildren(name);
+				// if no children are remaining, remove parent as well
+				if (!parent.iterator().hasNext()) {
+					if (parent.getParent() instanceof ModifiableEntry) {
+						entries.add(parent);
+						((ModifiableEntry) parent.getParent()).removeChildren(parent.getName());
+					}
 				}
 			}
 		}

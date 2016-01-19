@@ -310,4 +310,29 @@ public class ReadOnlyRepository implements ResourceRepository {
 	public void reloadAll(Collection<String> ids) {
 		throw new UnsupportedOperationException();
 	}
+
+	@SuppressWarnings("unchecked")
+	@Override
+	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
+		List<T> results = new ArrayList<T>();
+		if (nodesByType == null) {
+			scanForTypes();
+		}
+		for (Class<?> clazz : nodesByType.keySet()) {
+			if (ifaceClass.isAssignableFrom(clazz)) {
+				for (Node node : nodesByType.get(clazz).values()) {
+					try {
+						Artifact artifact = node.getArtifact();
+						if (artifact != null) {
+							results.add((T) artifact);
+						}
+					}
+					catch (Exception e) {
+						logger.error("Could not load artifact", e);
+					}
+				}
+			}
+		}
+		return results;
+	}
 }

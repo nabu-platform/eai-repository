@@ -117,24 +117,22 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		if (children == null) {
 			children = new LinkedHashMap<String, Entry>();
 		}
-		if (!isLeaf()) {
-			List<String> existing = new ArrayList<String>(children.keySet());
-			for (Resource child : container) {
-				if (existing.contains(child.getName())) {
-					existing.remove(child.getName());
-					if (refreshChildren) {
-						children.get(child.getName()).refresh(refreshChildren);
-					}
-				}
-				else if (child instanceof ResourceContainer && !repository.isInternal((ResourceContainer<?>) child) && !child.getName().startsWith(".")) {
-					children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
+		List<String> existing = new ArrayList<String>(children.keySet());
+		for (Resource child : container) {
+			if (existing.contains(child.getName())) {
+				existing.remove(child.getName());
+				if (refreshChildren) {
+					children.get(child.getName()).refresh(refreshChildren);
 				}
 			}
-			for (String deleted : existing) {
-				// don't auto-delete dynamic entries
-				if (!(children.get(deleted) instanceof DynamicEntry)) {
-					children.remove(deleted);
-				}
+			else if (child instanceof ResourceContainer && !repository.isInternal((ResourceContainer<?>) child) && !child.getName().startsWith(".")) {
+				children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
+			}
+		}
+		for (String deleted : existing) {
+			// don't auto-delete dynamic entries
+			if (!(children.get(deleted) instanceof DynamicEntry)) {
+				children.remove(deleted);
 			}
 		}
 	}
