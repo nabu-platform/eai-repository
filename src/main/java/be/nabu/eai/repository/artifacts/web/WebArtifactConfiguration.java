@@ -14,16 +14,17 @@ import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.services.api.DefinedService;
 
 @XmlRootElement(name = "webArtifact")
-@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "translationService", "languageProviderService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "webFragments" })
+@XmlType(propOrder = { "virtualHost", "realm", "path", "charset", "allowBasicAuthentication", "failedLoginThreshold", "failedLoginWindow", "failedLoginBlacklistDuration", "passwordAuthenticationService", "secretAuthenticationService", "permissionService", "roleService", "tokenValidatorService", "trackerService", "translationService", "languageProviderService", "whitelistedCodes", "cacheProvider", "maxTotalSessionSize", "maxSessionSize", "sessionTimeout", "webFragments" })
 public class WebArtifactConfiguration {
 
 	private CacheProviderArtifact cacheProvider;
-	private Long maxTotalSessionSize, maxSessionSize, sessionTimeout; 
+	private Long maxTotalSessionSize, maxSessionSize, sessionTimeout;
 	private VirtualHostArtifact virtualHost;
 	private String path;
 	private String charset;
 	private String realm;
 	private String whitelistedCodes;
+	private Long failedLoginThreshold, failedLoginWindow, failedLoginBlacklistDuration;
 	
 	private DefinedService passwordAuthenticationService, secretAuthenticationService;
 	private DefinedService permissionService;
@@ -193,5 +194,23 @@ public class WebArtifactConfiguration {
 	}
 	public void setVirtualHost(VirtualHostArtifact virtualHost) {
 		this.virtualHost = virtualHost;
+	}
+	public Long getFailedLoginThreshold() {
+		return failedLoginThreshold;
+	}
+	public void setFailedLoginThreshold(Long failedLoginThreshold) {
+		this.failedLoginThreshold = failedLoginThreshold;
+	}
+	public Long getFailedLoginWindow() {
+		return failedLoginWindow;
+	}
+	public void setFailedLoginWindow(Long failedLoginWindow) {
+		this.failedLoginWindow = failedLoginWindow;
+	}
+	public Long getFailedLoginBlacklistDuration() {
+		return failedLoginBlacklistDuration;
+	}
+	public void setFailedLoginBlacklistDuration(Long failedLoginBlacklistDuration) {
+		this.failedLoginBlacklistDuration = failedLoginBlacklistDuration;
 	}
 }

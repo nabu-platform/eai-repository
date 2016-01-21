@@ -48,7 +48,7 @@ import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.maven.api.DomainRepository;
-import be.nabu.libs.metrics.api.GroupLevelProvider;
+import be.nabu.libs.metrics.core.GaugeHistorizer;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
 import be.nabu.libs.metrics.core.api.Sink;
 import be.nabu.libs.metrics.core.api.SinkProvider;
@@ -132,7 +132,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * Currently the most important thing for diff/merge deploying is jaxbartifacts, so we will focus on those because they are easy to set
  * 
  */
-public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider, GroupLevelProvider {
+public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider {
 	
 	public static final String METRICS_SYSTEM = "system";
 	
@@ -146,6 +146,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private static EAIResourceRepository instance;
 	
 	private List<ArtifactManager<?>> artifactManagers;
+	
+	private EventDispatcher metricsDispatcher;
+	private GaugeHistorizer metricsGaugeHistorizer;
 	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
@@ -1026,7 +1029,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (nodesByType == null) {
 			scanForTypes();
 		}
-		for (Class<?> clazz : nodesByType.keySet()) {
+		for (Class<?> clazz : new ArrayList<Class<?>>(nodesByType.keySet())) {
 			if (ifaceClass.isAssignableFrom(clazz)) {
 				for (Node node : nodesByType.get(clazz).values()) {
 					try {
@@ -1055,7 +1058,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			scanForTypes();
 		}
 		List<Node> nodes = new ArrayList<Node>();
-		for (Class<?> clazz : nodesByType.keySet()) {
+		for (Class<?> clazz : new ArrayList<Class<?>>(nodesByType.keySet())) {
 			if (artifactClazz.isAssignableFrom(clazz)) {
 				nodes.addAll(nodesByType.get(clazz).values());
 			}
@@ -1289,7 +1292,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			if (!metrics.containsKey(id)) {
 				synchronized(metrics) {
 					if (!metrics.containsKey(id)) {
-						metrics.put(id, new MetricGrouper(new MetricInstanceImpl(id, this), this));
+						metrics.put(id, new MetricGrouper(newMetricInstance(id), new MetricsLevelProvider(id)));
 					}
 				}
 			}
@@ -1298,41 +1301,15 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return null;
 	}
 	
-	private Properties metricsProperties;
-	
-	public int getMetricsLevel(String name) {
-		if (metricsProperties == null) {
-			synchronized(this) {
-				if (metricsProperties == null) {
-					Properties properties = new Properties();
-					InputStream input = getClass().getClassLoader().getResourceAsStream("metrics.properties");
-					if (input != null) {
-						try {
-							try {
-								properties.load(input);
-							}
-							finally {
-								input.close();
-							}
-						}
-						catch (IOException e) {
-							logger.error("Could not load metrics file", e);
-						}
-					}
-					this.metricsProperties = properties;
-				}
-			}
-		}
-		return Integer.parseInt(metricsProperties.getProperty(name, "1"));
-	}
-	
 	public void enableMetrics(boolean enable) {
 		if (enable && metrics == null) {
+			// create a new metrics dispatching pool, allowing you to intercept metric updates
+			metricsDispatcher = new EventDispatcherImpl(2);
 			synchronized(this) {
 				if (metrics == null) {
 					metrics = new HashMap<String, MetricGrouper>();
 					synchronized(metrics) {
-						MetricGrouper metric = new MetricGrouper(new MetricInstanceImpl(METRICS_SYSTEM, this), this);
+						MetricGrouper metric = new MetricGrouper(newMetricInstance(METRICS_SYSTEM), new MetricsLevelProvider(METRICS_SYSTEM));
 						metrics.put(METRICS_SYSTEM, metric);
 						SystemMetrics.record(metric);
 					}
@@ -1344,6 +1321,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 	
+	private MetricInstanceImpl newMetricInstance(String id) {
+		if (metricsGaugeHistorizer == null) {
+			synchronized(this) {
+				if (metricsGaugeHistorizer == null) {
+					metricsGaugeHistorizer = new GaugeHistorizer(5000);
+					// start the historizer thread
+					new Thread(metricsGaugeHistorizer).start();
+				}
+			}
+		}
+		MetricInstanceImpl instance = new MetricInstanceImpl(id, this, metricsDispatcher);
+		metricsGaugeHistorizer.add(instance);
+		return instance;
+	}
+	
 	public Collection<String> getMetricInstances() {
 		return metrics == null ? null : metrics.keySet();
 	}
@@ -1353,11 +1345,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return new LimitedHistorySink(1000);
 	}
 
-	@Override
-	public Integer getLevel(String group) {
-		return getMetricsLevel(group);
-	}
-	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	@Override
 	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {

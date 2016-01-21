@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.authentication.api.PasswordAuthenticator;
 import be.nabu.eai.authentication.api.SecretAuthenticator;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.MetricsLevelProvider;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.UserLanguageProvider;
 import be.nabu.eai.repository.artifacts.http.RepositoryExceptionFormatter;
@@ -45,7 +46,9 @@ import be.nabu.libs.cache.impl.AccessBasedTimeoutManager;
 import be.nabu.libs.cache.impl.SerializableSerializer;
 import be.nabu.libs.cache.impl.StringSerializer;
 import be.nabu.libs.events.api.EventDispatcher;
+import be.nabu.libs.events.api.EventHandler;
 import be.nabu.libs.events.api.EventSubscription;
+import be.nabu.libs.events.filters.AndEventFilter;
 import be.nabu.libs.http.api.ContentRewriter;
 import be.nabu.libs.http.api.HTTPRequest;
 import be.nabu.libs.http.api.HTTPResponse;
@@ -62,6 +65,12 @@ import be.nabu.libs.http.server.BasicAuthenticationHandler;
 import be.nabu.libs.http.server.HTTPServerUtils;
 import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.http.server.SessionProviderImpl;
+import be.nabu.libs.metrics.api.GroupLevelProvider;
+import be.nabu.libs.metrics.api.MetricInstance;
+import be.nabu.libs.metrics.core.MetricInstanceImpl;
+import be.nabu.libs.metrics.core.api.SinkEvent;
+import be.nabu.libs.metrics.core.filters.ThresholdOverTimeFilter;
+import be.nabu.libs.metrics.impl.MetricGrouper;
 import be.nabu.libs.resources.CombinedContainer;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -300,6 +309,47 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 				new SimpleExecutionEnvironment(environmentName, environment),
 				serverPath
 			);
+			
+			if (getConfiguration().getFailedLoginThreshold() != null) {
+				MetricInstance metricInstance = getRepository().getMetricInstance(getId());
+				// we need to up the grouping level of the login failed, otherwise we never get to the ip level
+				if (metricInstance instanceof MetricGrouper) {
+					GroupLevelProvider groupLevelProvider = ((MetricGrouper) metricInstance).getGroupLevelProvider();
+					if (groupLevelProvider instanceof MetricsLevelProvider) {
+						((MetricsLevelProvider) groupLevelProvider).set(UserMethods.METRICS_LOGIN_FAILED, 2);
+					}
+					else {
+						throw new IllegalArgumentException("Expecting a MetricsLevelProvider");	
+					}
+					// add an event dispatcher to trigger on failed logins and blacklist an ip
+					MetricInstance parent = ((MetricGrouper) metricInstance).getParent();
+					if (parent instanceof MetricInstanceImpl) {
+						EventDispatcher metricsDispatcher = ((MetricInstanceImpl) parent).getDispatcher();
+						if (metricsDispatcher != null) {
+							// by default the user will be blocked for 15 minutes
+							EventSubscription<SinkEvent, Void> metricsSubscription = metricsDispatcher.subscribe(SinkEvent.class, new FailedLoginListener(this, getConfiguration().getFailedLoginBlacklistDuration() == null ? 15 * 60000l : getConfiguration().getFailedLoginBlacklistDuration()));
+							metricsSubscription.filter(new AndEventFilter<SinkEvent>(
+								new EventHandler<SinkEvent, Boolean>() {
+									@Override
+									public Boolean handle(SinkEvent event) {
+										return event.getCategory().startsWith(UserMethods.METRICS_LOGIN_FAILED + ":");
+									}
+								},
+								// the default window is 10 minutes
+								new ThresholdOverTimeFilter(getConfiguration().getFailedLoginThreshold(), true, getConfiguration().getFailedLoginWindow() == null ? 600000l : getConfiguration().getFailedLoginWindow())
+							));
+						}
+					}
+					else {
+						throw new IllegalArgumentException("Expecting a MetricInstanceImpl");
+					}
+				}
+				else {
+					throw new IllegalArgumentException("Expecting a MetricGrouper");
+				}
+				listener.setMetrics(metricInstance);
+			}
+			
 			if (getConfiguration().getTranslationService() != null) {
 				final UserLanguageProvider languageProvider = getLanguageProvider();
 				listener.getSubstituterProviders().add(new StringSubstituterProvider() {
