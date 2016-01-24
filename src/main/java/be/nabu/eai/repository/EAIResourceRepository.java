@@ -1378,5 +1378,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return closest;
 	}
 
+	@Override
+	public EventDispatcher getMetricsDispatcher() {
+		return metricsDispatcher;
+	}
 
 }

@@ -451,5 +451,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
 			return this.parent.getRepository().getArtifactsThatImplement(ifaceClass);
 		}
+
+		@Override
+		public EventDispatcher getMetricsDispatcher() {
+			return this.parent.getRepository().getMetricsDispatcher();
+		}
 	}
 }

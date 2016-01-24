@@ -67,7 +67,6 @@ import be.nabu.libs.http.server.ResourceHandler;
 import be.nabu.libs.http.server.SessionProviderImpl;
 import be.nabu.libs.metrics.api.GroupLevelProvider;
 import be.nabu.libs.metrics.api.MetricInstance;
-import be.nabu.libs.metrics.core.MetricInstanceImpl;
 import be.nabu.libs.metrics.core.api.SinkEvent;
 import be.nabu.libs.metrics.core.filters.ThresholdOverTimeFilter;
 import be.nabu.libs.metrics.impl.MetricGrouper;
@@ -321,31 +320,30 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 					else {
 						throw new IllegalArgumentException("Expecting a MetricsLevelProvider");	
 					}
-					// add an event dispatcher to trigger on failed logins and blacklist an ip
-					MetricInstance parent = ((MetricGrouper) metricInstance).getParent();
-					if (parent instanceof MetricInstanceImpl) {
-						EventDispatcher metricsDispatcher = ((MetricInstanceImpl) parent).getDispatcher();
-						if (metricsDispatcher != null) {
-							// by default the user will be blocked for 15 minutes
-							EventSubscription<SinkEvent, Void> metricsSubscription = metricsDispatcher.subscribe(SinkEvent.class, new FailedLoginListener(this, getConfiguration().getFailedLoginBlacklistDuration() == null ? 15 * 60000l : getConfiguration().getFailedLoginBlacklistDuration()));
-							metricsSubscription.filter(new AndEventFilter<SinkEvent>(
-								new EventHandler<SinkEvent, Boolean>() {
-									@Override
-									public Boolean handle(SinkEvent event) {
-										return event.getCategory().startsWith(UserMethods.METRICS_LOGIN_FAILED + ":");
-									}
-								},
-								// the default window is 10 minutes
-								new ThresholdOverTimeFilter(getConfiguration().getFailedLoginThreshold(), true, getConfiguration().getFailedLoginWindow() == null ? 600000l : getConfiguration().getFailedLoginWindow())
-							));
-						}
-					}
-					else {
-						throw new IllegalArgumentException("Expecting a MetricInstanceImpl");
-					}
 				}
-				else {
-					throw new IllegalArgumentException("Expecting a MetricGrouper");
+				// add an event dispatcher to trigger on failed logins and blacklist an ip
+				EventDispatcher metricsDispatcher = getRepository().getMetricsDispatcher();
+				if (metricsDispatcher != null) {
+					// by default the user will be blocked for 15 minutes
+					EventSubscription<SinkEvent, Void> metricsSubscription = metricsDispatcher.subscribe(SinkEvent.class, new FailedLoginListener(this, getConfiguration().getFailedLoginBlacklistDuration() == null ? 15 * 60000l : getConfiguration().getFailedLoginBlacklistDuration()));
+					metricsSubscription.filter(new AndEventFilter<SinkEvent>(
+						// we are only interested in login metrics for this artifact
+						new EventHandler<SinkEvent, Boolean>() {
+							@Override
+							public Boolean handle(SinkEvent event) {
+								boolean isAllowed = getId().equals(event.getId()) && !event.getCategory().startsWith(UserMethods.METRICS_LOGIN_FAILED + ":");
+								// filter all those that are not allowed
+								return !isAllowed;
+							}
+						},
+						// the default window is 10 minutes
+						new ThresholdOverTimeFilter(
+							getConfiguration().getFailedLoginThreshold(), 
+							true, 
+							getConfiguration().getFailedLoginWindow() == null ? 600000l : getConfiguration().getFailedLoginWindow()
+						)
+					));
+					subscriptions.add(metricsSubscription);
 				}
 				listener.setMetrics(metricInstance);
 			}
