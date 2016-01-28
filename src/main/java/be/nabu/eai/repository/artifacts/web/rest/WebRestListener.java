@@ -158,6 +158,8 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 					throw new HTTPException(token == null ? 401 : 403, "User '" + (token == null ? Authenticator.ANONYMOUS : token.getName()) + "' does not have permission to '" + request.getMethod().toLowerCase() + "' on '" + path + "' with service: " + service.getId());
 				}
 			}
+
+			boolean sanitizeInput = webArtifact.getConfiguration().getSanitizeInput() != null && webArtifact.getConfiguration().getSanitizeInput();
 			
 			Map<String, List<String>> queryProperties = URIUtils.getQueryProperties(uri);
 			
@@ -167,28 +169,29 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 			}
 			if (input.getType().get("query") != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("query").getType())) {
-					input.set("query/" + element.getName(), queryProperties.get(element.getName()));
+					input.set("query/" + element.getName(), sanitize(queryProperties.get(element.getName()), sanitizeInput));
 				}
 			}
 			if (input.getType().get("header") != null && request.getContent() != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("header").getType())) {
 					int counter = 0;
 					for (Header header : MimeUtils.getHeaders(WebRestArtifact.fieldToHeader(element.getName()), request.getContent().getHeaders())) {
-						input.set("header/" + element.getName() + "[" + counter++ + "]", header.getValue());
+						input.set("header/" + element.getName() + "[" + counter++ + "]", sanitize(header.getValue(), sanitizeInput));
 					}
 				}
 			}
 			if (session != null && input.getType().get("session") != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("session").getType())) {
-					input.set("session/" + element.getName(), session.get(element.getName()));
+					input.set("session/" + element.getName(), sanitize(session.get(element.getName()), sanitizeInput));
 				}
 			}
+
 			for (String key : analyzed.keySet()) {
-				input.set("path/" + key, analyzed.get(key));
+				input.set("path/" + key, sanitize(analyzed.get(key), sanitizeInput));
 			}
 			if (input.getType().get("cookie") != null) {
 				for (Element<?> element : TypeUtils.getAllChildren((ComplexType) input.getType().get("cookie").getType())) {
-					input.set("cookie/" + element.getName(), cookies.get(element.getName()));
+					input.set("cookie/" + element.getName(), sanitize(cookies.get(element.getName()), sanitizeInput));
 				}
 			}
 			if (input.getType().get("content") != null && request.getContent() instanceof ContentPart) {
@@ -218,7 +221,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 							throw new HTTPException(400, "Unsupported request content type: " + contentType);	
 						}
 						try {
-							input.set("content", binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]));
+							input.set("content", sanitize(binding.unmarshal(IOUtils.toInputStream(readable), new Window[0]), sanitizeInput));
 						}
 						catch (IOException e) {
 							throw new HTTPException(500, e);
@@ -323,4 +326,7 @@ public class WebRestListener implements EventHandler<HTTPRequest, HTTPResponse> 
 		}
 	}
 
+	private static Object sanitize(Object value, boolean sanitize) {
+		return sanitize ? GlueListener.sanitize(value) : value;
+	}
 }

@@ -12,7 +12,7 @@ import be.nabu.libs.types.api.DefinedType;
 
 @XmlRootElement(name = "webRestArtifact")
 @XmlType(propOrder = { "method", "path", "queryParameters", "cookieParameters", "sessionParameters", "headerParameters", "responseHeaders", "roles",
-			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output", "includeRealm" })
+			"preferredResponseType", "asynchronous", "inputAsStream", "outputAsStream", "input", "output", "includeRealm", "sanitizeInput" })
 public class WebRestArtifactConfiguration {
 
 	private DefinedType input, output;
@@ -22,6 +22,7 @@ public class WebRestArtifactConfiguration {
 	private Boolean asynchronous, includeRealm;
 	private WebResponseType preferredResponseType;
 	private Boolean inputAsStream, outputAsStream;
+	private Boolean sanitizeInput;
 
 	public String getPath() {
 		return path;
@@ -115,5 +116,11 @@ public class WebRestArtifactConfiguration {
 	}
 	public void setIncludeRealm(Boolean includeRealm) {
 		this.includeRealm = includeRealm;
+	}
+	public Boolean getSanitizeInput() {
+		return sanitizeInput;
+	}
+	public void setSanitizeInput(Boolean sanitizeInput) {
+		this.sanitizeInput = sanitizeInput;
 	}
 }

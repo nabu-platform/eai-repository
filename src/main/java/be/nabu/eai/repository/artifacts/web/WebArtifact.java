@@ -17,6 +17,7 @@ import be.nabu.eai.authentication.api.PasswordAuthenticator;
 import be.nabu.eai.authentication.api.SecretAuthenticator;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.MetricsLevelProvider;
+import be.nabu.eai.repository.api.AuthenticatorProvider;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.UserLanguageProvider;
 import be.nabu.eai.repository.artifacts.http.RepositoryExceptionFormatter;
@@ -83,7 +84,7 @@ import be.nabu.utils.mime.impl.MimeUtils;
  * TODO: integrate session provider to use same cache as service cache
  * Maybe re-add "AnyThreadTracker" to the context?
  */
-public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact {
+public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implements StartableArtifact, StoppableArtifact, AuthenticatorProvider {
 
 	private Map<ResourceContainer<?>, ScriptRepository> additionalRepositories = new HashMap<ResourceContainer<?>, ScriptRepository>();
 	private List<EventSubscription<?, ?>> subscriptions = new ArrayList<EventSubscription<?, ?>>();
@@ -429,8 +430,14 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		return environment;
 	}
 
-	public String getRealm() throws IOException {
-		return getConfiguration().getRealm() == null ? getId() : getConfiguration().getRealm();
+	@Override
+	public String getRealm() {
+		try {
+			return getConfiguration().getRealm() == null ? getId() : getConfiguration().getRealm();
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	public String getServerPath() throws IOException {
@@ -444,16 +451,22 @@ public class WebArtifact extends JAXBArtifact<WebArtifactConfiguration> implemen
 		return serverPath;
 	}
 	
-	public Authenticator getAuthenticator() throws IOException {
+	@Override
+	public Authenticator getAuthenticator() {
 		PasswordAuthenticator passwordAuthenticator = null;
-		if (getConfiguration().getPasswordAuthenticationService() != null) {
-			passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getRepository(), SystemPrincipal.ROOT);
+		try {
+			if (getConfiguration().getPasswordAuthenticationService() != null) {
+				passwordAuthenticator = POJOUtils.newProxy(PasswordAuthenticator.class, getConfiguration().getPasswordAuthenticationService(), getRepository(), SystemPrincipal.ROOT);
+			}
+			SecretAuthenticator sharedSecretAuthenticator = null;
+			if (getConfiguration().getSecretAuthenticationService() != null) {
+				sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getRepository(), SystemPrincipal.ROOT);
+			}
+			return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 		}
-		SecretAuthenticator sharedSecretAuthenticator = null;
-		if (getConfiguration().getSecretAuthenticationService() != null) {
-			sharedSecretAuthenticator = POJOUtils.newProxy(SecretAuthenticator.class, getConfiguration().getSecretAuthenticationService(), getRepository(), SystemPrincipal.ROOT);
+		catch(IOException e) {
+			throw new RuntimeException(e);
 		}
-		return new CombinedAuthenticator(passwordAuthenticator, sharedSecretAuthenticator);
 	}
 	public RoleHandler getRoleHandler() throws IOException {
 		if (getConfiguration().getRoleService() != null) {
