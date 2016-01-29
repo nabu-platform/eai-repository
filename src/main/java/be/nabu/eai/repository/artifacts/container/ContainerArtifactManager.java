@@ -256,6 +256,12 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 				references.addAll(artifactManager.getReferences(child));
 			}
 		}
+		Iterator<String> iterator = references.iterator();
+		while(iterator.hasNext()) {
+			if (iterator.next().startsWith("$self")) {
+				iterator.remove();
+			}
+		}
 		return new ArrayList<String>(references);
 	}
 

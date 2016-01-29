@@ -6,5 +6,5 @@ import javax.validation.constraints.NotNull;
 
 public interface Translator {
 	@WebResult(name = "translation")
-	public String translate(@NotNull @WebParam(name = "id") String id, @NotNull @WebParam(name = "key") String key, @WebParam(name = "language") String language);
+	public String translate(@NotNull @WebParam(name = "category") String category, @NotNull @WebParam(name = "key") String key, @WebParam(name = "language") String language);
 }
