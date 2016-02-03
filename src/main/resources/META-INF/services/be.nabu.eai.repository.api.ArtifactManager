@@ -1,8 +1,6 @@
 be.nabu.eai.repository.managers.BrokerClientManager
 be.nabu.eai.repository.managers.JDBCServiceManager
-be.nabu.eai.repository.managers.DefinedHTTPServerManager
 be.nabu.eai.repository.managers.KeyStoreManager
-be.nabu.eai.repository.managers.ProxyManager
 be.nabu.eai.repository.managers.ServiceInterfaceManager
 be.nabu.eai.repository.managers.StructureManager
 be.nabu.eai.repository.managers.SubscriptionManager
@@ -11,4 +9,3 @@ be.nabu.eai.repository.managers.VMServiceManager
 be.nabu.eai.repository.managers.WebArtifactManager
 be.nabu.eai.repository.managers.WSDLClientManager
 be.nabu.eai.repository.managers.XMLSchemaRegistryManager
-be.nabu.eai.repository.artifacts.http.virtual.VirtualHostManager

@@ -67,11 +67,6 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>be.nabu.libs.http</groupId>
-			<artifactId>http-glue</artifactId>
-			<version>1.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
 			<groupId>be.nabu.libs.resources</groupId>
 			<artifactId>resources-file</artifactId>
 			<version>1.1-SNAPSHOT</version>
@@ -113,7 +108,7 @@
 			<artifactId>artifacts-maven</artifactId>
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>be.nabu.libs.metrics</groupId>
 			<artifactId>metrics-core</artifactId>
@@ -125,6 +120,11 @@
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-java</artifactId>
 			<version>1.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.types</groupId>
+			<artifactId>types-mask</artifactId>
+			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>
@@ -198,13 +198,6 @@
 			<version>1.0-SNAPSHOT</version>
 		</dependency>
 
-		<!-- Broker -->
-		<dependency>
-			<groupId>be.nabu.eai</groupId>
-			<artifactId>eai-broker</artifactId>
-			<version>1.0-SNAPSHOT</version>
-		</dependency>
-
 		<!-- Glue dependencies -->
 		<dependency>
 			<groupId>be.nabu.glue</groupId>
@@ -220,6 +213,11 @@
 			<groupId>be.nabu.glue</groupId>
 			<artifactId>glue-services</artifactId>
 			<version>1.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>be.nabu.libs.http</groupId>
+			<artifactId>http-glue</artifactId>
+			<version>1.1-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>

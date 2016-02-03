@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-
 public class RepositoryClassLoader extends ClassLoader {
 
 	private EAIResourceRepository repository;
@@ -32,4 +31,5 @@ public class RepositoryClassLoader extends ClassLoader {
 			return clazz;
 		}
 	}
+	
 }
