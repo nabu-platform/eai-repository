@@ -3,19 +3,26 @@ package be.nabu.eai.repository.util;
 import javax.xml.bind.annotation.adapters.XmlAdapter;
 
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.api.Repository;
 
 public class ClassAdapter extends XmlAdapter<String, Class<?>> {
 
+	private Repository repository;
+
+	public ClassAdapter() {
+		this(EAIResourceRepository.getInstance());
+	}
+	
+	public ClassAdapter(Repository repository) {
+		this.repository = repository;
+	}
+	
 	@Override
 	public Class<?> unmarshal(String v) throws Exception {
 		if (v == null) {
 			return null;
 		}
-		Class<?> clazz = EAIResourceRepository.getInstance().loadClass(v);
-		if (clazz == null) {
-			clazz = Thread.currentThread().getContextClassLoader().loadClass(v);
-		}
-		return clazz;
+		return repository.newClassLoader().loadClass(v);
 	}
 
 	@Override

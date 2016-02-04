@@ -203,8 +203,8 @@ public class ReadOnlyRepository implements ResourceRepository {
 	}
 	
 	@Override
-	public ClassLoader newClassLoader(String artifact) {
-		return local.newClassLoader(artifact);
+	public ClassLoader newClassLoader() {
+		return local.newClassLoader();
 	}
 
 	@Override

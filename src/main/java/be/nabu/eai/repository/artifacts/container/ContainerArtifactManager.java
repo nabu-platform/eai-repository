@@ -361,8 +361,8 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 
 		@Override
-		public ClassLoader newClassLoader(String artifact) {
-			return parent.getRepository().newClassLoader(artifact);
+		public ClassLoader newClassLoader() {
+			return parent.getRepository().newClassLoader();
 		}
 
 		@Override

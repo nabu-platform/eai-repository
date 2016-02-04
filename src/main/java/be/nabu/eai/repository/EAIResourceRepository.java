@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.Principal;
 import java.text.ParseException;
@@ -226,7 +227,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		BeanResolver.getInstance().addFactory(new DomainObjectFactory() {
 			@Override
 			public Class<?> loadClass(String name) throws ClassNotFoundException {
-				return EAIResourceRepository.this.loadClass(name);
+				return EAIResourceRepository.this.newClassLoader().loadClass(name);
 			}
 		});
 	}
@@ -1214,45 +1215,71 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return implementations;
 	}
 	
-	@Override
-	public ClassLoader newClassLoader(String artifact) {
-		return new RepositoryClassLoader(this, getClass().getClassLoader(), artifact);
-	}
-	
-	public Class<?> loadClass(String className) {
-		return loadClass(className, new ArrayList<String>());
-	}
-	
-	public Class<?> loadClass(String className, List<String> blacklist) {
+	Class<?> loadClass(String name) throws ClassNotFoundException {
 		for (MavenArtifact artifact : mavenArtifacts) {
-			if (!blacklist.contains(artifact.getId())) {
-				try {
-					Class<?> clazz = artifact.getClassLoader().loadClassNonRecursively(className);
-					if (clazz != null) {
-						return clazz;
-					}
+			try {
+				Class<?> clazz = artifact.getClassLoader().loadClassNonRecursively(name);
+				if (clazz != null) {
+					return clazz;
 				}
-				catch (ClassNotFoundException e) {
-					// ignore
-				}
+			}
+			catch (ClassNotFoundException e) {
+				// ignore
 			}
 		}
 		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
-			if (!blacklist.contains(artifact.getId())) {
-				try {
-					Class<?> loadClass = artifact.loadClass(className);
+			try {
+				for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+					Class<?> loadClass = classLoader.loadClassNonRecursively(name);
 					if (loadClass != null) {
 						return loadClass;
 					}
 				}
-				catch (ClassNotFoundException e) {
-					logger.error("Could not search artifact '" + artifact.getId()  + "' for classes", e);
-				}
+			}
+			catch (ClassNotFoundException e) {
+				logger.error("Could not search artifact '" + artifact.getId()  + "' for classes", e);
 			}
 		}
 		return null;
 	}
+	
+	URL getResource(String name) {
+		for (MavenArtifact artifact : mavenArtifacts) {
+			Collection<URL> resources = artifact.getClassLoader().findResourcesNonRecursively(name, true);
+			if (!resources.isEmpty()) {
+				return resources.iterator().next();
+			}
+		}
+		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+			for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+				Collection<URL> resources = classLoader.findResourcesNonRecursively(name, true);
+				if (!resources.isEmpty()) {
+					return resources.iterator().next();
+				}
 
+			}
+		}
+		return null;
+	}
+	
+	Collection<URL> getResources(String name) {
+		Set<URL> urls = new LinkedHashSet<URL>();
+		for (MavenArtifact artifact : mavenArtifacts) {
+			urls.addAll(artifact.getClassLoader().findResourcesNonRecursively(name, false));
+		}
+		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+			for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+				urls.addAll(classLoader.findResourcesNonRecursively(name, false));
+			}
+		}
+		return urls;
+	}
+	
+	@Override
+	public ClassLoader newClassLoader() {
+		return new EAIRepositoryClassLoader(this);
+	}
+	
 	public InputStream getMavenResource(String name) {
 		for (MavenArtifact artifact : mavenArtifacts) {
 			InputStream stream = artifact.getClassLoader().getResourceAsStream(name);

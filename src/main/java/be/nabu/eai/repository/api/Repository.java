@@ -74,7 +74,10 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 * Start the repository, this will load everything in it (possibly lazily)
 	 */
 	public void start();
-	public ClassLoader newClassLoader(String artifact);
+	/**
+	 * Returns a repository-aware classloader
+	 */
+	public ClassLoader newClassLoader();
 	/**
 	 * TODO: This is mostly used to live besides SPI, but that should be fixed
 	 */
