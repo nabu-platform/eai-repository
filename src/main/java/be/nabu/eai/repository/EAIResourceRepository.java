@@ -38,6 +38,7 @@ import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.resources.RepositoryResourceResolver;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
+import be.nabu.libs.artifacts.LocalClassLoader;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.artifacts.api.ClassProvidingArtifact;
@@ -64,6 +65,8 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.resources.internal.MultipleURLStreamHandlerFactory;
+import be.nabu.libs.resources.internal.VFSURLStreamHandlerFactory;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.ListableServiceContext;
@@ -190,7 +193,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (System.getProperty("repository.domains") != null) {
 			internalDomains.addAll(Arrays.asList(System.getProperty("repository.domains").split("[\\s]*,[\\s]*")));
 		}
+		// register custom content type mapping
 		ContentTypeMap.register();
+		// register custom URL handler that supports VFS lookups and local classloader lookups
+		MultipleURLStreamHandlerFactory.register(Arrays.asList(
+			new VFSURLStreamHandlerFactory(),
+			new LocalClassLoader.LocalClassLoaderURLStreamHandlerFactory()
+		));
 		this.resourceRoot = repositoryRoot;
 		this.mavenRoot = mavenRoot;
 		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
