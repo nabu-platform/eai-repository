@@ -14,10 +14,12 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
+import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.api.FiniteResource;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -148,5 +150,24 @@ public class EAIRepositoryUtils {
 	public static interface EntryFilter {
 		public boolean accept(ResourceEntry entry);
 		public boolean recurse(ResourceEntry entry);
+	}
+	
+	public static ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
+		ParsedPath path = new ParsedPath(id.replace('.', '/'));
+		// resolve a parent path
+		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
+			Entry entry = root.getChild(path.getName());
+			// if it's null, create a new entry
+			if (entry == null) {
+				entry = new MemoryEntry(root.getId(), root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + path.getName(), path.getName());
+				root.addChildren(entry);
+			}
+			else if (entry.isNode()) {
+				((EAINode) entry.getNode()).setLeaf(false);
+			}
+			root = (ModifiableEntry) entry;
+			path = path.getChildPath();
+		}
+		return root;
 	}
 }

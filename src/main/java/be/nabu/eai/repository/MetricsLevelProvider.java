@@ -21,6 +21,10 @@ public class MetricsLevelProvider implements GroupLevelProvider {
 	
 	@Override
 	public Integer getLevel(String group) {
+		return getLevelFor(id, group);
+	}
+
+	public static Integer getLevelFor(String id, String group) {
 		Properties properties = getMetricsProperties();
 		// find a specific setting for this id
 		String property = properties.getProperty(id + ":" + group);

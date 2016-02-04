@@ -8,11 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAINode;
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.api.ComplexType;
@@ -63,7 +63,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 					if (id.startsWith(artifact.getId())) {
 						id = id.substring((artifact.getId() + ".").length());
 						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
-						ModifiableEntry parent = MavenManager.getParent(root, id, false);
+						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
 						EAINode node = new EAINode();
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
@@ -88,7 +88,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 					if (id.startsWith(artifact.getId())) {
 						id = id.substring((artifact.getId() + ".").length());
 						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
-						ModifiableEntry parent = MavenManager.getParent(root, id, false);
+						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
 						System.out.println("Removing " + name + " from " + parent);
 						if (parent != null) {
 							entries.add(parent.getChild(name));

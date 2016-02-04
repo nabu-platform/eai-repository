@@ -16,6 +16,7 @@ import be.nabu.eai.api.Cache;
 import be.nabu.eai.api.Eager;
 import be.nabu.eai.api.Hidden;
 import be.nabu.eai.repository.EAINode;
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -29,7 +30,6 @@ import be.nabu.libs.maven.api.Artifact;
 import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.services.maven.DependencyResolver;
 import be.nabu.libs.services.maven.MavenArtifact;
-import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.DefinedTypeResolver;
 import be.nabu.libs.validator.api.Validation;
 
@@ -124,15 +124,15 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		// if you are adding it to the actual repository root, first create an entry for the groupId
 		// this allows you to define maven repositories in other places than the groupId
 		if (root.getParent() == null) {
-			root = getParent(root, artifact.getArtifact().getGroupId(), true);
+			root = EAIRepositoryUtils.getParent(root, artifact.getArtifact().getGroupId(), true);
 		}
 		List<String> keys = new ArrayList<String>(artifact.getChildren().keySet());
 		Collections.sort(keys);
 		
 		for (String childId : keys) {
-			ModifiableEntry parent = getParent(root, childId, false);
+			ModifiableEntry parent = EAIRepositoryUtils.getParent(root, childId, false);
 			int index = childId.lastIndexOf('.');
-			String childName = prettify(index < 0 ? childId : childId.substring(index + 1));
+			String childName = index < 0 ? childId : childId.substring(index + 1);
 			if (parent.getChild(childName) == null) {
 				String entryId = parent.getId() + "." + childName;
 				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
@@ -171,30 +171,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		return entries;
 	}
 	
-	public static ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
-		ParsedPath path = new ParsedPath(id.replace('.', '/'));
-		// resolve a parent path
-		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
-			Entry entry = root.getChild(prettify(path.getName()));
-			// if it's null, create a new entry
-			if (entry == null) {
-				entry = new MemoryEntry(root.getId(), root.getRepository(), root, null, (root.getId().isEmpty() ? "" : root.getId() + ".") + prettify(path.getName()), prettify(path.getName()));
-				root.addChildren(entry);
-			}
-			else if (entry.isNode()) {
-				((EAINode) entry.getNode()).setLeaf(false);
-			}
-			root = (ModifiableEntry) entry;
-			path = path.getChildPath();
-		}
-		return root;
-	}
-	
-	public static String prettify(String name) {
-		return name;
-//		return name.substring(0, 1).toLowerCase() + name.substring(1);
-	}
-
 	@Override
 	public List<Entry> removeChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
 		return detachChildren(root, artifact);
@@ -203,12 +179,12 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	public static List<Entry> detachChildren(ModifiableEntry root, MavenArtifact artifact) throws IOException {
 		List<Entry> entries = new ArrayList<Entry>();
 		if (root.getParent() == null) {
-			root = getParent(root, artifact.getArtifact().getGroupId(), true);
+			root = EAIRepositoryUtils.getParent(root, artifact.getArtifact().getGroupId(), true);
 		}
 		for (String id : artifact.getChildren().keySet()) {
 			int index = id.lastIndexOf('.');
-			ModifiableEntry parent = index < 0 ? root : getParent(root, id, false);
-			String name = prettify(index < 0 ? id : id.substring(index + 1));
+			ModifiableEntry parent = index < 0 ? root : EAIRepositoryUtils.getParent(root, id, false);
+			String name = index < 0 ? id : id.substring(index + 1);
 			if (parent.getChild(name) != null) {
 				entries.add(parent.getChild(name));
 				parent.removeChildren(name);
