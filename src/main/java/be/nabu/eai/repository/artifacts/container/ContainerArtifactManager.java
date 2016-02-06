@@ -18,6 +18,7 @@ import javax.xml.bind.JAXBContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ContainerArtifact;
@@ -129,7 +130,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			}
 			unused.remove(name);
 			ContainerArtifactConfiguration container = new ContainerArtifactConfiguration();
-			ArtifactManager artifactManager = entry.getRepository().getArtifactManager(child.getClass());
+			ArtifactManager artifactManager = EAIRepositoryUtils.getArtifactManager(entry.getRepository().getClassLoader(), child.getClass());
 			if (artifactManager == null) {
 				throw new RuntimeException("Can not save artifact " + child + ", no manager found");
 			}
@@ -251,7 +252,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 	public List<String> getReferences(T artifact) throws IOException {
 		Set<String> references = new HashSet<String>();
 		for (Artifact child : artifact.getContainedArtifacts()) {
-			ArtifactManager artifactManager = EAIResourceRepository.getInstance().getArtifactManager(child.getClass());
+			ArtifactManager artifactManager = EAIRepositoryUtils.getArtifactManager(child.getClass());
 			if (artifactManager != null) {
 				references.addAll(artifactManager.getReferences(child));
 			}
@@ -269,7 +270,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 	public List<Validation<?>> updateReference(T artifact, String from, String to) throws IOException {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		for (Artifact child : artifact.getContainedArtifacts()) {
-			ArtifactManager artifactManager = EAIResourceRepository.getInstance().getArtifactManager(child.getClass());
+			ArtifactManager artifactManager = EAIRepositoryUtils.getArtifactManager(child.getClass());
 			if (artifactManager != null) {
 				List<Validation<?>> updateReference = artifactManager.updateReference(child, from, to);
 				if (updateReference != null) {
@@ -329,11 +330,6 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 
 		@Override
-		public List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
-			return parent.getRepository().getNodes(artifactClazz);
-		}
-
-		@Override
 		public ServiceRunner getServiceRunner() {
 			return parent.getRepository().getServiceRunner();
 		}
@@ -361,30 +357,20 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 
 		@Override
-		public ClassLoader newClassLoader() {
-			return parent.getRepository().newClassLoader();
+		public ClassLoader getClassLoader() {
+			return parent.getRepository().getClassLoader();
 		}
 
-		@Override
-		public <T> List<Class<T>> getImplementationsFor(Class<T> clazz) {
-			return parent.getRepository().getImplementationsFor(clazz);
-		}
-
-		@Override
-		public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
-			List<T> artifacts = new ArrayList<T>(parent.getRepository().getArtifacts(artifactClazz));
-			for (Artifact artifact : additionalArtifacts) {
-				if (artifactClazz.isAssignableFrom(artifact.getClass())) {
-					artifacts.add((T) artifact);
-				}
-			}
-			return artifacts;
-		}
-
-		@Override
-		public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
-			return parent.getRepository().getArtifactManager(artifactClass);
-		}
+//		@Override
+//		public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
+//			List<T> artifacts = new ArrayList<T>(parent.getRepository().getArtifacts(artifactClazz));
+//			for (Artifact artifact : additionalArtifacts) {
+//				if (artifactClazz.isAssignableFrom(artifact.getClass())) {
+//					artifacts.add((T) artifact);
+//				}
+//			}
+//			return artifacts;
+//		}
 
 		@Override
 		public Artifact resolve(String id) {
@@ -415,13 +401,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 
 		@Override
 		public List<DefinedService> getServices() {
-			List<DefinedService> services = new ArrayList<DefinedService>(parent.getRepository().getServices());
-			for (Artifact artifact : additionalArtifacts) {
-				if (artifact instanceof DefinedService) {
-					services.add((DefinedService) artifact);
-				}
-			}
-			return services;
+			return getArtifacts(DefinedService.class);
 		}
 
 		@Override
@@ -454,8 +434,14 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 
 		@Override
-		public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
-			return this.parent.getRepository().getArtifactsThatImplement(ifaceClass);
+		public <T> List<T> getArtifacts(Class<T> ifaceClass) {
+			List<T> list = this.parent.getRepository().getArtifacts(ifaceClass);
+			for (Artifact artifact : additionalArtifacts) {
+				if (ifaceClass.isAssignableFrom(artifact.getClass())) {
+					list.add((T) artifact);
+				}
+			}
+			return list;
 		}
 
 		@Override

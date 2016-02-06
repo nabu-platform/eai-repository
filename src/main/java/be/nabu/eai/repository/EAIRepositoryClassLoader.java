@@ -13,13 +13,14 @@ public class EAIRepositoryClassLoader extends ClassLoader {
 	private EAIResourceRepository repository;
 
 	public EAIRepositoryClassLoader(EAIResourceRepository repository) {
+		super(repository.getClass().getClassLoader());
 		this.repository = repository;
 	}
 	
 	@Override
-	public Class<?> loadClass(String name) throws ClassNotFoundException {
+	protected Class<?> findClass(String name) throws ClassNotFoundException {
 		try {
-			return getParent().loadClass(name);
+			return super.findClass(name);
 		}
 		catch (ClassNotFoundException e) {
 			// try locally

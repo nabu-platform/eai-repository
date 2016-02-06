@@ -18,7 +18,7 @@ public class RepositoryThreadFactory implements ThreadFactory {
 	@Override
 	public Thread newThread(Runnable runnable) {
 		Thread thread = this.parent.newThread(runnable);
-		thread.setContextClassLoader(repository.newClassLoader());
+		thread.setContextClassLoader(repository.getClassLoader());
 		return thread;
 	}
 }

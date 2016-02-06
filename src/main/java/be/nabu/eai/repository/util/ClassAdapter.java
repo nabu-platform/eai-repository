@@ -22,7 +22,7 @@ public class ClassAdapter extends XmlAdapter<String, Class<?>> {
 		if (v == null) {
 			return null;
 		}
-		return repository.newClassLoader().loadClass(v);
+		return repository.getClassLoader().loadClass(v);
 	}
 
 	@Override

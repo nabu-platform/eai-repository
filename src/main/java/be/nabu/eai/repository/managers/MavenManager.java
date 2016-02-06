@@ -60,7 +60,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			dependencyResolver.setUpdateSnapshots(updateSnapshots);
 			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
 			MavenArtifact mavenArtifact = new MavenArtifact(
-				repository.newClassLoader(),
+				repository.getClassLoader(),
 				definedTypeResolver, 
 				dependencyResolver, 
 				this.repository, 
@@ -92,7 +92,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			throw new IOException("Can not find the artifact " + id);
 		}
 		try {
-			return new MavenArtifact(entry.getRepository().newClassLoader(), definedTypeResolver, new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
+			return new MavenArtifact(entry.getRepository().getClassLoader(), definedTypeResolver, new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
 		}
 		catch (URISyntaxException e) {
 			logger.error("Could not load: " + id, e);

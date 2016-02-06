@@ -1,17 +1,24 @@
 package be.nabu.eai.repository;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.net.URL;
 import java.nio.file.attribute.FileTime;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -61,20 +68,6 @@ public class EAIRepositoryUtils {
 		catch (ParseException e) {
 			throw new RuntimeException(e);
 		}
-	}
-	
-	@SuppressWarnings("unchecked")
-	public static <T extends Artifact> List<T> getArtifacts(Repository repository, Class<T> artifactClazz) {
-		List<T> artifacts = new ArrayList<T>();
-		for (Node node : repository.getNodes(artifactClazz)) {
-			try {
-				artifacts.add((T) node.getArtifact());
-			}
-			catch (Exception e) {
-				logger.error("Could not load node: " + node);
-			}
-		}
-		return artifacts;
 	}
 
 	public static Entry getDirectoryEntry(ResourceRepository repository, String id, boolean create) throws IOException {
@@ -169,5 +162,83 @@ public class EAIRepositoryUtils {
 			path = path.getChildPath();
 		}
 		return root;
+	}
+	
+	public static <T> List<Class<T>> getImplementationsFor(Class<T> clazz) {
+		return getImplementationsFor(Thread.currentThread().getContextClassLoader(), clazz);
+	}
+	
+	private static WeakHashMap<ClassLoader, Map<Class<?>, List<Class<?>>>> cachedClasses = new WeakHashMap<ClassLoader, Map<Class<?>, List<Class<?>>>>();
+	
+	public static <T> List<Class<T>> getImplementationsFor(ClassLoader classLoader, Class<T> clazz) {
+		return getImplementationsFor(classLoader, clazz, false);
+	}
+	/**
+	 * Beware that this method has quite a bit of overhead so it is advised to cache the result
+	 */
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	public static <T> List<Class<T>> getImplementationsFor(ClassLoader classLoader, Class<T> clazz, boolean force) {
+		Map<Class<?>, List<Class<?>>> map = cachedClasses.get(classLoader);
+		if (map == null) {
+			map = new HashMap<Class<?>, List<Class<?>>>();
+			cachedClasses.put(classLoader, map);
+		}
+		if (map.get(clazz) == null || force) {
+			try {
+				Enumeration<URL> resources = classLoader.getResources("META-INF/services/" + clazz.getName());
+				List<Class<?>> classes = new ArrayList<Class<?>>();
+				if (resources != null) {
+					while (resources.hasMoreElements()) {
+						URL nextElement = resources.nextElement();
+						InputStream stream = nextElement.openStream();
+						try {
+							byte[] bytes = IOUtils.toBytes(IOUtils.wrap(stream));
+							String content = new String(bytes, "UTF-8");
+							for (String line : content.split("[\r\n]+")) {
+								try {
+									Class<?> implementation = classLoader.loadClass(line);
+									classes.add(implementation);
+								}
+								catch (ClassNotFoundException e) {
+									logger.error("Could not locate implementation class '" + line + "' for interface: " + clazz);
+								}
+							}
+						}
+						finally {
+							stream.close();
+						}
+					}
+				}
+				map.put(clazz, classes);
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		List list = map.get(clazz);
+		return (List<Class<T>>) list;
+	}
+	
+	public static <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
+		return getArtifactManager(Thread.currentThread().getContextClassLoader(), artifactClass);
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static <T extends Artifact> ArtifactManager<T> getArtifactManager(ClassLoader loader, Class<T> artifactClass) {
+		ArtifactManager<T> closest = null;
+		for (Class<ArtifactManager> managerClass : getImplementationsFor(loader, ArtifactManager.class, false)) {
+			try {
+				ArtifactManager manager = managerClass.newInstance();
+				if (manager.getArtifactClass().isAssignableFrom(artifactClass)) {
+					if (closest == null || closest.getArtifactClass().isAssignableFrom(manager.getArtifactClass())) {
+						closest = (ArtifactManager<T>) manager;
+					}
+				}
+			}
+			catch (Exception e) {
+				logger.error("Could not load manager: " + managerClass, e);
+			}
+		}
+		return closest;
 	}
 }

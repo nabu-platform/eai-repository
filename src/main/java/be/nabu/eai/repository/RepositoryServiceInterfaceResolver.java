@@ -29,7 +29,7 @@ public class RepositoryServiceInterfaceResolver implements DefinedServiceInterfa
 			return (DefinedServiceInterface) iface;
 		}
 		else if (resolved == null) {
-			for (DefinedServiceInterfaceResolver resolver : repository.getArtifactsThatImplement(DefinedServiceInterfaceResolver.class)) {
+			for (DefinedServiceInterfaceResolver resolver : repository.getArtifacts(DefinedServiceInterfaceResolver.class)) {
 				DefinedServiceInterface resolvedIface = resolver.resolve(id);
 				if (resolvedIface != null) {
 					return resolvedIface;

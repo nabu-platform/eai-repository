@@ -1,7 +1,6 @@
 package be.nabu.eai.repository;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -18,7 +17,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.ServiceLoader;
 import java.util.Set;
 
 import org.slf4j.Logger;
@@ -149,8 +147,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private static EAIResourceRepository instance;
 	
-	private List<ArtifactManager<?>> artifactManagers;
-	
 	private EventDispatcher metricsDispatcher;
 	private GaugeHistorizer metricsGaugeHistorizer;
 	
@@ -180,6 +176,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<ClassProvidingArtifact> classProvidingArtifacts = new ArrayList<ClassProvidingArtifact>();
 	
 	private Map<String, MetricGrouper> metrics;
+
+	private EAIRepositoryClassLoader classLoader;
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -204,6 +202,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		this.resourceRoot = repositoryRoot;
 		this.mavenRoot = mavenRoot;
 		this.repositoryRoot = new RepositoryEntry(this, repositoryRoot, null, "/");
+		this.classLoader = new EAIRepositoryClassLoader(this);
 		// important for clusters
 		ArtifactResolverFactory.getInstance().addResolver(this);
 		// important for clusters
@@ -227,7 +226,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		BeanResolver.getInstance().addFactory(new DomainObjectFactory() {
 			@Override
 			public Class<?> loadClass(String name) throws ClassNotFoundException {
-				return EAIResourceRepository.this.newClassLoader().loadClass(name);
+				return EAIResourceRepository.this.getClassLoader().loadClass(name);
 			}
 		});
 	}
@@ -1034,7 +1033,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
+	public <T> List<T> getArtifacts(Class<T> ifaceClass) {
 		List<T> results = new ArrayList<T>();
 		if (nodesByType == null) {
 			scanForTypes();
@@ -1057,13 +1056,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return results;
 	}
 	
-	@Override
-	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
-		return EAIRepositoryUtils.getArtifacts(this, artifactClazz);
-	}
-	
-	@Override
-	public List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
+	protected List<Node> getNodes(Class<?> artifactClazz) {
 		if (nodesByType == null) {
 			scanForTypes();
 		}
@@ -1170,49 +1163,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public List<DefinedService> getServices() {
-		List<Node> nodes = getNodes(DefinedService.class);
-		List<DefinedService> services = new ArrayList<DefinedService>(nodes.size());
-		for (Node node : nodes) {
-			try {
-				services.add((DefinedService) node.getArtifact());
-			}
-			catch (IOException e) {
-				logger.error("Could not load " + node, e);
-			}
-			catch (ParseException e) {
-				logger.error("Could not load " + node, e);
-			}
-		}
-		return services;
-	}
-	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
-	@Override
-	public <T> List<Class<T>> getImplementationsFor(Class<T> clazz) {
-		List<Class<T>> implementations = new ArrayList<Class<T>>();
-		for (MavenArtifact artifact : mavenArtifacts) {
-			try {
-				List provided = artifact.getImplementations().get(clazz);
-				if (provided != null) {
-					implementations.addAll(provided);
-				}
-			}
-			catch (IOException e) {
-				logger.error("Could not search artifact for implementations", e);
-			}
-		}
-		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
-			try {
-				List implementationsFor = artifact.getImplementationsFor(clazz);
-				if (implementationsFor != null) {
-					implementations.addAll(implementationsFor);
-				}
-			}
-			catch (IOException e) {
-				logger.error("Could not search artifact '" + artifact.getId()  + "' for implementations", e);
-			}
-		}
-		return implementations;
+		return getArtifacts(DefinedService.class);
 	}
 	
 	Class<?> loadClass(String name) throws ClassNotFoundException {
@@ -1276,29 +1227,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	@Override
-	public ClassLoader newClassLoader() {
-		return new EAIRepositoryClassLoader(this);
-	}
-	
-	public InputStream getMavenResource(String name) {
-		for (MavenArtifact artifact : mavenArtifacts) {
-			InputStream stream = artifact.getClassLoader().getResourceAsStream(name);
-			if (stream != null) {
-				return stream;
-			}
-		}
-		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
-			try {
-				InputStream loadResource = artifact.loadResource(name);
-				if (loadResource != null) {
-					return loadResource;
-				}
-			}
-			catch (IOException e) {
-				logger.error("Could not search artifact '" + artifact.getId()  + "' for resources", e);
-			}
-		}
-		return null;
+	public ClassLoader getClassLoader() {
+		return classLoader;
 	}
 	
 	private void reset() {
@@ -1379,39 +1309,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@Override
 	public Sink newSink(String id, String category) {
 		return new LimitedHistorySink(1000);
-	}
-
-	@SuppressWarnings({ "unchecked", "rawtypes" })
-	@Override
-	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
-		if (artifactManagers == null) {
-			synchronized (this) {
-				if (artifactManagers == null) {
-					List<ArtifactManager<?>> managers = new ArrayList<ArtifactManager<?>>();
-					for (ArtifactManager<?> manager : ServiceLoader.load(ArtifactManager.class)) {
-						managers.add(manager);
-					}
-					for (Class<ArtifactManager> manager : getImplementationsFor(ArtifactManager.class)) {
-						try {
-							managers.add(manager.newInstance());
-						}
-						catch (Exception e) {
-							logger.error("Could not load manager: " + manager, e);
-						}
-					}
-					this.artifactManagers = managers;
-				}
-			}
-		}
-		ArtifactManager<T> closest = null;
-		for (ArtifactManager<?> manager : artifactManagers) {
-			if (manager.getArtifactClass().isAssignableFrom(artifactClass)) {
-				if (closest == null || closest.getArtifactClass().isAssignableFrom(manager.getArtifactClass())) {
-					closest = (ArtifactManager<T>) manager;
-				}
-			}
-		}
-		return closest;
 	}
 
 	@Override

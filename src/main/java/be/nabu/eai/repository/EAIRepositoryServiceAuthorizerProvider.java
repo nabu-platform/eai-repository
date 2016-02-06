@@ -24,7 +24,7 @@ public class EAIRepositoryServiceAuthorizerProvider implements ServiceAuthorizer
 			return null;
 		}
 		List<ServiceAuthorizer> authorizers = new ArrayList<ServiceAuthorizer>();
-		for (ServiceAuthorizerProvider authorizerProvider : repository.getArtifactsThatImplement(ServiceAuthorizerProvider.class)) {
+		for (ServiceAuthorizerProvider authorizerProvider : repository.getArtifacts(ServiceAuthorizerProvider.class)) {
 			ServiceAuthorizer authorizer = authorizerProvider.getAuthorizer(runtime);
 			if (authorizer != null) {
 				authorizers.add(authorizer);

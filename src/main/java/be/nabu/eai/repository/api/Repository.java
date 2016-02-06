@@ -33,6 +33,9 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 * The event dispatcher used to send metrics events, this could be the same as the above
 	 */
 	public EventDispatcher getMetricsDispatcher();
+	/**
+	 * Returns a node in the repository, it wraps around an artifact and adds meta data to it, for example the version
+	 */
 	public Node getNode(String id);
 	/**
 	 * Reload a single id
@@ -59,10 +62,6 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 */
 	public List<String> getDependencies(String id);
 	/**
-	 * Get all nodes that have an artifact of the given type
-	 */
-	public List<Node> getNodes(Class<? extends Artifact> artifactClazz);
-	/**
 	 * Get the service runner registered with this repository
 	 */
 	public ServiceRunner getServiceRunner();
@@ -77,17 +76,9 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	/**
 	 * Returns a repository-aware classloader
 	 */
-	public ClassLoader newClassLoader();
+	public ClassLoader getClassLoader();
 	/**
-	 * TODO: This is mostly used to live besides SPI, but that should be fixed
+	 * Get all the artifacts of a certain type
 	 */
-	@Deprecated
-	public <T> List<Class<T>> getImplementationsFor(Class<T> clazz);
-	
-	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz);
-	/**
-	 * Get an artifact manager for a given artifact type
-	 */
-	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass);
-	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass);
+	public <T> List<T> getArtifacts(Class<T> ifaceClass);
 }

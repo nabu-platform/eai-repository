@@ -50,7 +50,7 @@ public class EAIRepositoryServiceTrackerProvider implements ModifiableServiceRun
 			}
 		}
 		// then check the static artifacts
-		for (ServiceRuntimeTrackerProvider trackerProvider : repository.getArtifactsThatImplement(ServiceRuntimeTrackerProvider.class)) {
+		for (ServiceRuntimeTrackerProvider trackerProvider : repository.getArtifacts(ServiceRuntimeTrackerProvider.class)) {
 			ServiceRuntimeTracker tracker = trackerProvider.getTracker(runtime);
 			if (tracker != null) {
 				trackers.add(tracker);

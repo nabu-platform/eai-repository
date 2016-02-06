@@ -1,9 +1,7 @@
 package be.nabu.eai.repository.impl;
 
-import java.io.IOException;
 import java.nio.charset.Charset;
 import java.security.Principal;
-import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -15,7 +13,6 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
-import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
@@ -84,8 +81,7 @@ public class ReadOnlyRepository implements ResourceRepository {
 		throw new UnsupportedOperationException();		
 	}
 
-	@Override
-	public List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
+	private List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
 		if (nodesByType == null) {
 			scanForTypes();
 		}
@@ -203,19 +199,24 @@ public class ReadOnlyRepository implements ResourceRepository {
 	}
 	
 	@Override
-	public ClassLoader newClassLoader() {
-		return local.newClassLoader();
+	public ClassLoader getClassLoader() {
+		return local.getClassLoader();
 	}
 
-	@Override
-	public <T> List<Class<T>> getImplementationsFor(Class<T> clazz) {
-		return local.getImplementationsFor(clazz);
-	}
-
-	@Override
-	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
-		return EAIRepositoryUtils.getArtifacts(this, artifactClazz);
-	}
+//	@SuppressWarnings("unchecked")
+//	@Override
+//	public <T extends Artifact> List<T> getArtifacts(Class<T> artifactClazz) {
+//		List<T> artifacts = new ArrayList<T>();
+//		for (Node node : getNodes(artifactClazz)) {
+//			try {
+//				artifacts.add((T) node.getArtifact());
+//			}
+//			catch (Exception e) {
+//				logger.error("Could not load node: " + node);
+//			}
+//		}
+//		return artifacts;
+//	}
 
 	@Override
 	public Artifact resolve(String id) {
@@ -229,20 +230,7 @@ public class ReadOnlyRepository implements ResourceRepository {
 
 	@Override
 	public List<DefinedService> getServices() {
-		List<Node> nodes = getNodes(DefinedService.class);
-		List<DefinedService> services = new ArrayList<DefinedService>(nodes.size());
-		for (Node node : nodes) {
-			try {
-				services.add((DefinedService) node.getArtifact());
-			}
-			catch (IOException e) {
-				logger.error("Could not load " + node, e);
-			}
-			catch (ParseException e) {
-				logger.error("Could not load " + node, e);
-			}
-		}
-		return services;
+		return getArtifacts(DefinedService.class);
 	}
 
 	@Override
@@ -302,18 +290,13 @@ public class ReadOnlyRepository implements ResourceRepository {
 	}
 
 	@Override
-	public <T extends Artifact> ArtifactManager<T> getArtifactManager(Class<T> artifactClass) {
-		return local.getArtifactManager(artifactClass);
-	}
-
-	@Override
 	public void reloadAll(Collection<String> ids) {
 		throw new UnsupportedOperationException();
 	}
 
 	@SuppressWarnings("unchecked")
 	@Override
-	public <T> List<T> getArtifactsThatImplement(Class<T> ifaceClass) {
+	public <T> List<T> getArtifacts(Class<T> ifaceClass) {
 		List<T> results = new ArrayList<T>();
 		if (nodesByType == null) {
 			scanForTypes();
