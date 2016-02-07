@@ -5,6 +5,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
@@ -36,7 +37,7 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 	public Pipeline loadPipeline(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		// we need to load the pipeline which is basically a structure
 		XMLDefinitionUnmarshaller unmarshaller = StructureManager.getLocalizedUnmarshaller(entry);
-		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) VMServiceManager.getResource(entry, "pipeline.xml", false));
+		ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) EAIRepositoryUtils.getResource(entry, "pipeline.xml", false));
 		Pipeline pipeline = new Pipeline(null, null);
 		try {
 			unmarshaller.unmarshal(IOUtils.toInputStream(readable), pipeline);
@@ -66,7 +67,7 @@ public class ServiceInterfaceManager implements ArtifactManager<DefinedServiceIn
 	}
 
 	public void savePipeline(ResourceEntry entry, Pipeline pipeline) throws IOException {
-		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) VMServiceManager.getResource(entry, "pipeline.xml", true));
+		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) EAIRepositoryUtils.getResource(entry, "pipeline.xml", true));
 		try {
 			XMLDefinitionMarshaller marshaller = new XMLDefinitionMarshaller();
 			marshaller.setIgnoreUnknownSuperTypes(true);

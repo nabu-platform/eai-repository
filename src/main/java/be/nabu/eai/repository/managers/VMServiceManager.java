@@ -1,21 +1,19 @@
 package be.nabu.eai.repository.managers;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
-import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
-import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.SimpleExecutionContext.SimpleServiceContext;
@@ -43,22 +41,11 @@ import be.nabu.utils.io.api.WritableContainer;
 
 public class VMServiceManager implements ArtifactManager<VMService> {
 
-	public static Resource getResource(ResourceEntry entry, String name, boolean create) throws IOException {
-		Resource resource = entry.getContainer().getChild(name);
-		if (resource == null && create) {
-			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
-		}
-		if (resource == null) {
-			throw new FileNotFoundException("Can not find " + name);
-		}
-		return resource;
-	}
-	
 	@Override
 	public VMService load(ResourceEntry entry, List<Validation<?>> messages) throws IOException, ParseException {
 		Pipeline pipeline = new ServiceInterfaceManager().loadPipeline(entry, messages);
 		// next we load the root sequence
-		Sequence sequence = parseSequence(new ResourceReadableContainer((ReadableResource) getResource(entry, "service.xml", false)));
+		Sequence sequence = parseSequence(new ResourceReadableContainer((ReadableResource) EAIRepositoryUtils.getResource(entry, "service.xml", false)));
 		
 		SimpleVMServiceDefinition definition = new SimpleVMServiceDefinition(pipeline);
 		definition.setRoot(sequence);
@@ -84,7 +71,7 @@ public class VMServiceManager implements ArtifactManager<VMService> {
 		new ServiceInterfaceManager().savePipeline(entry, artifact.getPipeline());
 		
 		// next we load the root sequence
-		formatSequence(new ResourceWritableContainer((WritableResource) getResource(entry, "service.xml", true)), artifact.getRoot());
+		formatSequence(new ResourceWritableContainer((WritableResource) EAIRepositoryUtils.getResource(entry, "service.xml", true)), artifact.getRoot());
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}

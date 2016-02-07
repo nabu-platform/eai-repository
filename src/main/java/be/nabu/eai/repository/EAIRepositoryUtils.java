@@ -1,5 +1,6 @@
 package be.nabu.eai.repository;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -29,6 +30,7 @@ import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.api.FiniteResource;
+import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
@@ -240,5 +242,16 @@ public class EAIRepositoryUtils {
 			}
 		}
 		return closest;
+	}
+	
+	public static Resource getResource(ResourceEntry entry, String name, boolean create) throws IOException {
+		Resource resource = entry.getContainer().getChild(name);
+		if (resource == null && create) {
+			resource = ((ManageableContainer<?>) entry.getContainer()).create(name, "application/xml");
+		}
+		if (resource == null) {
+			throw new FileNotFoundException("Can not find " + name);
+		}
+		return resource;
 	}
 }
