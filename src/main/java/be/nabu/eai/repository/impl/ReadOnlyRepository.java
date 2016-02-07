@@ -81,19 +81,6 @@ public class ReadOnlyRepository implements ResourceRepository {
 		throw new UnsupportedOperationException();		
 	}
 
-	private List<Node> getNodes(Class<? extends Artifact> artifactClazz) {
-		if (nodesByType == null) {
-			scanForTypes();
-		}
-		List<Node> nodes = new ArrayList<Node>();
-		for (Class<?> clazz : nodesByType.keySet()) {
-			if (artifactClazz.isAssignableFrom(clazz)) {
-				nodes.addAll(nodesByType.get(clazz).values());
-			}
-		}
-		return nodes;
-	}
-
 	@Override
 	public ServiceRunner getServiceRunner() {
 		return local.getServiceRunner();
