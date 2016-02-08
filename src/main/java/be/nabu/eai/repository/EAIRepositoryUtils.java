@@ -254,4 +254,18 @@ public class EAIRepositoryUtils {
 		}
 		return resource;
 	}
+	
+	public static String uncamelify(String string) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < string.length(); i++) {
+			String substring = string.substring(i, i + 1);
+			if (substring.equals(substring.toLowerCase()) || i == 0) {
+				builder.append(substring.toLowerCase());
+			}
+			else {
+				builder.append("_" + substring.toLowerCase());
+			}
+		}
+		return builder.toString();
+	}
 }
