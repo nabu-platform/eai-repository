@@ -149,6 +149,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private EventDispatcher metricsDispatcher;
 	private GaugeHistorizer metricsGaugeHistorizer;
+	private boolean historizeGauges;
 	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
@@ -178,6 +179,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<String, MetricGrouper> metrics;
 
 	private EAIRepositoryClassLoader classLoader;
+	
+	private Map<String, LimitedHistorySink> sinks = new HashMap<String, LimitedHistorySink>();
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1288,7 +1291,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	private MetricInstanceImpl newMetricInstance(String id) {
-		if (metricsGaugeHistorizer == null) {
+		if (metricsGaugeHistorizer == null && historizeGauges) {
 			synchronized(this) {
 				if (metricsGaugeHistorizer == null) {
 					metricsGaugeHistorizer = new GaugeHistorizer(5000);
@@ -1298,7 +1301,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		MetricInstanceImpl instance = new MetricInstanceImpl(id, this, metricsDispatcher);
-		metricsGaugeHistorizer.add(instance);
+		if (metricsGaugeHistorizer != null) {
+			metricsGaugeHistorizer.add(instance);
+		}
 		return instance;
 	}
 	
@@ -1307,8 +1312,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 
 	@Override
-	public Sink newSink(String id, String category) {
-		return new LimitedHistorySink(1000);
+	public Sink getSink(String id, String category) {
+		String key = id + ":" + category;
+		if (!sinks.containsKey(key)) {
+			synchronized(this) {
+				if (!sinks.containsKey(key)) {
+					sinks.put(key, new LimitedHistorySink(1000));
+				}
+			}
+		}
+		return sinks.get(key);
 	}
 
 	@Override
