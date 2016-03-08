@@ -857,7 +857,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public boolean isValidName(ResourceContainer<?> parent, String name) {
-		return name.matches("^[a-z]+[\\w]+$") && !RESERVED.contains(name);
+		return name.matches("^[a-zA-Z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
 	@Override
