@@ -44,6 +44,7 @@ import be.nabu.libs.artifacts.api.ClassProvidingArtifact;
 import be.nabu.libs.artifacts.api.LazyArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.authentication.jaas.JAASConfiguration;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
@@ -232,6 +233,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				return EAIResourceRepository.this.getClassLoader().loadClass(name);
 			}
 		});
+		// register the central jaas configuration
+		JAASConfiguration.register();
 	}
 	
 	/**
