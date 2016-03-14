@@ -121,51 +121,53 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	public static List<Entry> attachChildren(ModifiableEntry root, MavenArtifact artifact, String parentId) throws IOException {
 		List<Entry> entries = new ArrayList<Entry>();
-		// if you are adding it to the actual repository root, first create an entry for the groupId
-		// this allows you to define maven repositories in other places than the groupId
-		if (root.getParent() == null) {
-			root = EAIRepositoryUtils.getParent(root, artifact.getArtifact().getGroupId(), true);
-		}
 		List<String> keys = new ArrayList<String>(artifact.getChildren().keySet());
-		Collections.sort(keys);
-		
-		for (String childId : keys) {
-			ModifiableEntry parent = EAIRepositoryUtils.getParent(root, childId, false);
-			int index = childId.lastIndexOf('.');
-			String childName = index < 0 ? childId : childId.substring(index + 1);
-			if (parent.getChild(childName) == null) {
-				String entryId = parent.getId() + "." + childName;
-				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
-				EAINode node = new EAINode();
-				if (parentId != null && !parentId.equals("")) {
-					node.getReferences().add(parentId);
-				}
-				node.setArtifact(artifact.getChildren().get(childId));
-				boolean hidden = false;
-				Annotation[] annotations = artifact.getAnnotations(childId);
-				for (Annotation annotation : annotations) {
-					if (annotation instanceof Cache) {
-						Long timeout = ((Cache) annotation).timeout();
-						Boolean refresh = ((Cache) annotation).refresh();
-						node.getProperties().put(NodeUtils.CACHE_TIMEOUT, timeout.toString());
-						node.getProperties().put(NodeUtils.CACHE_REFRESH, refresh.toString());
+		if (!keys.isEmpty()) {
+			// if you are adding it to the actual repository root, first create an entry for the groupId
+			// this allows you to define maven repositories in other places than the groupId
+			if (root.getParent() == null) {
+				root = EAIRepositoryUtils.getParent(root, artifact.getArtifact().getGroupId(), true);
+			}
+			Collections.sort(keys);
+			
+			for (String childId : keys) {
+				ModifiableEntry parent = EAIRepositoryUtils.getParent(root, childId, false);
+				int index = childId.lastIndexOf('.');
+				String childName = index < 0 ? childId : childId.substring(index + 1);
+				if (parent.getChild(childName) == null) {
+					String entryId = parent.getId() + "." + childName;
+					root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
+					EAINode node = new EAINode();
+					if (parentId != null && !parentId.equals("")) {
+						node.getReferences().add(parentId);
 					}
-					else if (annotation instanceof Eager) {
-						node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
+					node.setArtifact(artifact.getChildren().get(childId));
+					boolean hidden = false;
+					Annotation[] annotations = artifact.getAnnotations(childId);
+					for (Annotation annotation : annotations) {
+						if (annotation instanceof Cache) {
+							Long timeout = ((Cache) annotation).timeout();
+							Boolean refresh = ((Cache) annotation).refresh();
+							node.getProperties().put(NodeUtils.CACHE_TIMEOUT, timeout.toString());
+							node.getProperties().put(NodeUtils.CACHE_REFRESH, refresh.toString());
+						}
+						else if (annotation instanceof Eager) {
+							node.getProperties().put(NodeUtils.LOAD_TYPE, "eager");
+						}
+						else if (annotation instanceof Hidden) {
+							hidden = true;
+						}
 					}
-					else if (annotation instanceof Hidden) {
-						hidden = true;
+					node.setLeaf(true);
+					MemoryEntry child = new MemoryEntry(parentId, root.getRepository(), parent, node, entryId, childName);
+					node.setEntry(child);
+		//			node.setEntry(parent);
+					if (!hidden) {
+						parent.addChildren(child);
 					}
+					root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
+					entries.add(child);
 				}
-				node.setLeaf(true);
-				MemoryEntry child = new MemoryEntry(parentId, root.getRepository(), parent, node, entryId, childName);
-				node.setEntry(child);
-	//			node.setEntry(parent);
-				if (!hidden) {
-					parent.addChildren(child);
-				}
-				root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
-				entries.add(child);
 			}
 		}
 		return entries;

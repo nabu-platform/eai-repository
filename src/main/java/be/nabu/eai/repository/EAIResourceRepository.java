@@ -534,6 +534,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return dependencies;
 	}
 	
+	// TODO: this does not protect against cyclic dependencies just yet!!
 	private Set<String> calculateDependenciesToReload(String id) {
 		List<String> directDependencies = getDependencies(id);
 		Set<String> dependenciesToReload = new LinkedHashSet<String>(directDependencies);
