@@ -534,16 +534,22 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return dependencies;
 	}
 	
-	// TODO: this does not protect against cyclic dependencies just yet!!
 	private Set<String> calculateDependenciesToReload(String id) {
+		return calculateDependenciesToReload(id, new HashSet<String>());
+	}
+	
+	private Set<String> calculateDependenciesToReload(String id, Set<String> blacklist) {
+		blacklist.add(id);
 		List<String> directDependencies = getDependencies(id);
 		Set<String> dependenciesToReload = new LinkedHashSet<String>(directDependencies);
 		for (String directDependency : directDependencies) {
-			Set<String> indirectDependencies = calculateDependenciesToReload(directDependency);
-			// remove any dependencies that are also in the indirect ones
-			// we can add them again afterwards which means they will only be in the list once and in the correct order
-			dependenciesToReload.removeAll(indirectDependencies);
-			dependenciesToReload.addAll(indirectDependencies);
+			if (!blacklist.contains(directDependency)) {
+				Set<String> indirectDependencies = calculateDependenciesToReload(directDependency, blacklist);
+				// remove any dependencies that are also in the indirect ones
+				// we can add them again afterwards which means they will only be in the list once and in the correct order
+				dependenciesToReload.removeAll(indirectDependencies);
+				dependenciesToReload.addAll(indirectDependencies);
+			}
 		}
 		return dependenciesToReload;
 	}
