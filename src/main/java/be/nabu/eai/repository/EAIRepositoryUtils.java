@@ -46,7 +46,7 @@ public class EAIRepositoryUtils {
 	
 	public static Entry getEntry(Entry entry, String id) {
 		// sometimes java arrays (more specifically the byte "[B") get in there...
-		ParsedPath path = new ParsedPath(id.replace('.', '/'));
+		ParsedPath path = ParsedPath.parse(id.replace('.', '/'));
 		while (entry != null && path != null) {
 			entry = entry.getChild(path.getName());
 			path = path.getChildPath();
@@ -73,7 +73,7 @@ public class EAIRepositoryUtils {
 	}
 
 	public static Entry getDirectoryEntry(ResourceRepository repository, String id, boolean create) throws IOException {
-		ParsedPath path = new ParsedPath(id.replace(".", "/"));
+		ParsedPath path = ParsedPath.parse(id.replace(".", "/"));
 		Entry entry = repository.getRoot();
 		while (path != null) {
 			Entry child = entry.getChild(path.getName());
@@ -148,7 +148,7 @@ public class EAIRepositoryUtils {
 	}
 	
 	public static ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {
-		ParsedPath path = new ParsedPath(id.replace('.', '/'));
+		ParsedPath path = ParsedPath.parse(id.replace('.', '/'));
 		// resolve a parent path
 		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
 			Entry entry = root.getChild(path.getName());

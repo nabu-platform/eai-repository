@@ -1051,7 +1051,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (nodesByType == null) {
 			scanForTypes();
 		}
-		for (Class<?> clazz : new ArrayList<Class<?>>(nodesByType.keySet())) {
+		for (Class<?> clazz : nodesByType.keySet()) {
 			if (ifaceClass.isAssignableFrom(clazz)) {
 				for (Node node : nodesByType.get(clazz).values()) {
 					try {
@@ -1074,7 +1074,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			scanForTypes();
 		}
 		List<Node> nodes = new ArrayList<Node>();
-		for (Class<?> clazz : new ArrayList<Class<?>>(nodesByType.keySet())) {
+		for (Class<?> clazz : nodesByType.keySet()) {
 			if (artifactClazz.isAssignableFrom(clazz)) {
 				nodes.addAll(nodesByType.get(clazz).values());
 			}
@@ -1083,37 +1083,41 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	public void scanForTypes() {
-		if (nodesByType == null) {
-			synchronized(this) {
-				if (nodesByType == null) {
-					nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
-				}
-			}
-		}
-		synchronized(nodesByType) {
-			nodesByType.clear();
-			scanForTypes(repositoryRoot);
-		}
+		nodesByType = null;
+		scanForTypes(repositoryRoot);
 	}
 	
 	public void scanForTypes(Entry entry) {
-		if (nodesByType == null) {
-			synchronized(this) {
-				nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+		Map<Class<? extends Artifact>, Map<String, Node>> nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
+		if (this.nodesByType != null) {
+			nodesByType.putAll(this.nodesByType);
+		}
+		for (Entry child : entry) {
+			if (child.isNode()) {
+				Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
+				if (!nodesByType.containsKey(artifactClass)) {
+					nodesByType.put(artifactClass, new HashMap<String, Node>());
+				}
+				nodesByType.get(artifactClass).put(child.getId(), child.getNode());
+			}
+			if (!child.isLeaf()) {
+				scanForTypes(child, nodesByType);
 			}
 		}
-		synchronized(nodesByType) {
-			for (Entry child : entry) {
-				if (child.isNode()) {
-					Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
-					if (!nodesByType.containsKey(artifactClass)) {
-						nodesByType.put(artifactClass, new HashMap<String, Node>());
-					}
-					nodesByType.get(artifactClass).put(child.getId(), child.getNode());
+		this.nodesByType = nodesByType;
+	}
+	
+	private void scanForTypes(Entry entry, Map<Class<? extends Artifact>, Map<String, Node>> nodesByType) {
+		for (Entry child : entry) {
+			if (child.isNode()) {
+				Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
+				if (!nodesByType.containsKey(artifactClass)) {
+					nodesByType.put(artifactClass, new HashMap<String, Node>());
 				}
-				if (!child.isLeaf()) {
-					scanForTypes(child);
-				}
+				nodesByType.get(artifactClass).put(child.getId(), child.getNode());
+			}
+			if (!child.isLeaf()) {
+				scanForTypes(child, nodesByType);
 			}
 		}
 	}
