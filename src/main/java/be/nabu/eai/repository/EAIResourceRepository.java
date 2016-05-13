@@ -154,6 +154,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
+	public static final String PROTECTED = "protected";
 	
 	private boolean isLoading;
 	
@@ -161,11 +162,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
-	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC });
-	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, "abstract", "assert", 
+	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED });
+	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert", 
 			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
 			"case", "catch", "class", "const", "continue", "default", "do", "else", "enum", "extends", "final", "finally", 
-			"for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", "protected",
+			"for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", 
 			"return", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while" });
 	private Charset charset = Charset.forName("UTF-8");
 	private ResourceContainer<?> mavenRoot;
