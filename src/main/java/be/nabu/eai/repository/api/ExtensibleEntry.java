@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import be.nabu.eai.repository.resources.RepositoryEntry;
 
-public interface ExtensibleEntry {
+public interface ExtensibleEntry extends Entry {
 	public RepositoryEntry createDirectory(String name) throws IOException;
 	public RepositoryEntry createNode(String name, ArtifactManager<?> manager, boolean reload) throws IOException;
 	public void deleteChild(String name, boolean recursive) throws IOException;
