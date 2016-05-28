@@ -139,7 +139,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 
 	@Override
 	public boolean isLeaf() {
-		return isNode() && getNode().isLeaf();
+		return isNode() && getNode().isLeaf() && getChildren().isEmpty();
 	}
 	
 	/**
