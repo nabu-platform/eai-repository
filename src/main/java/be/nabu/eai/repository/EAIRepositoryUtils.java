@@ -257,13 +257,20 @@ public class EAIRepositoryUtils {
 	
 	public static String uncamelify(String string) {
 		StringBuilder builder = new StringBuilder();
+		boolean previousUpper = false;
 		for (int i = 0; i < string.length(); i++) {
 			String substring = string.substring(i, i + 1);
 			if (substring.equals(substring.toLowerCase()) || i == 0) {
+				previousUpper = !substring.equals(substring.toLowerCase());
 				builder.append(substring.toLowerCase());
 			}
 			else {
-				builder.append("_" + substring.toLowerCase());
+				// if it is not preceded by a "_" or another capitilized
+				if (!string.substring(i - 1, i).equals("_") && !previousUpper) {
+					builder.append("_");
+				}
+				previousUpper = true;
+				builder.append(substring.toLowerCase());
 			}
 		}
 		return builder.toString();

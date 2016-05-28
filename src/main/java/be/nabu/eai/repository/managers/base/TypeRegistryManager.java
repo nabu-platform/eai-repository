@@ -17,6 +17,7 @@ import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.api.DefinedType;
+import be.nabu.libs.types.api.SimpleType;
 import be.nabu.libs.types.api.TypeRegistry;
 import be.nabu.libs.validator.api.Validation;
 
@@ -56,6 +57,26 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 		for (String namespace : artifact.getNamespaces()) {
 			// currently we only expose the complex types
 			for (ComplexType type : artifact.getComplexTypes(namespace)) {
+				logger.debug("Loading complex type: " + type + " in namespace: " + namespace);
+				// only exposed the defined complex types, not anonymous ones
+				if (type instanceof DefinedType) {
+					String id = ((DefinedType) type).getId();
+					if (id.startsWith(artifact.getId())) {
+						id = id.substring((artifact.getId() + ".").length());
+						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
+						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
+						System.out.println("Adding " + name + " to " + parent.getId() + " / " + parent);
+						EAINode node = new EAINode();
+						node.setArtifact((DefinedType) type);
+						node.setLeaf(true);
+						MemoryEntry child = new MemoryEntry(artifact.getId(), root.getRepository(), parent, node, parent.getId() + "." + name, name);
+						node.setEntry(child);
+						parent.addChildren(child);
+						entries.add(child);
+					}
+				}
+			}
+			for (SimpleType<?> type : artifact.getSimpleTypes(namespace)) {
 				logger.debug("Loading complex type: " + type + " in namespace: " + namespace);
 				// only exposed the defined complex types, not anonymous ones
 				if (type instanceof DefinedType) {
