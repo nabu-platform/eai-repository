@@ -65,7 +65,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						id = id.substring((artifact.getId() + ".").length());
 						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
 						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
-						System.out.println("Adding " + name + " to " + parent.getId() + " / " + parent);
+						logger.debug("Adding " + name + " to " + parent.getId() + " / " + parent);
 						EAINode node = new EAINode();
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
@@ -85,7 +85,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						id = id.substring((artifact.getId() + ".").length());
 						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
 						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
-						System.out.println("Adding " + name + " to " + parent.getId() + " / " + parent);
+						logger.debug("Adding " + name + " to " + parent.getId() + " / " + parent);
 						EAINode node = new EAINode();
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
@@ -111,7 +111,7 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						id = id.substring((artifact.getId() + ".").length());
 						String name = id.replaceAll("^.*\\.([^.]+)$", "$1");
 						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
-						System.out.println("Removing " + name + " from " + parent.getId() + " / " + parent);
+						logger.debug("Removing " + name + " from " + parent.getId() + " / " + parent);
 						if (parent != null) {
 							entries.add(parent.getChild(name));
 							parent.removeChildren(name);
