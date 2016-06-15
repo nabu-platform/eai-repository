@@ -1,7 +1,0 @@
-be.nabu.eai.repository.managers.JDBCServiceManager
-be.nabu.eai.repository.managers.ServiceInterfaceManager
-be.nabu.eai.repository.managers.StructureManager
-be.nabu.eai.repository.managers.UMLRegistryManager
-be.nabu.eai.repository.managers.VMServiceManager
-be.nabu.eai.repository.managers.WSDLClientManager
-be.nabu.eai.repository.managers.XMLSchemaRegistryManager
