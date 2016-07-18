@@ -10,6 +10,10 @@ import java.util.Set;
 
 public class EAIRepositoryClassLoader extends ClassLoader {
 	
+	static {
+		ClassLoader.registerAsParallelCapable();
+	}
+		
 	private EAIResourceRepository repository;
 
 	public EAIRepositoryClassLoader(EAIResourceRepository repository) {
