@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.nio.file.attribute.FileTime;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -35,10 +38,12 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
+import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
+import be.nabu.utils.io.api.WritableContainer;
 
 public class EAIRepositoryUtils {
 
@@ -274,5 +279,26 @@ public class EAIRepositoryUtils {
 			}
 		}
 		return builder.toString();
+	}
+	
+	public static void updateBrokenReference(Resource resource, String from, String to, Charset charset) throws IOException {
+		ReadableContainer<ByteBuffer> readable = ((ReadableResource) resource).getReadable();
+		String content;
+		try {
+			content = new String(IOUtils.toBytes(readable), charset);
+		}
+		finally {
+			readable.close();
+		}
+		String updated = content.replaceAll("(?s)\\b" + Pattern.quote(from) + "\\b", Matcher.quoteReplacement(to));
+		if (!updated.equals(content)) {
+			WritableContainer<ByteBuffer> writable = ((WritableResource) resource).getWritable();
+			try {
+				writable.write(IOUtils.wrap(updated.getBytes(charset), true));
+			}
+			finally {
+				writable.close();
+			}
+		}
 	}
 }

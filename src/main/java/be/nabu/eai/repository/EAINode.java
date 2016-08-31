@@ -36,6 +36,7 @@ public class EAINode implements Node {
 	private long version;
 	private Date lastModified;
 	private String environmentId;
+	private String lockedBy;
 	
 	/**
 	 * By default all nodes are leafs
