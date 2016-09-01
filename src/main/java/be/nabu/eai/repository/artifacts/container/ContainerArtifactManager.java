@@ -21,12 +21,14 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.BrokenReferenceArtifactManager;
 import be.nabu.eai.repository.api.ContainerArtifact;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.api.VariableRefactorArtifactManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.events.api.EventDispatcher;
@@ -47,7 +49,7 @@ import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
 @SuppressWarnings({ "rawtypes", "unchecked" })
-abstract public class ContainerArtifactManager<T extends ContainerArtifact> implements ArtifactManager<T> {
+abstract public class ContainerArtifactManager<T extends ContainerArtifact> implements ArtifactManager<T>, BrokenReferenceArtifactManager<T>, VariableRefactorArtifactManager<T> {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
@@ -276,6 +278,53 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 				if (updateReference != null) {
 					messages.addAll(updateReference);
 				}
+			}
+		}
+		return messages;
+	}
+	
+	@Override
+	public boolean updateVariableName(T artifact, Artifact type, String oldPath, String newPath) {
+		boolean updated = false;
+		for (Artifact child : artifact.getContainedArtifacts()) {
+			ArtifactManager artifactManager = EAIRepositoryUtils.getArtifactManager(child.getClass());
+			if (artifactManager instanceof VariableRefactorArtifactManager) {
+				updated |= ((VariableRefactorArtifactManager) artifactManager).updateVariableName(child, type, oldPath, newPath);
+			}
+		}
+		return updated;
+	}
+
+	@Override
+	public List<Validation<?>> updateBrokenReference(ResourceContainer<?> container, String from, String to) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
+		List<ResourceContainer<?>> childrenToLoad = getChildrenToLoad(container);
+		childrenToLoad.add(container);
+		for (ResourceContainer childToLoad : childrenToLoad) {
+			// not all artifacts are required
+			if (childToLoad == null) {
+				continue;
+			}
+			try {
+				ReadableResource containerConfig = (ReadableResource) childToLoad.getChild("container.xml");
+				if (containerConfig != null) {
+					ContainerArtifactConfiguration configuration;
+					JAXBContext context = JAXBContext.newInstance(ContainerArtifactConfiguration.class);
+					ReadableContainer<ByteBuffer> readable = containerConfig.getReadable();
+					try {
+						configuration = (ContainerArtifactConfiguration) context.createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
+					}
+					finally {
+						readable.close();
+					}
+					ArtifactManager artifactManager = (ArtifactManager) configuration.getArtifactManagerClass().newInstance();
+					if (artifactManager instanceof BrokenReferenceArtifactManager) {
+						messages.addAll(((BrokenReferenceArtifactManager) artifactManager).updateBrokenReference(childToLoad, from, to));
+					}
+				}
+			}
+			catch(Exception e) {
+				e.printStackTrace();
 			}
 		}
 		return messages;
