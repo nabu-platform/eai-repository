@@ -1201,16 +1201,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
-			try {
-				for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+			for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+				try {
 					Class<?> loadClass = classLoader.loadClassNonRecursively(name);
 					if (loadClass != null) {
 						return loadClass;
 					}
 				}
-			}
-			catch (ClassNotFoundException e) {
-				logger.error("Could not search artifact '" + artifact.getId()  + "' for classes", e);
+				catch (Exception e) {
+					logger.error("Could not search artifact '" + artifact.getId()  + "' for classes", e);
+				}
 			}
 		}
 		return null;
