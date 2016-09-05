@@ -145,6 +145,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<DomainRepository> mavenRepositories = new ArrayList<DomainRepository>();
 	private List<String> internalDomains;
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
+	private String name;
 	
 	private static EAIResourceRepository instance;
 	
@@ -1348,4 +1349,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return metricsDispatcher;
 	}
 
+	@Override
+	public String getName() {
+		return name == null ? MavenRepository.super.getName() : name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	
 }

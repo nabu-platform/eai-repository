@@ -1,5 +1,7 @@
 package be.nabu.eai.repository.api;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.List;
@@ -81,4 +83,13 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 * Get all the artifacts of a certain type
 	 */
 	public <T> List<T> getArtifacts(Class<T> ifaceClass);
+	
+	default String getName() {
+		try {
+			return InetAddress.getLocalHost().getHostName();
+		}
+		catch (UnknownHostException e) {
+			return "anonymous";
+		}
+	}
 }
