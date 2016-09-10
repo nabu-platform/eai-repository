@@ -12,6 +12,10 @@ public class SystemPrincipal implements Principal {
 	
 	private String name;
 
+	public SystemPrincipal() {
+		// auto construct
+	}
+	
 	public SystemPrincipal(String name) {
 		this.name = name;
 	}
@@ -19,5 +23,9 @@ public class SystemPrincipal implements Principal {
 	@Override
 	public String getName() {
 		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
 	}
 }

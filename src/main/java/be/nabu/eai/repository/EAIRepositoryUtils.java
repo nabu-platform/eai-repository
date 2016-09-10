@@ -281,6 +281,39 @@ public class EAIRepositoryUtils {
 		return builder.toString();
 	}
 	
+	public static String stringToField(String headerName) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < headerName.length(); i++) {
+			if (i == 0) {
+				builder.append(headerName.substring(i, i + 1).toLowerCase());
+			}
+			else if (headerName.charAt(i) == '-') {
+				builder.append(headerName.substring(i + 1, i + 2).toUpperCase());
+				i++;
+			}
+			else {
+				builder.append(headerName.substring(i, i + 1).toLowerCase());
+			}
+		}
+		return builder.toString();
+	}
+	
+	public static String fieldToString(String fieldName) {
+		StringBuilder builder = new StringBuilder();
+		for (int i = 0; i < fieldName.length(); i++) {
+			if (i == 0) {
+				builder.append(fieldName.substring(i, i + 1).toUpperCase());
+			}
+			else if (!fieldName.substring(i, i + 1).equals(fieldName.substring(i, i + 1).toLowerCase())) {
+				builder.append(" ").append(fieldName.substring(i, i + 1).toUpperCase());
+			}
+			else {
+				builder.append(fieldName.substring(i, i + 1).toLowerCase());
+			}
+		}
+		return builder.toString();
+	}
+	
 	public static void updateBrokenReference(Resource resource, String from, String to, Charset charset) throws IOException {
 		ReadableContainer<ByteBuffer> readable = ((ReadableResource) resource).getReadable();
 		String content;
