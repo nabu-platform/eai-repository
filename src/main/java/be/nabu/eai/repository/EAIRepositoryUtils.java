@@ -281,13 +281,22 @@ public class EAIRepositoryUtils {
 		return builder.toString();
 	}
 	
+	public static boolean isAlphanumeric(char character) {
+		// capitals
+		return (character >= 65 && character <= 90)
+				// lowercase
+				|| (character >= 97 && character <= 122)
+				// numbers
+				|| (character >= 48 && character <= 57);
+	}
+	
 	public static String stringToField(String headerName) {
 		StringBuilder builder = new StringBuilder();
 		for (int i = 0; i < headerName.length(); i++) {
 			if (i == 0) {
 				builder.append(headerName.substring(i, i + 1).toLowerCase());
 			}
-			else if (headerName.charAt(i) == '-') {
+			else if (!isAlphanumeric(headerName.charAt(i))) {
 				builder.append(headerName.substring(i + 1, i + 2).toUpperCase());
 				i++;
 			}

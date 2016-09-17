@@ -336,6 +336,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		private RepositoryEntry parent;
 		private Collection<Artifact> additionalArtifacts;
 		private Map<String, String> aliasedArtifacts = new HashMap<String, String>();
+		private boolean exactAliases;
 
 		public ContainerRepository(String id, RepositoryEntry parent, Collection<Artifact> additionalArtifacts) {
 			this.id = id;
@@ -428,19 +429,28 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 			}
 			else if (id.contains(":") && id.split(":")[0].equals(this.id)) {
 				for (Artifact artifact : additionalArtifacts) {
-					if (artifact.getId().endsWith(id.substring(this.id.length()))) {
+					if (artifact.getId().endsWith(id.substring(this.id.length() + (exactAliases ? 1 : 0)))) {
 						return artifact;
 					}
 				}
 			}
 			else if (id.startsWith("$self:")) {
 				for (Artifact artifact : additionalArtifacts) {
-					if (artifact.getId().endsWith(id.substring("$self".length()))) {
+					// we need to make sure it starts with a ":" as well
+					if (artifact.getId().endsWith(id.substring("$self".length() + (exactAliases ? 1 : 0)))) {
 						return artifact;
 					}
 				}
 			}
 			return parent.getRepository().resolve(id);
+		}
+
+		public boolean isExactAliases() {
+			return exactAliases;
+		}
+
+		public void setExactAliases(boolean exactAliases) {
+			this.exactAliases = exactAliases;
 		}
 
 		@Override

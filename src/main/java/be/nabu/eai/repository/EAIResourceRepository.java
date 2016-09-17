@@ -146,6 +146,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<String> internalDomains;
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
 	private String name;
+	private String group;
 	
 	private static EAIResourceRepository instance;
 	
@@ -188,6 +189,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private EAIRepositoryClassLoader classLoader;
 	
 	private Map<String, LimitedHistorySink> sinks = new HashMap<String, LimitedHistorySink>();
+
 	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1355,6 +1357,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	public void setName(String name) {
 		this.name = name;
+	}
+	
+	@Override
+	public String getGroup() {
+		return group == null ? MavenRepository.super.getGroup() : group;
+	}
+	public void setGroup(String group) {
+		this.group = group;
 	}
 	
 }

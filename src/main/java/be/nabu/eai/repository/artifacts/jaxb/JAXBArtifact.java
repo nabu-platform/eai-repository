@@ -61,6 +61,15 @@ public class JAXBArtifact<T> implements LazyArtifact {
 		marshaller.marshal(configuration, output);
 	}	
 
+	public T getConfig() {
+		try {
+			return getConfiguration();
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
 	public T getConfiguration() throws IOException {
 		if (configuration == null) {
 			synchronized(this) {

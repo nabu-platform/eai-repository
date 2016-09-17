@@ -92,4 +92,8 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 			return "anonymous";
 		}
 	}
+	
+	default String getGroup() {
+		return getName();
+	}
 }
