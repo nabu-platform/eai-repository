@@ -20,7 +20,7 @@ public class EAIRepositoryServiceAuthorizerProvider implements ServiceAuthorizer
 	@Override
 	public ServiceAuthorizer getAuthorizer(ServiceRuntime runtime) {
 		// if it is running as root, don't check permissions, he can do anything
-		if (SystemPrincipal.ROOT.equals(runtime.getExecutionContext().getSecurityContext().getPrincipal())) {
+		if (SystemPrincipal.ROOT.equals(runtime.getExecutionContext().getSecurityContext().getToken())) {
 			return null;
 		}
 		List<ServiceAuthorizer> authorizers = new ArrayList<ServiceAuthorizer>();

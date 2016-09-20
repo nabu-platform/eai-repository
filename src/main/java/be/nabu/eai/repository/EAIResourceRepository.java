@@ -5,7 +5,6 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.Charset;
-import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,6 +43,9 @@ import be.nabu.libs.artifacts.api.ClassProvidingArtifact;
 import be.nabu.libs.artifacts.api.LazyArtifact;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.authentication.api.PermissionHandler;
+import be.nabu.libs.authentication.api.RoleHandler;
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.jaas.JAASConfiguration;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
@@ -147,6 +149,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
 	private String name;
 	private String group;
+	private RoleHandler roleHandler;
+	private PermissionHandler permissionHandler;
 	
 	private static EAIResourceRepository instance;
 	
@@ -480,7 +484,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	
 	private void reload(String id, boolean recursiveReload) {
-		logger.info("Reloading: " + id);
+		logger.info("Reloading: " + id + " (" + recursiveReload + ")");
 		if (recursiveReload) {
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
 		}
@@ -1048,8 +1052,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 
 	@Override
-	public ExecutionContext newExecutionContext(Principal principal) {
-		return new EAIExecutionContext(this, principal, isDevelopment());
+	public ExecutionContext newExecutionContext(Token primaryToken, Token...alternativeTokens) {
+		return new EAIExecutionContext(this, primaryToken, isDevelopment(), alternativeTokens);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1366,5 +1370,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void setGroup(String group) {
 		this.group = group;
 	}
-	
+
+	public RoleHandler getRoleHandler() {
+		return roleHandler;
+	}
+
+	public void setRoleHandler(RoleHandler roleHandler) {
+		this.roleHandler = roleHandler;
+	}
+
+	public PermissionHandler getPermissionHandler() {
+		return permissionHandler;
+	}
+
+	public void setPermissionHandler(PermissionHandler permissionHandler) {
+		this.permissionHandler = permissionHandler;
+	}
+
 }

@@ -2,7 +2,6 @@ package be.nabu.eai.repository.artifacts.container;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -31,6 +30,7 @@ import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.api.VariableRefactorArtifactManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.metrics.api.MetricInstance;
 import be.nabu.libs.resources.ResourceUtils;
@@ -454,8 +454,8 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 
 		@Override
-		public ExecutionContext newExecutionContext(Principal principal) {
-			return parent.getRepository().newExecutionContext(principal);
+		public ExecutionContext newExecutionContext(Token primary, Token...alternatives) {
+			return parent.getRepository().newExecutionContext(primary, alternatives);
 		}
 
 		@Override

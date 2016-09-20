@@ -1,7 +1,6 @@
 package be.nabu.eai.repository.impl;
 
 import java.nio.charset.Charset;
-import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -23,6 +22,7 @@ import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.metrics.api.MetricInstance;
@@ -211,8 +211,8 @@ public class ReadOnlyRepository implements ResourceRepository {
 	}
 
 	@Override
-	public ExecutionContext newExecutionContext(Principal principal) {
-		return local.newExecutionContext(principal);
+	public ExecutionContext newExecutionContext(Token primary, Token...alternatives) {
+		return local.newExecutionContext(primary, alternatives);
 	}
 
 	@Override
