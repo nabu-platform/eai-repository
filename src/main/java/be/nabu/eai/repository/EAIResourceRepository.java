@@ -169,7 +169,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
 	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED });
-	private static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert", 
+	public static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert", 
 			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
 			"case", "catch", "class", "const", "continue", "default", "do", "else", "enum", "extends", "final", "finally", 
 			"for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", 

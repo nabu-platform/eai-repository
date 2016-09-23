@@ -121,6 +121,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		for (Resource child : container) {
 			if (existing.contains(child.getName())) {
 				existing.remove(child.getName());
+				// update the resource container, a reset cache may have triggered new entries
+				if (children.get(child.getName()) instanceof RepositoryEntry) {
+					((RepositoryEntry) children.get(child.getName())).container = (ResourceContainer<?>) child;
+				}
 				if (refreshChildren) {
 					children.get(child.getName()).refresh(refreshChildren);
 				}

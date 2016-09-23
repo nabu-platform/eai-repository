@@ -57,6 +57,7 @@ public class JAXBArtifact<T> implements LazyArtifact {
 	public void marshal(T configuration, OutputStream output) throws JAXBException {
 		JAXBContext context = JAXBContext.newInstance(configurationClazz);
 		Marshaller marshaller = context.createMarshaller();
+		marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
 		marshaller.setAdapter(new ArtifactXMLAdapter(getRepository()));
 		marshaller.marshal(configuration, output);
 	}	
