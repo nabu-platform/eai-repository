@@ -24,6 +24,8 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.LicenseManager;
+import be.nabu.eai.repository.api.LicensedRepository;
 import be.nabu.eai.repository.api.MavenRepository;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
@@ -137,7 +139,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * Currently the most important thing for diff/merge deploying is jaxbartifacts, so we will focus on those because they are easy to set
  * 
  */
-public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider {
+public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider, LicensedRepository {
 	
 	public static final String METRICS_SYSTEM = "system";
 	
@@ -151,6 +153,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private String group;
 	private RoleHandler roleHandler;
 	private PermissionHandler permissionHandler;
+	private LicenseManager licenseManager;
 	
 	private static EAIResourceRepository instance;
 	
@@ -1385,6 +1388,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public void setPermissionHandler(PermissionHandler permissionHandler) {
 		this.permissionHandler = permissionHandler;
+	}
+
+	@Override
+	public LicenseManager getLicenseManager() {
+		return licenseManager;
+	}
+	public void setLicenseManager(LicenseManager licenseManager) {
+		this.licenseManager = licenseManager;
 	}
 
 }
