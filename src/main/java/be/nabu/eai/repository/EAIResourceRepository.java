@@ -176,7 +176,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
 			"case", "catch", "class", "const", "continue", "default", "do", "else", "enum", "extends", "final", "finally", 
 			"for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", 
-			"return", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while" });
+			"return", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while", 
+			"META-INF" });
 	private Charset charset = Charset.forName("UTF-8");
 	private ResourceContainer<?> mavenRoot;
 	private URI localMavenServer;

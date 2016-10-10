@@ -36,6 +36,7 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.resources.api.features.CacheableResource;
+import be.nabu.libs.resources.zip.ZIPArchive;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -119,17 +120,33 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		List<String> existing = new ArrayList<String>(children.keySet());
 		for (Resource child : container) {
-			if (existing.contains(child.getName())) {
-				existing.remove(child.getName());
+			String childName = child.getName();
+			if (childName.endsWith(".nar")) {
+				childName = childName.substring(0, childName.length() - ".nar".length());
+			}
+			if (existing.contains(childName)) {
+				existing.remove(childName);
 				// update the resource container, a reset cache may have triggered new entries
-				if (children.get(child.getName()) instanceof RepositoryEntry) {
-					((RepositoryEntry) children.get(child.getName())).container = (ResourceContainer<?>) child;
+				if (children.get(childName) instanceof RepositoryEntry) {
+					if (child.getName().endsWith(".nar")) {
+						ZIPArchive archive = new ZIPArchive();
+						archive.setSource(child);
+						((RepositoryEntry) children.get(childName)).container = archive;
+					}
+					else {
+						((RepositoryEntry) children.get(childName)).container = (ResourceContainer<?>) child;
+					}
 				}
 				if (refreshChildren) {
-					children.get(child.getName()).refresh(refreshChildren);
+					children.get(childName).refresh(refreshChildren);
 				}
 			}
-			else if (child instanceof ResourceContainer && !repository.isInternal((ResourceContainer<?>) child) && !child.getName().startsWith(".")) {
+			else if (child.getName().endsWith(".nar") && !child.getName().startsWith(".")) {
+				ZIPArchive archive = new ZIPArchive();
+				archive.setSource(child);
+				children.put(childName, new RepositoryEntry(repository, archive, this, childName));
+			}
+			else if (child instanceof ResourceContainer && !EAIResourceRepository.RESERVED.contains(child.getName()) && !child.getName().startsWith(".")) {
 				children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));
 			}
 		}
