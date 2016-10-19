@@ -4,6 +4,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.attribute.FileTime;
@@ -39,7 +40,11 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.api.Service;
+import be.nabu.libs.services.api.ServiceInterface;
+import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.types.ParsedPath;
+import be.nabu.libs.types.api.Element;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -342,5 +347,30 @@ public class EAIRepositoryUtils {
 				writable.close();
 			}
 		}
+	}
+	
+	public static List<Element<?>> getInputExtensions(Service service, Class<?> iface) {
+		Method[] methods = iface.getMethods();
+		if (methods.length != 1) {
+			throw new IllegalArgumentException("More than 1 method found in: " + iface);
+		}
+		return getInputExtensions(service, methods[0]);
+	}
+	
+	public static List<Element<?>> getInputExtensions(Service service, Method method) {
+		MethodServiceInterface iface = MethodServiceInterface.wrap(method);
+		return getInputExtensions(service, iface);
+	}
+
+	public static List<Element<?>> getInputExtensions(Service service, MethodServiceInterface iface) {
+		List<Element<?>> elements = new ArrayList<Element<?>>();
+		ServiceInterface serviceInterface = service.getServiceInterface();
+		while (serviceInterface != null && !serviceInterface.equals(iface)) {
+			for (Element<?> child : serviceInterface.getInputDefinition()) {
+				elements.add(child);
+			}
+			serviceInterface = serviceInterface.getParent();
+		}
+		return elements;
 	}
 }
