@@ -59,6 +59,9 @@ public class EAIRepositoryClassLoader extends ClassLoader {
 	@Override
 	public Enumeration<URL> getResources(String name) throws IOException {
 		Set<URL> resources = new LinkedHashSet<URL>();
+		if (name.equals("META-INF/services/javax.xml.parsers.DocumentBuilderFactory")) {
+			return Collections.enumeration(resources);
+		}
 		Enumeration<URL> enumeration = getParent().getResources(name);
 		if (enumeration != null) {
 			while (enumeration.hasMoreElements()) {
