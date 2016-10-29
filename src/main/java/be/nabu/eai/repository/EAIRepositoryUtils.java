@@ -373,4 +373,20 @@ public class EAIRepositoryUtils {
 		}
 		return elements;
 	}
+	
+	public static Entry createChildEntry(ModifiableEntry root, Artifact artifact, Artifact child) {
+		String id = child.getId();
+		if (id.startsWith(artifact.getId() + ".")) {
+			String parentId = id.replaceAll("\\.[^.]+$", "");
+			ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id.substring(artifact.getId().length() + 1), false);
+			EAINode node = new EAINode();
+			node.setArtifact(child);
+			node.setLeaf(true);
+			MemoryEntry entry = new MemoryEntry(root.getRepository(), parent, node, id, id.substring(parentId.length() + 1));
+			node.setEntry(entry);
+			parent.addChildren(entry);
+			return entry;
+		}
+		return null;
+	}
 }
