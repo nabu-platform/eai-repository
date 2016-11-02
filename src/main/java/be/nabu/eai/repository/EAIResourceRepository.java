@@ -34,6 +34,7 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
+import be.nabu.eai.repository.impl.LimitedHistorySinkWithStatistics;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.resources.RepositoryResourceResolver;
@@ -57,7 +58,6 @@ import be.nabu.libs.metrics.core.GaugeHistorizer;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
 import be.nabu.libs.metrics.core.api.Sink;
 import be.nabu.libs.metrics.core.api.SinkProvider;
-import be.nabu.libs.metrics.core.sinks.LimitedHistorySink;
 import be.nabu.libs.metrics.impl.MetricGrouper;
 import be.nabu.libs.metrics.impl.SystemMetrics;
 import be.nabu.libs.resources.ResourceFactory;
@@ -196,9 +196,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	private EAIRepositoryClassLoader classLoader;
 	
-	private Map<String, LimitedHistorySink> sinks = new HashMap<String, LimitedHistorySink>();
+	private Map<String, LimitedHistorySinkWithStatistics> sinks = new HashMap<String, LimitedHistorySinkWithStatistics>();
 
-	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
 			(ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", "file:/" + System.getProperty("user.home") + "/repository")), null),
@@ -1347,7 +1346,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (!sinks.containsKey(key)) {
 			synchronized(this) {
 				if (!sinks.containsKey(key)) {
-					sinks.put(key, new LimitedHistorySink(1000));
+					sinks.put(key, new LimitedHistorySinkWithStatistics(1000));
 				}
 			}
 		}
@@ -1397,6 +1396,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	public void setLicenseManager(LicenseManager licenseManager) {
 		this.licenseManager = licenseManager;
+	}
+
+	public boolean isHistorizeGauges() {
+		return historizeGauges;
+	}
+
+	public void setHistorizeGauges(boolean historizeGauges) {
+		this.historizeGauges = historizeGauges;
 	}
 
 }
