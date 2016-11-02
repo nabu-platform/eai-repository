@@ -197,6 +197,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private EAIRepositoryClassLoader classLoader;
 	
 	private Map<String, LimitedHistorySinkWithStatistics> sinks = new HashMap<String, LimitedHistorySinkWithStatistics>();
+	
+	private long historizationInterval = 5000;
+	private int historySize = 1000;
 
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1323,7 +1326,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (metricsGaugeHistorizer == null && historizeGauges) {
 			synchronized(this) {
 				if (metricsGaugeHistorizer == null) {
-					metricsGaugeHistorizer = new GaugeHistorizer(5000);
+					metricsGaugeHistorizer = new GaugeHistorizer(historizationInterval);
 					// start the historizer thread
 					new Thread(metricsGaugeHistorizer).start();
 				}
@@ -1346,7 +1349,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (!sinks.containsKey(key)) {
 			synchronized(this) {
 				if (!sinks.containsKey(key)) {
-					sinks.put(key, new LimitedHistorySinkWithStatistics(1000));
+					sinks.put(key, new LimitedHistorySinkWithStatistics(historySize));
 				}
 			}
 		}
@@ -1404,6 +1407,22 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public void setHistorizeGauges(boolean historizeGauges) {
 		this.historizeGauges = historizeGauges;
+	}
+
+	public long getHistorizationInterval() {
+		return historizationInterval;
+	}
+
+	public void setHistorizationInterval(long historizationInterval) {
+		this.historizationInterval = historizationInterval;
+	}
+
+	public int getHistorySize() {
+		return historySize;
+	}
+
+	public void setHistorySize(int historySize) {
+		this.historySize = historySize;
 	}
 
 }
