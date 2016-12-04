@@ -5,6 +5,7 @@ import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
@@ -13,6 +14,7 @@ import be.nabu.libs.metrics.api.MetricProvider;
 import be.nabu.libs.services.api.DefinedServiceLister;
 import be.nabu.libs.services.api.ExecutionContextProvider;
 import be.nabu.libs.services.api.ServiceRunner;
+import be.nabu.libs.validator.api.Validation;
 
 public interface Repository extends ArtifactResolver<Artifact>, ExecutionContextProvider, DefinedServiceLister, MetricProvider {
 	/**
@@ -95,5 +97,11 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	
 	default String getGroup() {
 		return getName();
+	}
+	
+	// this returns a map where a message "category" points to a list of messages
+	// the map should be modifiable because it is used both for setting and reading messages 
+	default Map<String, List<Validation<?>>> getMessages(String nodeId) {
+		return null;
 	}
 }

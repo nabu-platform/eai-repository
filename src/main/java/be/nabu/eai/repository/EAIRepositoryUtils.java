@@ -4,12 +4,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.attribute.FileTime;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
@@ -45,6 +48,9 @@ import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.validator.api.Validation;
+import be.nabu.libs.validator.api.ValidationMessage;
+import be.nabu.libs.validator.api.ValidationMessage.Severity;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -53,6 +59,32 @@ import be.nabu.utils.io.api.WritableContainer;
 public class EAIRepositoryUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
+
+	public static ValidationMessage toValidation(Throwable error) {
+		StringWriter writer = new StringWriter();
+		PrintWriter printer = new PrintWriter(writer);
+		error.printStackTrace(printer);
+		printer.flush();
+		return new ValidationMessage(Severity.ERROR, error.getMessage(), writer.toString());
+	}
+	
+	public static void message(Repository repository, String artifactId, String category, boolean clear, Validation<?>...validations) {
+		Map<String, List<Validation<?>>> messages = repository.getMessages(artifactId);
+		synchronized(messages) {
+			if (!messages.containsKey(category)) {
+				if (!messages.containsKey(category)) {
+					messages.put(category, new ArrayList<Validation<?>>());
+				}
+			}
+			List<Validation<?>> list = messages.get(category);
+			synchronized(list) {
+				if (clear) {
+					list.clear();
+				}
+				list.addAll(Arrays.asList(validations));
+			}
+		}
+	}
 	
 	public static Entry getEntry(Entry entry, String id) {
 		// sometimes java arrays (more specifically the byte "[B") get in there...

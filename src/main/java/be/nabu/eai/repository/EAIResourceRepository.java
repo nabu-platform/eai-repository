@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -164,6 +165,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
 	public static final String PROTECTED = "protected";
+	
+	private Map<String, Map<String, List<Validation<?>>>> messages = new HashMap<String, Map<String, List<Validation<?>>>>();
 	
 	private boolean isLoading;
 	
@@ -1423,6 +1426,18 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public void setHistorySize(int historySize) {
 		this.historySize = historySize;
+	}
+
+	@Override
+	public Map<String, List<Validation<?>>> getMessages(String nodeId) {
+		if (!messages.containsKey(nodeId)) {
+			synchronized(messages) {
+				if (!messages.containsKey(nodeId)) {
+					messages.put(nodeId, new ConcurrentHashMap<String, List<Validation<?>>>());
+				}
+			}
+		}
+		return messages.get(nodeId);
 	}
 
 }
