@@ -12,7 +12,7 @@ public class NabuLogMessage {
 	
 	private Severity severity;
 	private List<String> context;
-	private String errorCode, message, description;
+	private String errorCode, message, description, name, group;
 	private Date timestamp;
 	
 	public Severity getSeverity() {
@@ -50,5 +50,17 @@ public class NabuLogMessage {
 	}
 	public void setTimestamp(Date timestamp) {
 		this.timestamp = timestamp;
+	}
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+	public String getGroup() {
+		return group;
+	}
+	public void setGroup(String group) {
+		this.group = group;
 	}
 }

@@ -29,8 +29,9 @@ public class NabuLogAppender extends AppenderBase<ILoggingEvent> {
 	
 	@Override
 	protected void append(ILoggingEvent event) {
-		System.out.println("APPENDING: " + event);
 		NabuLogMessage message = new NabuLogMessage();
+		message.setName(repository.getName());
+		message.setGroup(repository.getGroup());
 		if (event.getLevel().isGreaterOrEqual(Level.ERROR)) {
 			message.setSeverity(Severity.ERROR);
 		}
