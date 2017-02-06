@@ -28,6 +28,7 @@ import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.libs.resources.ResourceReadableContainer;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -36,6 +37,7 @@ import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
 import be.nabu.libs.resources.api.features.CacheableResource;
+import be.nabu.libs.resources.memory.MemoryDirectory;
 import be.nabu.libs.resources.zip.ZIPArchive;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
@@ -58,6 +60,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	private ResourceRepository repository;
 	
 	private Map<String, Entry> children;
+	private static boolean CACHE_MODULES = Boolean.parseBoolean(System.getProperty("be.nabu.eai.repository.cacheModules", "false"));
 	
 	public RepositoryEntry(ResourceRepository repository, ResourceContainer<?> container, RepositoryEntry parent, String name) {
 		this.repository = repository;
@@ -129,9 +132,23 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 				// update the resource container, a reset cache may have triggered new entries
 				if (children.get(childName) instanceof RepositoryEntry) {
 					if (child.getName().endsWith(".nar")) {
-						ZIPArchive archive = new ZIPArchive();
-						archive.setSource(child);
-						((RepositoryEntry) children.get(childName)).container = archive;
+						// this approach does not load the zip file into memory but this comes with some hefty I/O overhead for large modules (e.g. selenium, soapui,... modules)
+						if (!CACHE_MODULES) {
+							ZIPArchive archive = new ZIPArchive();
+							archive.setSource(child);
+							((RepositoryEntry) children.get(childName)).container = archive;
+						}
+						// this approach loads the zip into memory enabling fast access but the content will remain in memory for the duration of the application
+						else {
+							MemoryDirectory directory = new MemoryDirectory();
+							try {
+								ResourceUtils.unzip(child, directory);
+							}
+							catch (IOException e) {
+								throw new RuntimeException(e);
+							}
+							((RepositoryEntry) children.get(childName)).container = directory;
+						}
 					}
 					else {
 						((RepositoryEntry) children.get(childName)).container = (ResourceContainer<?>) child;
@@ -142,9 +159,21 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 				}
 			}
 			else if (child.getName().endsWith(".nar") && !child.getName().startsWith(".")) {
-				ZIPArchive archive = new ZIPArchive();
-				archive.setSource(child);
-				children.put(childName, new RepositoryEntry(repository, archive, this, childName));
+				if (!CACHE_MODULES) {
+					ZIPArchive archive = new ZIPArchive();
+					archive.setSource(child);
+					children.put(childName, new RepositoryEntry(repository, archive, this, childName));
+				}
+				else {
+					MemoryDirectory directory = new MemoryDirectory();
+					try {
+						ResourceUtils.unzip(child, directory);
+					}
+					catch (IOException e) {
+						throw new RuntimeException(e);
+					}
+					children.put(childName, new RepositoryEntry(repository, directory, this, childName));
+				}
 			}
 			else if (child instanceof ResourceContainer && !EAIResourceRepository.RESERVED.contains(child.getName()) && !child.getName().startsWith(".")) {
 				children.put(child.getName(), new RepositoryEntry(repository, (ResourceContainer<?>) child, this, child.getName()));

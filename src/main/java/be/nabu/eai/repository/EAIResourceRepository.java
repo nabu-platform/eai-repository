@@ -1251,17 +1251,26 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return null;
 	}
 	
+	private Map<String, Collection<URL>> resources = new HashMap<String, Collection<URL>>();
+	
 	Collection<URL> getResources(String name) {
-		Set<URL> urls = new LinkedHashSet<URL>();
-		for (MavenArtifact artifact : mavenArtifacts) {
-			urls.addAll(artifact.getClassLoader().findResourcesNonRecursively(name, false));
-		}
-		for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
-			for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
-				urls.addAll(classLoader.findResourcesNonRecursively(name, false));
+		if (!resources.containsKey(name)) {
+			synchronized(resources) {
+				if (!resources.containsKey(name)) {
+					Set<URL> urls = new LinkedHashSet<URL>();
+					for (MavenArtifact artifact : mavenArtifacts) {
+						urls.addAll(artifact.getClassLoader().findResourcesNonRecursively(name, false));
+					}
+					for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
+						for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
+							urls.addAll(classLoader.findResourcesNonRecursively(name, false));
+						}
+					}
+					resources.put(name, urls);
+				}
 			}
 		}
-		return urls;
+		return resources.get(name);
 	}
 	
 	@Override
