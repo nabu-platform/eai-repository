@@ -43,6 +43,8 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.ServiceRuntime;
+import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
@@ -60,6 +62,18 @@ public class EAIRepositoryUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
 
+	public static List<String> getServiceStack() {
+		List<String> serviceStack = new ArrayList<String>();
+		ServiceRuntime runtime = ServiceRuntime.getRuntime();
+		while (runtime != null) {
+			if (runtime.getService() instanceof DefinedService) {
+				serviceStack.add(((DefinedService) runtime.getService()).getId());
+			}
+			runtime = runtime.getParent();
+		}
+		return serviceStack;
+	}
+	
 	public static ValidationMessage toValidation(Throwable error) {
 		StringWriter writer = new StringWriter();
 		PrintWriter printer = new PrintWriter(writer);
@@ -387,6 +401,15 @@ public class EAIRepositoryUtils {
 			throw new IllegalArgumentException("More than 1 method found in: " + iface);
 		}
 		return getInputExtensions(service, methods[0]);
+	}
+	
+	public static Method getMethod(Class<?> clazz, String name) {
+		for (Method method : clazz.getMethods()) {
+			if (method.getName().equals(name)) {
+				return method;
+			}
+		}
+		throw new IllegalArgumentException("Can not find method '" + name + "' in class: " + clazz);
 	}
 	
 	public static List<Element<?>> getInputExtensions(Service service, Method method) {
