@@ -19,6 +19,9 @@ import be.nabu.libs.resources.api.ReadableResource;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.java.BeanInstance;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -68,6 +71,17 @@ public class JAXBArtifact<T> implements LazyArtifact {
 		}
 		catch (IOException e) {
 			throw new RuntimeException(e);
+		}
+	}
+	
+	public void mergeConfiguration(T configuration, boolean includeNull) {
+		BeanInstance<T> newInstance = new BeanInstance<T>(configuration);
+		BeanInstance<T> current = new BeanInstance<T>(getConfig());
+		for (Element<?> element : TypeUtils.getAllChildren(newInstance.getType())) {
+			Object value = newInstance.get(element.getName());
+			if (value != null || includeNull) {
+				current.set(element.getName(), value);
+			}
 		}
 	}
 	
