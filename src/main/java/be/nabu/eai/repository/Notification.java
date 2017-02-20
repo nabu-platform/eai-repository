@@ -15,6 +15,7 @@ public class Notification implements Validation<String> {
 	private Integer code;
 	private String message, description;
 	private Object properties;
+	private String type;
 	private Date created = new Date();
 	
 	@Override
@@ -80,4 +81,10 @@ public class Notification implements Validation<String> {
 		this.created = created;
 	}
 	
+	public String getType() {
+		return type;
+	}
+	public void setType(String type) {
+		this.type = type;
+	}
 }
