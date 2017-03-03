@@ -392,6 +392,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 	}
 	
+	/**
+	 * Known issue: when you unload a folder, you do an entry.refresh(false) on the folder
+	 * When you have redeployed an entire application, that means it will reload the artifacts within
+	 * Which means those artifacts come into a state where "isLoaded()" is false 
+	 * Which means if those artifacts are/were artifact repository managers, they do not get to unload their previously loaded children
+	 * If however we skip the check "isLoaded", we can have other problems with dependencies between dynamically loaded artifacts (e.g. jdbc depends on uml type)
+	 * Currently on load, the nodes should be overwritten preventing any issues so we leave it as such....for now...
+	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry) {
 		if (entry.isNode()) {
@@ -409,6 +417,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				try {
 					List<Entry> removedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+					logger.info("Unloaded " + (removedChildren == null ? "no" : removedChildren.size()) + " dynamic children of artifact: " + entry.getId());
 					if (removedChildren != null) {
 						for (Entry removedChild : removedChildren) {
 							unbuildReferenceMap(removedChild.getId());

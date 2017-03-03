@@ -1,9 +1,9 @@
 package be.nabu.eai.repository.resources;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
-import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
@@ -19,7 +19,7 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 	private Entry parent;
 	private Repository repository;
 	private Node node;
-	private List<Entry> children;
+	private Map<String, Entry> children;
 	private String originator;
 	
 	public MemoryEntry(Repository repository, Entry parent, Node node, String id, String name, Entry...children) {
@@ -33,17 +33,15 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 		this.id = id;
 		this.name = name;
 		this.parent = parent;
-		this.children = new ArrayList<Entry>(Arrays.asList(children));
+		this.children = new LinkedHashMap<String, Entry>();
+		for (Entry child : children) {
+			this.children.put(child.getName(), child);
+		}
 	}
 	
 	@Override
 	public Entry getChild(String name) {
-		for (Entry child : children) {
-			if (child.getName().equals(name)) {
-				return child;
-			}
-		}
-		return null;
+		return children.get(name);
 	}
 
 	@Override
@@ -65,7 +63,7 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 
 	@Override
 	public Iterator<Entry> iterator() {
-		return new ArrayList<Entry>(children).iterator();
+		return new ArrayList<Entry>(children.values()).iterator();
 	}
 
 	@Override
@@ -100,18 +98,15 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 
 	@Override
 	public void addChildren(Entry...children) {
-		this.children.addAll(Arrays.asList(children));
+		for (Entry child : children) {
+			this.children.put(child.getName(), child);
+		}
 	}
 
 	@Override
 	public void removeChildren(String...children) {
-		Iterator<Entry> iterator = this.children.iterator();
-		List<String> names = Arrays.asList(children);
-		while (iterator.hasNext()) {
-			Entry next = iterator.next();
-			if (names.contains(next.getName())) {
-				iterator.remove();
-			}
+		for (String child : children) {
+			this.children.remove(child);
 		}
 	}
 
