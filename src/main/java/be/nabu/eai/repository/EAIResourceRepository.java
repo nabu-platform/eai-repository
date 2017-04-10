@@ -446,10 +446,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (entry.getParent() != null) {
 			entry.getParent().refresh(false);
 		}
-		if (!entry.isLeaf()) {
-			for (Entry child : entry) {
-				unload(child);
-			}
+		for (Entry child : entry) {
+			unload(child);
 		}
 	}
 	

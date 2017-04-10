@@ -20,7 +20,6 @@ public class CacheSessionProvider implements SessionProvider {
 	@SuppressWarnings("unchecked")
 	@Override
 	public Session getSession(String sessionId) {
-		System.out.println("---------- > current session: " + sessionId);
 		try {
 			Map<String, Object> values = (Map<String, Object>) cache.get(sessionId);
 			if (values != null) {
@@ -37,7 +36,6 @@ public class CacheSessionProvider implements SessionProvider {
 
 	@Override
 	public Session newSession() {
-		System.out.println("---------- > new session!!");
 		String sessionId = generateId();
 		Map<String, Object> values = new HashMap<String, Object>();
 		try {
@@ -80,6 +78,11 @@ public class CacheSessionProvider implements SessionProvider {
 	 */
 	private String generateId() {
 		return UUID.randomUUID().toString().replace("-", "");
+	}
+
+	@Override
+	public void prune() {
+		// do nothing for now
 	}
 
 }

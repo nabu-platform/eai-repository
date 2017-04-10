@@ -14,9 +14,6 @@ import java.util.Set;
 
 import javax.xml.bind.JAXBContext;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactManager;
@@ -51,8 +48,6 @@ import be.nabu.utils.io.api.WritableContainer;
 @SuppressWarnings({ "rawtypes", "unchecked" })
 abstract public class ContainerArtifactManager<T extends ContainerArtifact> implements ArtifactManager<T>, BrokenReferenceArtifactManager<T>, VariableRefactorArtifactManager<T> {
 
-	private Logger logger = LoggerFactory.getLogger(getClass());
-	
 	abstract public T newInstance(String id);
 	
 	protected List<ResourceContainer<?>> getChildrenToLoad(ResourceContainer<?> directory) {
@@ -100,7 +95,6 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 					}
 				}
 				catch (Exception e) {
-					logger.error("Could not load child: " + childToLoad, e);
 					throw new RuntimeException(e);
 				}
 			}
@@ -298,33 +292,36 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 	@Override
 	public List<Validation<?>> updateBrokenReference(ResourceContainer<?> container, String from, String to) throws IOException {
 		List<Validation<?>> messages = new ArrayList<Validation<?>>();
-		List<ResourceContainer<?>> childrenToLoad = getChildrenToLoad(container);
-		childrenToLoad.add(container);
-		for (ResourceContainer childToLoad : childrenToLoad) {
-			// not all artifacts are required
-			if (childToLoad == null) {
-				continue;
-			}
-			try {
-				ReadableResource containerConfig = (ReadableResource) childToLoad.getChild("container.xml");
-				if (containerConfig != null) {
-					ContainerArtifactConfiguration configuration;
-					JAXBContext context = JAXBContext.newInstance(ContainerArtifactConfiguration.class);
-					ReadableContainer<ByteBuffer> readable = containerConfig.getReadable();
-					try {
-						configuration = (ContainerArtifactConfiguration) context.createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
-					}
-					finally {
-						readable.close();
-					}
-					ArtifactManager artifactManager = (ArtifactManager) configuration.getArtifactManagerClass().newInstance();
-					if (artifactManager instanceof BrokenReferenceArtifactManager) {
-						messages.addAll(((BrokenReferenceArtifactManager) artifactManager).updateBrokenReference(childToLoad, from, to));
+		ResourceContainer<?> privateDirectory = (ResourceContainer<?>) container.getChild(EAIResourceRepository.PRIVATE);
+		if (privateDirectory != null) {
+			List<ResourceContainer<?>> childrenToLoad = getChildrenToLoad(privateDirectory);
+			childrenToLoad.add(container);
+			for (ResourceContainer childToLoad : childrenToLoad) {
+				// not all artifacts are required
+				if (childToLoad == null) {
+					continue;
+				}
+				try {
+					ReadableResource containerConfig = (ReadableResource) childToLoad.getChild("container.xml");
+					if (containerConfig != null) {
+						ContainerArtifactConfiguration configuration;
+						JAXBContext context = JAXBContext.newInstance(ContainerArtifactConfiguration.class);
+						ReadableContainer<ByteBuffer> readable = containerConfig.getReadable();
+						try {
+							configuration = (ContainerArtifactConfiguration) context.createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
+						}
+						finally {
+							readable.close();
+						}
+						ArtifactManager artifactManager = (ArtifactManager) configuration.getArtifactManagerClass().newInstance();
+						if (artifactManager instanceof BrokenReferenceArtifactManager) {
+							messages.addAll(((BrokenReferenceArtifactManager) artifactManager).updateBrokenReference(childToLoad, from, to));
+						}
 					}
 				}
-			}
-			catch(Exception e) {
-				e.printStackTrace();
+				catch(Exception e) {
+					e.printStackTrace();
+				}
 			}
 		}
 		return messages;
