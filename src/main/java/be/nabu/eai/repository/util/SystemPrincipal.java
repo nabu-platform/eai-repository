@@ -17,7 +17,7 @@ public class SystemPrincipal implements Token {
 
 	public static final SystemPrincipal ROOT = new SystemPrincipal("root");
 	
-	private String name;
+	private String name, realm;
 
 	private List<Principal> credentials;
 
@@ -26,7 +26,12 @@ public class SystemPrincipal implements Token {
 	}
 	
 	public SystemPrincipal(String name, Principal...credentials) {
+		this(name, null, credentials);
+	}
+	
+	public SystemPrincipal(String name, String realm, Principal...credentials) {
 		this.name = name;
+		this.realm = realm;
 		this.credentials = Arrays.asList(credentials);
 	}
 	
@@ -41,7 +46,7 @@ public class SystemPrincipal implements Token {
 
 	@Override
 	public String getRealm() {
-		return "$system";
+		return realm == null ? "$system" : realm;
 	}
 
 	@Override
