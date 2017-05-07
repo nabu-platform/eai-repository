@@ -420,7 +420,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					logger.info("Unloaded " + (removedChildren == null ? "no" : removedChildren.size()) + " dynamic children of artifact: " + entry.getId());
 					if (removedChildren != null) {
 						for (Entry removedChild : removedChildren) {
-							unbuildReferenceMap(removedChild.getId());
+							if (removedChild != null) {
+								unbuildReferenceMap(removedChild.getId());
+							}
 						}
 					}
 				}

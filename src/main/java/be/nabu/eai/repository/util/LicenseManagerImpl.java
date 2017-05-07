@@ -59,8 +59,10 @@ public class LicenseManagerImpl implements LicenseManager {
 				}
 			}
 		}
-		logger.warn("No license found for: " + topic);
-		return false;
+		// currently we will disable the need for licenses until we have a better picture of how they can be used
+		return true;
+//		logger.warn("No license found for: " + topic);
+//		return false;
 	}
 
 	@Override
