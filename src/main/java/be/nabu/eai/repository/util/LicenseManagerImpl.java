@@ -27,6 +27,9 @@ public class LicenseManagerImpl implements LicenseManager {
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	private List<X509Certificate> certificates = new ArrayList<X509Certificate>();
 	private X509Certificate rootCA, licenseCA;
+
+	// currently we will disable the need for licenses until we have a better picture of how they can be used
+	private boolean requireLicense = false;
 	
 	public LicenseManagerImpl() {
 		this.rootCA = getRootCA();
@@ -59,10 +62,8 @@ public class LicenseManagerImpl implements LicenseManager {
 				}
 			}
 		}
-		// currently we will disable the need for licenses until we have a better picture of how they can be used
-		return true;
-//		logger.warn("No license found for: " + topic);
-//		return false;
+		// if licenses are required, we send back false, otherwise everything is allowed
+		return !requireLicense;
 	}
 
 	@Override
