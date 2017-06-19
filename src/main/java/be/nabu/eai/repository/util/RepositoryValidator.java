@@ -80,25 +80,32 @@ public class RepositoryValidator {
 		Map<Entry, List<? extends Validation<?>>> result = new HashMap<Entry, List<? extends Validation<?>>>();
 		for (Class clazz : nodes.keySet()) {
 			ArtifactManager manager = EAIRepositoryUtils.getArtifactManager(clazz);
-			if (manager instanceof ValidatableArtifactManager) {
-				for (Entry entry : nodes.get(clazz)) {
-					List<Validation<?>> validations = new ArrayList<Validation<?>>();
-					try {
-						Artifact artifact = entry.getNode().getArtifact();
+			for (Entry entry : nodes.get(clazz)) {
+				List<Validation<?>> validations = new ArrayList<Validation<?>>();
+				try {
+					// check all the references
+					for (String reference : repository.getReferences(entry.getId())) {
+						if (reference != null && EAIRepositoryUtils.isBrokenReference(repository, reference)) {
+							validations.add(new ValidationMessage(Severity.ERROR, "Broken reference: " + reference));
+						}
+					}
+					
+					Artifact artifact = entry.getNode().getArtifact();
+					if (manager instanceof ValidatableArtifactManager) {
 						List<? extends Validation<?>> artifactValidations = ((ValidatableArtifactManager) manager).validate(artifact);
 						if (artifactValidations != null && !artifactValidations.isEmpty()) {
 							validations.addAll(artifactValidations);
 						}
 					}
-					catch (IOException e) {
-						validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 0, e.getMessage()));
-					}
-					catch (ParseException e) {
-						validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 1, e.getMessage()));
-					}
-					if (!validations.isEmpty()) {
-						result.put(entry, validations);
-					}
+				}
+				catch (IOException e) {
+					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 0, e.getMessage()));
+				}
+				catch (ParseException e) {
+					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 1, e.getMessage()));
+				}
+				if (!validations.isEmpty()) {
+					result.put(entry, validations);
 				}
 			}
 		}

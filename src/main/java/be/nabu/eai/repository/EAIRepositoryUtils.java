@@ -43,11 +43,14 @@ import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
+import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
+import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.validator.api.Validation;
@@ -443,5 +446,35 @@ public class EAIRepositoryUtils {
 			return entry;
 		}
 		return null;
+	}
+	
+	public static boolean isBrokenReference(Repository repository, String reference) {
+		// byte arrays are one of the only (should be _the_ only normally) array that we use, hence the hardcoded exception
+		if (reference.equals("[B")) {
+			return false;
+		}
+		boolean found = repository.getEntry(reference) != null && repository.getEntry(reference).isNode();
+		if (!found) {
+			found = repository.resolve(reference) != null;
+		}
+		if (!found) {
+			found = DefinedServiceInterfaceResolverFactory.getInstance().getResolver().resolve(reference) != null;
+		}
+		if (!found) {
+			found = DefinedServiceResolverFactory.getInstance().getResolver().resolve(reference) != null;
+		}
+		if (!found) {
+			found = DefinedTypeResolverFactory.getInstance().getResolver().resolve(reference) != null;
+		}
+		// try multiple avenues
+		if (!found) {
+			try {
+				found = repository.getClassLoader().loadClass(reference) != null;
+			}
+			catch (ClassNotFoundException e) {
+				// do nothing
+			}
+		}
+		return !found;
 	}
 }
