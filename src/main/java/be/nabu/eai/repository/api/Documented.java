@@ -6,4 +6,5 @@ public interface Documented {
 	public String getTitle();
 	public String getDescription();
 	public Collection<String> getTags();
+	public String getMimeType();
 }
