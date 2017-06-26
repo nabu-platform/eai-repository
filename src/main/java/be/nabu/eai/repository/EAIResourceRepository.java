@@ -1166,11 +1166,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void start() {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.LOAD, false), this);
 		// start the maven repository stuff
-		try {
-			startMavenRepository(mavenRoot);
-		}
-		catch (IOException e) {
-			throw new RuntimeException(e);
+		if (mavenRoot != null) {
+			try {
+				startMavenRepository(mavenRoot);
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
 		}
 		// before we start loading everything else, first do an initial attach so all the artifacts are loaded (for dependencies)
 		reattachMavenArtifacts();

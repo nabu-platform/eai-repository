@@ -164,6 +164,12 @@
 			<scope>compile</scope>
 		</dependency>
 		
+		<!-- Internalized maven module after many years! -->
+		<dependency>
+			<groupId>nabu</groupId>
+			<artifactId>eai-module-maven</artifactId>
+		</dependency>
+		
 		<dependency>
 			<groupId>org.codehaus.woodstox</groupId>
 			<artifactId>woodstox-core-lgpl</artifactId>
