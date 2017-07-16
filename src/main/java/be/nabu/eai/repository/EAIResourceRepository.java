@@ -506,7 +506,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (recursiveReload) {
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
 		}
-		Entry entry = getEntry(id);
+		Entry entry = id == null ? getRoot() : getEntry(id);
 		// if we have an entry on the root which is not found, it could be new, reset the root (if possible) and try again
 		// alternatively we can reload the entire root folder but this would have massive performance repercussions
 		if (entry == null && !id.contains(".")) {

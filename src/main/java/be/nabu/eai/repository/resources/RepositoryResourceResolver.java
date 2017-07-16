@@ -40,12 +40,16 @@ public class RepositoryResourceResolver implements ResourceResolver {
 			}
 			Resource privateFolder = ((ResourceEntry) entry).getContainer().getChild(EAIResourceRepository.PRIVATE);
 			Resource publicFolder = ((ResourceEntry) entry).getContainer().getChild(EAIResourceRepository.PUBLIC);
+			Resource protectedFolder = ((ResourceEntry) entry).getContainer().getChild(EAIResourceRepository.PROTECTED);
 			VirtualContainer container = new VirtualContainer(new URI(uri.getScheme() + ":" + child.getScheme() + ":/"));
 			if (privateFolder != null) {
 				container.addChild(EAIResourceRepository.PRIVATE, privateFolder);
 			}
 			if (publicFolder != null) {
 				container.addChild(EAIResourceRepository.PUBLIC, publicFolder);
+			}
+			if (protectedFolder != null) {
+				container.addChild(EAIResourceRepository.PROTECTED, protectedFolder);
 			}
 			try {
 				return ResourceUtils.resolve(container, child.getPath());
