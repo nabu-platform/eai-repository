@@ -309,7 +309,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				path = path.substring(index + 1);
 				Resource parentResource = ResourceUtils.resolve(resourceRoot, parent);
 				if (parentResource == null) {
-					parentResource = ResourceUtils.mkdirs(parentResource, parent);
+					parentResource = ResourceUtils.mkdirs(resourceRoot, parent);
 				}
 				resource = ((ManageableContainer<?>) parentResource).create(path, mimeType);
 			}
@@ -1091,7 +1091,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 						}
 					}
 					catch (Exception e) {
-						logger.error("Could not load artifact", e);
+						logger.error("Could not load artifact: " + node, e);
 					}
 				}
 			}

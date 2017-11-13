@@ -1,5 +1,6 @@
 package be.nabu.eai.repository;
 
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -13,11 +14,18 @@ import java.nio.file.attribute.FileTime;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
@@ -26,6 +34,7 @@ import java.util.zip.ZipOutputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import be.nabu.eai.api.NamingConvention;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
@@ -175,9 +184,21 @@ public class EAIRepositoryUtils {
 		}
 	}
 	
+	public static byte[] zipSingleEntry(ResourceEntry entry) throws IOException {
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		ZipOutputStream zip = new ZipOutputStream(output);
+		try {
+			zipNode(zip, null, entry.getContainer(), entry.getRepository(), true);
+		}
+		finally {
+			zip.finish();
+		}
+		return output.toByteArray();
+	}
+	
 	private static void zipNode(ZipOutputStream output, String path, ResourceContainer<?> container, ResourceRepository repository, boolean limitToInternal) throws IOException {
 		for (Resource resource : container) {
-			String childPath = path + "/" + resource.getName();
+			String childPath = (path == null ? "" : path + "/") + resource.getName();
 			if (resource instanceof ReadableResource) {
 				ZipEntry entry = new ZipEntry(childPath);
 				if (resource instanceof FiniteResource) {
@@ -315,24 +336,25 @@ public class EAIRepositoryUtils {
 	}
 	
 	public static String uncamelify(String string) {
-		StringBuilder builder = new StringBuilder();
-		boolean previousUpper = false;
-		for (int i = 0; i < string.length(); i++) {
-			String substring = string.substring(i, i + 1);
-			if (substring.equals(substring.toLowerCase()) || i == 0) {
-				previousUpper = !substring.equals(substring.toLowerCase());
-				builder.append(substring.toLowerCase());
-			}
-			else {
-				// if it is not preceded by a "_" or another capitilized
-				if (!string.substring(i - 1, i).equals("_") && !previousUpper) {
-					builder.append("_");
-				}
-				previousUpper = true;
-				builder.append(substring.toLowerCase());
-			}
-		}
-		return builder.toString();
+		return NamingConvention.UNDERSCORE.apply(string, NamingConvention.LOWER_CAMEL_CASE);
+//		StringBuilder builder = new StringBuilder();
+//		boolean previousUpper = false;
+//		for (int i = 0; i < string.length(); i++) {
+//			String substring = string.substring(i, i + 1);
+//			if (substring.equals(substring.toLowerCase()) || i == 0) {
+//				previousUpper = !substring.equals(substring.toLowerCase());
+//				builder.append(substring.toLowerCase());
+//			}
+//			else {
+//				// if it is not preceded by a "_" or another capitilized
+//				if (!string.substring(i - 1, i).equals("_") && !previousUpper) {
+//					builder.append("_");
+//				}
+//				previousUpper = true;
+//				builder.append(substring.toLowerCase());
+//			}
+//		}
+//		return builder.toString();
 	}
 	
 	public static boolean isAlphanumeric(char character) {
@@ -476,5 +498,68 @@ public class EAIRepositoryUtils {
 			}
 		}
 		return !found;
+	}
+	
+	public static <T> Future<List<T>> combine(Collection<Future<T>> futures) {
+		return new CombinedFuture<T>(futures);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	public static class CombinedFuture<T> implements Future<List<T>> {
+
+		private List results = new ArrayList();
+		private boolean cancelled;
+		private CountDownLatch latch = new CountDownLatch(1);
+		private Collection<Future<T>> futures;
+		
+		public CombinedFuture(Collection<Future<T>> futures) {
+			this.futures = futures;
+		}
+
+		@Override
+		public boolean cancel(boolean mayInterruptIfRunning) {
+			if (!cancelled) {
+				for (Future<?> future : futures) {
+					if (!future.isCancelled() && !future.isDone()) {
+						future.cancel(mayInterruptIfRunning);
+					}
+				}
+				cancelled = true;
+			}
+			return cancelled;
+		}
+
+		@Override
+		public boolean isCancelled() {
+			return cancelled;
+		}
+
+		@Override
+		public boolean isDone() {
+			return latch.getCount() <= 0 || cancelled;
+		}
+
+		@Override
+		public List<T> get() throws InterruptedException, ExecutionException {
+			try {
+				return get(365, TimeUnit.DAYS);
+			}
+			catch (TimeoutException e) {
+				throw new RuntimeException(e);
+			}
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public List<T> get(long timeout, TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+			Date original = new Date();
+			long msTimeout = TimeUnit.MILLISECONDS.convert(timeout, unit);
+			for (Future<?> future : futures) {
+				long past = new Date().getTime() - original.getTime();
+				results.add(future.get(msTimeout - past, TimeUnit.MILLISECONDS));
+			}
+			return results;
+		}
+		
 	}
 }

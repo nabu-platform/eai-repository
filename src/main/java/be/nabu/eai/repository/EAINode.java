@@ -170,4 +170,8 @@ public class EAINode implements Node {
 		return artifact != null;
 	}
 	
+	@Override
+	public String toString() {
+		return "Node for: " + (entry == null ? "anonymous" : entry.getId());
+	}
 }

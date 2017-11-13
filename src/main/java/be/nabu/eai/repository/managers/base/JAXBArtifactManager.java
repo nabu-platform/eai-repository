@@ -48,18 +48,18 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 
 	@Override
 	public List<Validation<?>> save(ResourceEntry entry, T artifact) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
 		try {
 			artifact.save(entry.getContainer());
 		}
 		catch (IOException e) {
-			List<Validation<?>> messages = new ArrayList<Validation<?>>();
 			messages.add(new ValidationMessage(Severity.ERROR, "Could not save " + artifactClass.getSimpleName() + ": " + e.getMessage()));
 			return messages;
 		}
 		if (entry instanceof ModifiableNodeEntry) {
 			((ModifiableNodeEntry) entry).updateNode(getReferences(artifact));
 		}
-		return null;
+		return messages;
 	}
 
 	@Override

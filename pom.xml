@@ -126,10 +126,10 @@
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-binding-xml</artifactId>
 		</dependency>
-		<dependency>
+		<!--<dependency>
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-binding-flat</artifactId>
-		</dependency>
+		</dependency>-->
 		<dependency>
 			<groupId>be.nabu.libs.types</groupId>
 			<artifactId>types-binding-json</artifactId>

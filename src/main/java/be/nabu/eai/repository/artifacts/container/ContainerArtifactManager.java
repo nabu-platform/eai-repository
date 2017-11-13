@@ -255,7 +255,8 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		}
 		Iterator<String> iterator = references.iterator();
 		while(iterator.hasNext()) {
-			if (iterator.next().startsWith("$self")) {
+			String next = iterator.next();
+			if (next == null || next.startsWith("$self")) {
 				iterator.remove();
 			}
 		}
