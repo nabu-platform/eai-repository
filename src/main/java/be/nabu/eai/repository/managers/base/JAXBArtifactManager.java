@@ -1,16 +1,20 @@
 package be.nabu.eai.repository.managers.base;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
 
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
+import be.nabu.eai.repository.api.BrokenReferenceArtifactManager;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.artifacts.jaxb.JAXBArtifact;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.types.ComplexContentWrapperFactory;
 import be.nabu.libs.types.TypeUtils;
@@ -21,7 +25,7 @@ import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
-abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implements ArtifactManager<T> {
+abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implements ArtifactManager<T>, BrokenReferenceArtifactManager<T> {
 
 	private Class<T> artifactClass;
 
@@ -144,4 +148,20 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 		}
 		return messages;
 	}
+
+	// we can rewrite the configuration file at least
+	@Override
+	public List<Validation<?>> updateBrokenReference(ResourceContainer<?> container, String from, String to) throws IOException {
+		List<Validation<?>> messages = new ArrayList<Validation<?>>();
+		for (Resource resource : container) {
+			// we don't know the name of the configuration file but we do know that it is an xml
+			// rewrite any and all xmls
+			// this might be troublesome for some particular extensions but they need to override the behavior then
+			if (resource.getName().endsWith(".xml") && !resource.getName().equals("node.xml")) {
+				EAIRepositoryUtils.updateBrokenReference(resource, from, to, Charset.forName("UTF-8"));
+			}
+		}
+		return messages;
+	}
+	
 }

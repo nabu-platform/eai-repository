@@ -196,6 +196,18 @@ public class EAIRepositoryUtils {
 		return output.toByteArray();
 	}
 	
+	public static byte[] zipFullEntry(ResourceEntry entry) throws IOException {
+		ByteArrayOutputStream output = new ByteArrayOutputStream();
+		ZipOutputStream zip = new ZipOutputStream(output);
+		try {
+			zipNode(zip, null, entry.getContainer(), entry.getRepository(), false);
+		}
+		finally {
+			zip.finish();
+		}
+		return output.toByteArray();
+	}
+	
 	private static void zipNode(ZipOutputStream output, String path, ResourceContainer<?> container, ResourceRepository repository, boolean limitToInternal) throws IOException {
 		for (Resource resource : container) {
 			String childPath = (path == null ? "" : path + "/") + resource.getName();

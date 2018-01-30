@@ -9,11 +9,12 @@ import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.metrics.api.MetricInstance;
 import be.nabu.libs.services.ListableServiceContext;
 import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ForkableExecutionContext;
 import be.nabu.libs.services.api.SecurityContext;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.TransactionContext;
 
-public class EAIExecutionContext implements ExecutionContext {
+public class EAIExecutionContext implements ForkableExecutionContext {
 
 	private TransactionContext transactionContext = new EAITransactionContext();
 	private SecurityContext securityContext;
@@ -82,5 +83,10 @@ public class EAIExecutionContext implements ExecutionContext {
 		public PermissionHandler getPermissionHandler() {
 			return repository.getPermissionHandler();
 		}
+	}
+
+	@Override
+	public ExecutionContext fork() {
+		return new EAIExecutionContext(repository, token, isDebug, alternatives.toArray(new Token[alternatives.size()]));
 	}
 }

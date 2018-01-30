@@ -98,7 +98,18 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	
 	@Override
 	public void refresh(boolean recursive) {
+		refresh(false, recursive);
+	}
+	
+	public void refresh(boolean includeData, boolean recursive) {
 		lastLoaded = null;
+		if (includeData) {
+			refreshData();
+		}
+		rescan(recursive);
+	}
+
+	public void refreshData() {
 		if (container instanceof CacheableResource) {
 			try {
 				((CacheableResource) container).resetCache();
@@ -107,7 +118,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 				logger.error("Could not refresh resource: " + container, e);
 			}
 		}
-		rescan(recursive);
 	}
 	
 	private Map<String, Entry> getChildren() {

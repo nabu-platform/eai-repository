@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.util.SystemPrincipal;
@@ -21,14 +22,20 @@ public class NabuLogAppender extends AppenderBase<ILoggingEvent> {
 	private DefinedService service;
 	private Repository repository;
 	private List<String> stackOptionList = Arrays.asList("full");
+	private Map<String, String> properties;
 	
-	public NabuLogAppender(Repository repository, DefinedService service) {
+	public NabuLogAppender(Repository repository, DefinedService service, Map<String, String> properties) {
 		this.repository = repository;
 		this.service = service;
+		this.properties = properties;
 	}
 	
 	@Override
 	protected void append(ILoggingEvent event) {
+		log(event, repository, service, stackOptionList, properties);
+	}
+
+	public static void log(ILoggingEvent event, Repository repository, DefinedService service, List<String> stackOptionList, Map<String, String> properties) {
 		NabuLogMessage message = new NabuLogMessage();
 		message.setName(repository.getName());
 		message.setGroup(repository.getGroup());
@@ -55,6 +62,11 @@ public class NabuLogAppender extends AppenderBase<ILoggingEvent> {
 		}
 		
 		ComplexContent input = service.getServiceInterface().getInputDefinition().newInstance();
+		if (properties != null) {
+			for (String key : properties.keySet()) {
+				input.set(key.replace(".", "/"), properties.get(key));
+			}
+		}
 		input.set("log", message);
 		repository.getServiceRunner().run(service, repository.newExecutionContext(SystemPrincipal.ROOT), input);
 	}

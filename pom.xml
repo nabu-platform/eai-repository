@@ -28,6 +28,11 @@
 	</build>
 
 	<dependencies>
+		<dependency>
+			<groupId>be.nabu.libs.cluster</groupId>
+			<artifactId>cluster-api</artifactId>
+		</dependency>
+		
 		<!-- General dependencies -->
 		<dependency>
 			<groupId>be.nabu.eai</groupId>
