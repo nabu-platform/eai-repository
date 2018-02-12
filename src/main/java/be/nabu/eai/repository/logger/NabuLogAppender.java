@@ -36,6 +36,19 @@ public class NabuLogAppender extends AppenderBase<ILoggingEvent> {
 	}
 
 	public static void log(ILoggingEvent event, Repository repository, DefinedService service, List<String> stackOptionList, Map<String, String> properties) {
+		NabuLogMessage message = toMessage(event, repository, stackOptionList);
+		
+		ComplexContent input = service.getServiceInterface().getInputDefinition().newInstance();
+		if (properties != null) {
+			for (String key : properties.keySet()) {
+				input.set(key.replace(".", "/"), properties.get(key));
+			}
+		}
+		input.set("log", message);
+		repository.getServiceRunner().run(service, repository.newExecutionContext(SystemPrincipal.ROOT), input);
+	}
+
+	public static NabuLogMessage toMessage(ILoggingEvent event, Repository repository, List<String> stackOptionList) {
 		NabuLogMessage message = new NabuLogMessage();
 		message.setName(repository.getName());
 		message.setGroup(repository.getGroup());
@@ -60,15 +73,7 @@ public class NabuLogAppender extends AppenderBase<ILoggingEvent> {
 			converter.start();
 			message.setDescription(converter.convert(event));
 		}
-		
-		ComplexContent input = service.getServiceInterface().getInputDefinition().newInstance();
-		if (properties != null) {
-			for (String key : properties.keySet()) {
-				input.set(key.replace(".", "/"), properties.get(key));
-			}
-		}
-		input.set("log", message);
-		repository.getServiceRunner().run(service, repository.newExecutionContext(SystemPrincipal.ROOT), input);
+		return message;
 	}
 
 }

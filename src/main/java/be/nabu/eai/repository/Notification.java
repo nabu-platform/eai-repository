@@ -5,9 +5,13 @@ import java.io.StringWriter;
 import java.util.Date;
 import java.util.List;
 
+import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
+
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
+@XmlRootElement
 public class Notification implements Validation<String> {
 
 	private Severity severity;
@@ -58,6 +62,7 @@ public class Notification implements Validation<String> {
 		this.description = description;
 	}
 	
+	@XmlTransient
 	public Object getProperties() {
 		return properties;
 	}
