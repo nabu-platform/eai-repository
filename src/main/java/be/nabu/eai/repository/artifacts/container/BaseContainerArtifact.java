@@ -49,7 +49,11 @@ public class BaseContainerArtifact implements ContainerArtifact {
 
 	@Override
 	public void addArtifact(String name, Artifact artifact, Map<String, String> configuration) {
-		configurations.put(artifact, configuration);
+		if (configuration != null) {
+			// always set the current id, a lot of things need this
+			configuration.put("actualId", getId());
+			configurations.put(artifact, configuration);
+		}
 		artifacts.put(name, artifact);
 	}
 	

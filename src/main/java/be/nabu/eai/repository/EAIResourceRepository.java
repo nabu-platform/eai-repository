@@ -1078,8 +1078,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@Override
 	public <T> List<T> getArtifacts(Class<T> ifaceClass) {
 		List<T> results = new ArrayList<T>();
+		Map<Class<? extends Artifact>, Map<String, Node>> nodesByType = this.nodesByType;
 		if (nodesByType == null) {
-			scanForTypes();
+			nodesByType = scanForTypes();
 		}
 		for (Class<?> clazz : nodesByType.keySet()) {
 			if (ifaceClass.isAssignableFrom(clazz)) {
@@ -1112,15 +1113,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return nodes;
 	}
 	
-	public void scanForTypes() {
+	public Map<Class<? extends Artifact>, Map<String, Node>> scanForTypes() {
 		nodesByType = null;
-		scanForTypes(repositoryRoot);
+		return scanForTypes(repositoryRoot);
 	}
 	
-	public void scanForTypes(Entry entry) {
+	public Map<Class<? extends Artifact>, Map<String, Node>> scanForTypes(Entry entry) {
 		Map<Class<? extends Artifact>, Map<String, Node>> nodesByType = new HashMap<Class<? extends Artifact>, Map<String, Node>>();
-		if (this.nodesByType != null) {
-			nodesByType.putAll(this.nodesByType);
+		Map<Class<? extends Artifact>, Map<String, Node>> existing = this.nodesByType;
+		if (existing != null) {
+			nodesByType.putAll(existing);
 		}
 		for (Entry child : entry) {
 			if (child.isNode()) {
@@ -1135,6 +1137,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		this.nodesByType = nodesByType;
+		return nodesByType;
 	}
 	
 	private void scanForTypes(Entry entry, Map<Class<? extends Artifact>, Map<String, Node>> nodesByType) {
