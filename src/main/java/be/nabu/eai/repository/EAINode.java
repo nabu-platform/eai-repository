@@ -34,9 +34,9 @@ public class EAINode implements Node {
 	private List<Validation<?>> messages = new ArrayList<Validation<?>>();
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	private long version;
-	private Date lastModified;
+	private Date lastModified, created;
 	private String environmentId;
-	private String lockedBy;
+	private boolean hidden;
 	
 	/**
 	 * By default all nodes are leafs
@@ -156,6 +156,15 @@ public class EAINode implements Node {
 	public void setLastModified(Date lastModified) {
 		this.lastModified = lastModified;
 	}
+	
+	@XmlAttribute
+	@Override
+	public Date getCreated() {
+		return created;
+	}
+	public void setCreated(Date created) {
+		this.created = created;
+	}
 
 	@Override
 	public String getEnvironmentId() {
@@ -174,4 +183,13 @@ public class EAINode implements Node {
 	public String toString() {
 		return "Node for: " + (entry == null ? "anonymous" : entry.getId());
 	}
+
+	@Override
+	public boolean isHidden() {
+		return hidden;
+	}
+	public void setHidden(boolean hidden) {
+		this.hidden = hidden;
+	}
+	
 }

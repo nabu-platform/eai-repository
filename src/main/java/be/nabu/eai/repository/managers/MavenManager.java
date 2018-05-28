@@ -162,9 +162,10 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 					MemoryEntry child = new MemoryEntry(parentId, root.getRepository(), parent, node, entryId, childName);
 					node.setEntry(child);
 		//			node.setEntry(parent);
-					if (!hidden) {
+//					if (!hidden) {
 						parent.addChildren(child);
-					}
+//					}
+					node.setHidden(hidden);
 					root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
 					entries.add(child);
 				}

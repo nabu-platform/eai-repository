@@ -339,7 +339,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		public ContainerRepository(String id, RepositoryEntry parent, Collection<Artifact> additionalArtifacts) {
 			this.id = id;
 			this.parent = parent;
-			this.additionalArtifacts = additionalArtifacts;
+			this.additionalArtifacts = additionalArtifacts == null ? new ArrayList<Artifact>() : new ArrayList<Artifact>(additionalArtifacts);
 		}
 
 		@Override
@@ -440,6 +440,13 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 					}
 				}
 			}
+			else {
+				for (Artifact artifact : additionalArtifacts) {
+					if (artifact.getId().equals(id)) {
+						return artifact;
+					}
+				}
+			}
 			return parent.getRepository().resolve(id);
 		}
 
@@ -504,6 +511,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		@Override
 		public EventDispatcher getMetricsDispatcher() {
 			return this.parent.getRepository().getMetricsDispatcher();
+		}
+		
+		public void addArtifacts(Collection<Artifact> artifacts) {
+			this.additionalArtifacts.addAll(artifacts);
 		}
 	}
 }

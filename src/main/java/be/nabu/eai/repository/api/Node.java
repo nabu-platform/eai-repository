@@ -19,6 +19,10 @@ public interface Node {
 	 */
 	public Date getLastModified();
 	/**
+	 * The created date tells us when the node was first created
+	 */
+	public Date getCreated();
+	/**
 	 * The environment id tells you which environment it was last modified in
 	 */
 	public String getEnvironmentId();
@@ -52,4 +56,10 @@ public interface Node {
 	 * Any properties attached to this node
 	 */
 	public Map<String, String> getProperties();
+	
+	/**
+	 * You can hide nodes from the developer view
+	 * The primary reason for this is "internal" services, so services you might want to use for internal stuff but not expose for developers to use
+	 */
+	public default boolean isHidden() { return false; }
 }

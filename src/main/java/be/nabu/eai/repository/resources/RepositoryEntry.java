@@ -344,6 +344,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	@Override
 	public void updateNode(List<String> references) throws IOException {
 		EAINode node = (EAINode) getNode();
+		// only fill in a created if there isn't one yet
+		if (node.getCreated() == null) {
+			node.setCreated(new Date());
+		}
 		node.setReferences(references == null ? new ArrayList<String>() : references);
 		node.setVersion(node.getVersion() + 1);
 		node.setLastModified(new Date());
