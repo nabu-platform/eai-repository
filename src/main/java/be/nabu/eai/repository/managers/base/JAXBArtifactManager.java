@@ -87,7 +87,9 @@ abstract public class JAXBArtifactManager<C, T extends JAXBArtifact<C>> implemen
 						List<Artifact> referencedArtifacts = (List<Artifact>) content.get(child.getName());
 						if (referencedArtifacts != null) {
 							for (Artifact listEntry : referencedArtifacts) {
-								references.add(listEntry.getId());
+								if (listEntry != null) {
+									references.add(listEntry.getId());
+								}
 							}
 						}
 					}

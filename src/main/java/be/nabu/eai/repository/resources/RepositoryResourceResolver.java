@@ -1,8 +1,6 @@
 package be.nabu.eai.repository.resources;
 
-import java.io.IOException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.List;
@@ -51,14 +49,16 @@ public class RepositoryResourceResolver implements ResourceResolver {
 			if (protectedFolder != null) {
 				container.addChild(EAIResourceRepository.PROTECTED, protectedFolder);
 			}
-			try {
-				return ResourceUtils.resolve(container, child.getPath());
+			// the entry is is part of the scheme which means the path is always relative to the given entry (meaning it can never point to a child entry)
+			// child entries must never have any of the reserved names but conversely any non-reserved name could point to a child entry
+			// which means a non-reserved name can never be a valid part of the entry filesystem you want to expose as it belongs to the repository hierarchy
+			// which makes it safer to use that reserved names which may be retooled for specific purposes at some point
+			if (entry.isNode() && Resource.class.isAssignableFrom(entry.getNode().getArtifactClass())) {
+				container.addChild("artifact", (Resource) entry.getNode().getArtifact());
 			}
-			catch (IOException e) {
-				throw new RuntimeException(e);
-			}
+			return ResourceUtils.resolve(container, child.getPath());
 		}
-		catch (URISyntaxException e) {
+		catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 	}
