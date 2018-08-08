@@ -19,5 +19,7 @@ public interface NotificationProvider extends Artifact {
 			@WebParam(name = "description") String description,
 			@WebParam(name = "type") String type,
 			@WebParam(name = "code") Integer code,
+			@WebParam(name = "alias") String alias,
+			@WebParam(name = "realm") String realm,
 			@WebParam(name = "properties") List<KeyValuePair> properties);
 }

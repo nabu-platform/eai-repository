@@ -8,6 +8,9 @@ import java.util.List;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
+import be.nabu.libs.authentication.api.Token;
+import be.nabu.libs.services.ServiceRuntime;
+import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
@@ -21,6 +24,21 @@ public class Notification implements Validation<String> {
 	private Object properties;
 	private String type;
 	private Date created = new Date();
+	private String serviceContext, realm, alias;
+	
+	public Notification() {
+		ServiceRuntime runtime = ServiceRuntime.getRuntime();
+		if (runtime != null) {
+			setServiceContext(ServiceUtils.getServiceContext(runtime));
+			// not simply saving token because of serializability, jaxb can not handle interfaces
+			// additionally, the token may contain a lot of inherently unserializable data, we only need the identity of the user
+			Token token = runtime.getExecutionContext().getSecurityContext().getToken();
+			if (token != null) {
+				setAlias(token.getName());
+				setRealm(token.getRealm());
+			}
+		}
+	}
 	
 	@Override
 	public Severity getSeverity() {
@@ -92,4 +110,27 @@ public class Notification implements Validation<String> {
 	public void setType(String type) {
 		this.type = type;
 	}
+	public String getServiceContext() {
+		return serviceContext;
+	}
+	public void setServiceContext(String serviceContext) {
+		this.serviceContext = serviceContext;
+	}
+
+	public String getRealm() {
+		return realm;
+	}
+
+	public void setRealm(String realm) {
+		this.realm = realm;
+	}
+
+	public String getAlias() {
+		return alias;
+	}
+
+	public void setAlias(String alias) {
+		this.alias = alias;
+	}
+
 }

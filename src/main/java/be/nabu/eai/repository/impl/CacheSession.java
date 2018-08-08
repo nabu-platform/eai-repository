@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.impl;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -32,7 +33,16 @@ public class CacheSession implements Session {
 		if (provider.getCache() instanceof ExplorableCache) {
 			for (CacheEntry entry : ((ExplorableCache) provider.getCache()).getEntries()) {
 				try {
-					keys.add((String) entry.getKey());
+					Object key = entry.getKey();
+					if (key instanceof String) {
+						keys.add((String) key);
+					}
+					else if (key instanceof byte []) {
+						keys.add(new String((byte[]) key, Charset.forName("UTF-8")));
+					}
+					else if (key != null) {
+						keys.add(key.toString());
+					}
 				}
 				catch (IOException e) {
 					logger.error("Could not retrieve cache entry", e);
