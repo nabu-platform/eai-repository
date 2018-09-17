@@ -77,8 +77,8 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 				}
 			}
 			for (SimpleType<?> type : artifact.getSimpleTypes(namespace)) {
-				logger.debug("Loading complex type: " + type + " in namespace: " + namespace);
-				// only exposed the defined complex types, not anonymous ones
+				logger.debug("Loading simple type: " + type + " in namespace: " + namespace);
+				// only exposed the defined simple types, not anonymous ones
 				if (type instanceof DefinedType) {
 					String id = ((DefinedType) type).getId();
 					if (id.startsWith(artifact.getId())) {

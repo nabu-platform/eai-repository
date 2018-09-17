@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
@@ -56,8 +57,8 @@ import be.nabu.libs.events.impl.EventDispatcherImpl;
 import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.metrics.core.GaugeHistorizer;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
+import be.nabu.libs.metrics.core.api.ListableSinkProvider;
 import be.nabu.libs.metrics.core.api.Sink;
-import be.nabu.libs.metrics.core.api.SinkProvider;
 import be.nabu.libs.metrics.core.sinks.LimitedHistorySinkWithStatistics;
 import be.nabu.libs.metrics.impl.MetricGrouper;
 import be.nabu.libs.metrics.impl.SystemMetrics;
@@ -140,7 +141,7 @@ import be.nabu.utils.io.api.WritableContainer;
  * Currently the most important thing for diff/merge deploying is jaxbartifacts, so we will focus on those because they are easy to set
  * 
  */
-public class EAIResourceRepository implements ResourceRepository, MavenRepository, SinkProvider, LicensedRepository {
+public class EAIResourceRepository implements ResourceRepository, MavenRepository, ListableSinkProvider, LicensedRepository {
 	
 	public static final String METRICS_SYSTEM = "system";
 	
@@ -1461,6 +1462,19 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		return messages.get(nodeId);
+	}
+
+	@Override
+	public Map<String, List<String>> getSinks() {
+		Map<String, List<String>> sinks = new HashMap<String, List<String>>();
+		for (String id : getMetricInstances()) {
+			MetricInstanceImpl instance = (MetricInstanceImpl) getMetricInstance(id).getParent();
+			Set<String> ids = new TreeSet<String>();
+			ids.addAll(instance.getGaugeIds());
+			ids.addAll(instance.getSinkIds());
+			sinks.put(id, new ArrayList<String>(ids));
+		}
+		return sinks;
 	}
 
 }
