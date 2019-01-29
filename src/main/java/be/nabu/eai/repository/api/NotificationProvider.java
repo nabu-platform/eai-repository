@@ -12,6 +12,7 @@ import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 public interface NotificationProvider extends Artifact {
 	public void notify(
+			@WebParam(name = "identifier") @NotNull String identifier,
 			@WebParam(name = "context") @NotNull List<String> context,
 			@WebParam(name = "created") @NotNull Date created,
 			@WebParam(name = "severity") @NotNull Severity severity, 
@@ -21,5 +22,6 @@ public interface NotificationProvider extends Artifact {
 			@WebParam(name = "code") Integer code,
 			@WebParam(name = "alias") String alias,
 			@WebParam(name = "realm") String realm,
+			@WebParam(name = "deviceId") String deviceId,
 			@WebParam(name = "properties") List<KeyValuePair> properties);
 }

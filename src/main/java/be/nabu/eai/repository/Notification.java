@@ -4,6 +4,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
@@ -24,7 +25,8 @@ public class Notification implements Validation<String> {
 	private Object properties;
 	private String type;
 	private Date created = new Date();
-	private String serviceContext, realm, alias;
+	private String serviceContext, realm, alias, deviceId;
+	private String identifier;
 	
 	public Notification() {
 		ServiceRuntime runtime = ServiceRuntime.getRuntime();
@@ -38,6 +40,8 @@ public class Notification implements Validation<String> {
 				setRealm(token.getRealm());
 			}
 		}
+		// use a specific identifier
+		this.identifier = UUID.randomUUID().toString().replace("-", "");
 	}
 	
 	@Override
@@ -131,6 +135,22 @@ public class Notification implements Validation<String> {
 
 	public void setAlias(String alias) {
 		this.alias = alias;
+	}
+
+	public String getIdentifier() {
+		return identifier;
+	}
+
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
+
+	public String getDeviceId() {
+		return deviceId;
+	}
+
+	public void setDeviceId(String deviceId) {
+		this.deviceId = deviceId;
 	}
 
 }

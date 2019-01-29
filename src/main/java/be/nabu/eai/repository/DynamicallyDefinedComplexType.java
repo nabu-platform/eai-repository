@@ -12,7 +12,6 @@ import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Element;
 import be.nabu.libs.types.api.Group;
 import be.nabu.libs.types.api.Type;
-import be.nabu.libs.types.mask.MaskedContent;
 import be.nabu.libs.validator.api.Validator;
 
 public class DynamicallyDefinedComplexType implements ComplexType, DefinedType {
@@ -82,7 +81,7 @@ public class DynamicallyDefinedComplexType implements ComplexType, DefinedType {
 
 	@Override
 	public ComplexContent newInstance() {
-		return new MaskedContent(type.newInstance(), this);
+		return new DynamicallyDefinedComplexContent(type, this);
 	}
 
 	@Override
