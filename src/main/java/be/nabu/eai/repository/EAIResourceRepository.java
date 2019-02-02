@@ -203,7 +203,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<String, LimitedHistorySinkWithStatistics> sinks = new HashMap<String, LimitedHistorySinkWithStatistics>();
 	
 	private long historizationInterval = 5000;
-	private int historySize = 1000;
+	private int historySize = 500;
 
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
