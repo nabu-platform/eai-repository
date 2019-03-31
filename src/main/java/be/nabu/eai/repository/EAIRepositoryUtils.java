@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -37,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import be.nabu.eai.api.NamingConvention;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.ExecutorServiceProvider;
 import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
@@ -573,5 +576,21 @@ public class EAIRepositoryUtils {
 			return results;
 		}
 		
+	}
+	
+	public static void fireAsync(Repository repository, Object event, Object source) {
+		ExecutorService executorService;
+		if (repository.getServiceRunner() instanceof ExecutorServiceProvider) {
+			executorService = ((ExecutorServiceProvider) repository.getServiceRunner()).getExecutorService();
+		}
+		else {
+			executorService = ForkJoinPool.commonPool();
+		}
+		executorService.submit(new Runnable() {
+			@Override
+			public void run() {
+				repository.getEventDispatcher().fire(event, source);
+			}
+		});
 	}
 }

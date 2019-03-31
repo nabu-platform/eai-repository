@@ -34,7 +34,9 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.RepositoryEvent;
+import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
@@ -388,7 +390,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void unload(String id) {
 		Entry entry = getEntry(id);
 		if (entry != null) {
-			unload(entry);
+			unload(entry, true);
 			entry.getParent().refresh(false);
 		}
 	}
@@ -402,8 +404,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	 * Currently on load, the nodes should be overwritten preventing any issues so we leave it as such....for now...
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private void unload(Entry entry) {
+	private void unload(Entry entry, boolean trigger) {
 		if (entry.isNode()) {
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, false), this);
 			// remove it from the classloading (if applicable)
 			if (entry.getNode().isLoaded() && ClassProvidingArtifact.class.isAssignableFrom(entry.getNode().getArtifactClass())) {
 				try {
@@ -440,6 +443,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
 				}
 			}
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, true), this);
 		}
 		entry.refresh(false);
 		logger.info("Unloading: " + entry.getId());
@@ -450,14 +454,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			entry.getParent().refresh(false);
 		}
 		for (Entry child : entry) {
-			unload(child);
+			unload(child, trigger);
 		}
 	}
 	
 	@Override
 	public void reloadAll() {
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
-		unload(getRoot());
+		unload(getRoot(), false);
 		references.clear();
 		dependencies.clear();
 		reset();
@@ -528,7 +532,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		if (entry != null) {
-			unload(entry);
+			unload(entry, false);
 			preload(entry);
 			load(entry);
 			// also reload all the dependencies
@@ -548,6 +552,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			reattachMavenArtifacts();
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 		}
+		// rescan so we don't have surprises later on, otherwise the first scan might be triggered by a shutdown which will trigger an infinite reload loop
+		scanForTypes();
 	}
 	
 	private Set<String> calculateDependenciesToReload(Entry entry) {
