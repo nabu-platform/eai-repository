@@ -6,6 +6,7 @@ import java.util.List;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
+import be.nabu.libs.events.api.EventTarget;
 import be.nabu.libs.metrics.api.MetricInstance;
 import be.nabu.libs.services.ListableServiceContext;
 import be.nabu.libs.services.api.ExecutionContext;
@@ -88,5 +89,10 @@ public class EAIExecutionContext implements ForkableExecutionContext {
 	@Override
 	public ExecutionContext fork() {
 		return new EAIExecutionContext(repository, token, isDebug, alternatives.toArray(new Token[alternatives.size()]));
+	}
+
+	@Override
+	public EventTarget getEventTarget() {
+		return repository.getComplexEventDispatcher();
 	}
 }

@@ -11,6 +11,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.attribute.FileTime;
+import java.security.Principal;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,6 +49,9 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.authentication.api.Device;
+import be.nabu.libs.authentication.api.Token;
+import be.nabu.libs.authentication.api.principals.DevicePrincipal;
 import be.nabu.libs.resources.api.FiniteResource;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -60,6 +64,7 @@ import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
+import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
@@ -68,6 +73,8 @@ import be.nabu.libs.types.api.Element;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
+import be.nabu.utils.cep.impl.CEPUtils;
+import be.nabu.utils.cep.impl.ComplexEventImpl;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
@@ -77,6 +84,36 @@ public class EAIRepositoryUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
 
+	private static String getCode(Throwable t) {
+		String code = null;
+		if (t.getCause() != null) {
+			code = getCode(t.getCause());
+		}
+		if (code == null && t instanceof ServiceException) {
+			code = ((ServiceException) t).getCode();
+		}
+		return code;
+	}
+	private static List<String> getServiceStack(Throwable t) {
+		List<String> stack = null;
+		if (t.getCause() != null) {
+			stack = getServiceStack(t.getCause());
+		}
+		if (stack == null && t instanceof ServiceException) {
+			stack = ((ServiceException) t).getServiceStack();
+		}
+		return stack;
+	}
+	
+	public static void enrich(ComplexEventImpl event, Exception e) {
+		CEPUtils.enrich(event, e);
+		event.setCode(getCode(e));
+		List<String> serviceStack = getServiceStack(e);
+		if (serviceStack != null) {
+			event.setContext(serviceStack.toString());
+		}
+	}
+	
 	public static List<String> getServiceStack() {
 		List<String> serviceStack = new ArrayList<String>();
 		ServiceRuntime runtime = ServiceRuntime.getRuntime();
@@ -592,5 +629,23 @@ public class EAIRepositoryUtils {
 				repository.getEventDispatcher().fire(event, source);
 			}
 		});
+	}
+	
+	public static Device getDeviceFromToken(Token token) {
+		Device device = null;
+		if (token != null && token instanceof DevicePrincipal) {
+			device = ((DevicePrincipal) token).getDevice();
+		}
+		if (device == null && token != null && token.getCredentials() != null && !token.getCredentials().isEmpty()) {
+			for (Principal credential : token.getCredentials()) {
+				if (credential instanceof DevicePrincipal) {
+					device = ((DevicePrincipal) credential).getDevice();
+					if (device != null) {
+						break;
+					}
+				}
+			}
+		}
+		return device;
 	}
 }

@@ -516,5 +516,10 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		public void addArtifacts(Collection<Artifact> artifacts) {
 			this.additionalArtifacts.addAll(artifacts);
 		}
+
+		@Override
+		public EventDispatcher getComplexEventDispatcher() {
+			return this.parent.getRepository().getComplexEventDispatcher();
+		}
 	}
 }

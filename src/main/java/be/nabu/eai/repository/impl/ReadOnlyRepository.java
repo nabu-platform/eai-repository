@@ -310,4 +310,9 @@ public class ReadOnlyRepository implements ResourceRepository {
 	public EventDispatcher getMetricsDispatcher() {
 		return local.getMetricsDispatcher();
 	}
+
+	@Override
+	public EventDispatcher getComplexEventDispatcher() {
+		return local.getComplexEventDispatcher();
+	}
 }

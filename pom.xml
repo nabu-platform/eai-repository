@@ -157,6 +157,11 @@
 			<groupId>be.nabu.libs.cache</groupId>
 			<artifactId>cache-api</artifactId>
 		</dependency>
+		
+		<dependency>
+			<groupId>be.nabu.utils</groupId>
+			<artifactId>utils-cep</artifactId>
+		</dependency>
 
 		<!-- Logging -->
 		<dependency>

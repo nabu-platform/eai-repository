@@ -38,6 +38,12 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 */
 	public EventDispatcher getMetricsDispatcher();
 	/**
+	 * The event dispatcher used to send complex events
+	 * These are events that are assumed to be large in volume and not (in themselves) indicative of anything
+	 * It is only through complex event processing that we may (or may not) be able to deduce something interesting and take action
+	 */
+	public EventDispatcher getComplexEventDispatcher();
+	/**
 	 * Returns a node in the repository, it wraps around an artifact and adds meta data to it, for example the version
 	 */
 	public Node getNode(String id);

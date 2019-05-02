@@ -12,15 +12,14 @@ import javax.xml.bind.annotation.XmlTransient;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.ServiceUtils;
-import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 @XmlRootElement
-public class Notification implements Validation<String> {
+public class Notification implements be.nabu.eai.repository.api.Notification {
 
 	private Severity severity;
 	private List<String> context;
-	private Integer code;
+	private String code;
 	private String message, description;
 	private Object properties;
 	private String type;
@@ -61,10 +60,10 @@ public class Notification implements Validation<String> {
 	}
 	
 	@Override
-	public Integer getCode() {
+	public String getCode() {
 		return code;
 	}
-	public void setCode(Integer code) {
+	public void setCode(String code) {
 		this.code = code;
 	}
 	
@@ -84,6 +83,7 @@ public class Notification implements Validation<String> {
 		this.description = description;
 	}
 	
+	@Override
 	@XmlTransient
 	public Object getProperties() {
 		return properties;
@@ -100,6 +100,7 @@ public class Notification implements Validation<String> {
 		return writer.toString();
 	}
 	
+	@Override
 	public Date getCreated() {
 		return created;
 	}
@@ -108,12 +109,14 @@ public class Notification implements Validation<String> {
 		this.created = created;
 	}
 	
+	@Override
 	public String getType() {
 		return type;
 	}
 	public void setType(String type) {
 		this.type = type;
 	}
+	
 	public String getServiceContext() {
 		return serviceContext;
 	}
@@ -121,34 +124,34 @@ public class Notification implements Validation<String> {
 		this.serviceContext = serviceContext;
 	}
 
+	@Override
 	public String getRealm() {
 		return realm;
 	}
-
 	public void setRealm(String realm) {
 		this.realm = realm;
 	}
 
+	@Override
 	public String getAlias() {
 		return alias;
 	}
-
 	public void setAlias(String alias) {
 		this.alias = alias;
 	}
 
+	@Override
 	public String getIdentifier() {
 		return identifier;
 	}
-
 	public void setIdentifier(String identifier) {
 		this.identifier = identifier;
 	}
 
+	@Override
 	public String getDeviceId() {
 		return deviceId;
 	}
-
 	public void setDeviceId(String deviceId) {
 		this.deviceId = deviceId;
 	}

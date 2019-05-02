@@ -150,6 +150,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
+	private EventDispatcher complexDispatcher;
 	private List<DomainRepository> mavenRepositories = new ArrayList<DomainRepository>();
 	private List<String> internalDomains;
 	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
@@ -215,6 +216,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	public EAIResourceRepository(ResourceContainer<?> repositoryRoot, ResourceContainer<?> mavenRoot) throws IOException {
+		// meant for complex event dispatching
+		complexDispatcher = new EventDispatcherImpl(Runtime.getRuntime().availableProcessors());
+		
 		internalDomains = new ArrayList<String>();
 		internalDomains.add("nabu");
 		if (System.getProperty("repository.domains") != null) {
@@ -887,9 +891,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return id;
 	}
 
+	/**
+	 * This is meant for dispatching low volume events that can impact the system itself
+	 * For example repository loading/unloading which may trigger the server to take action
+	 * Or notifications which may lead to emails or other forms of notifications
+	 * 
+	 * This is _not_ meant for high volume events that need further rule evaluation to potentially conclude into a structural event 
+	 */
 	@Override
 	public EventDispatcher getEventDispatcher() {
 		return dispatcher;
+	}
+	
+	@Override
+	public EventDispatcher getComplexEventDispatcher() {
+		return complexDispatcher;
 	}
 
 	@Override

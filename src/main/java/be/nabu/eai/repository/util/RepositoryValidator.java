@@ -99,10 +99,10 @@ public class RepositoryValidator {
 					}
 				}
 				catch (IOException e) {
-					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 0, e.getMessage()));
+					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", "REPOSITORY-0", e.getMessage()));
 				}
 				catch (ParseException e) {
-					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", 1, e.getMessage()));
+					validations.add(new ValidationMessage(Severity.ERROR, "Could not open the artifact", "REPOSITORY-1", e.getMessage()));
 				}
 				if (!validations.isEmpty()) {
 					result.put(entry, validations);
