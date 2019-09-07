@@ -171,5 +171,8 @@ public class JAXBArtifact<T> implements LazyArtifact {
 			throw new RuntimeException(e);
 		}
 	}
-	
+
+	protected void setConfig(T config) {
+		this.configuration = config;
+	}
 }
