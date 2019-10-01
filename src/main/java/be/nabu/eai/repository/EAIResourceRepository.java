@@ -159,6 +159,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private RoleHandler roleHandler;
 	private PermissionHandler permissionHandler;
 	private LicenseManager licenseManager;
+	private List<String> aliases = new ArrayList<String>();
 	
 	private static EAIResourceRepository instance;
 	
@@ -1499,4 +1500,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return sinks;
 	}
 
+	@Override
+	public List<String> getAliases() {
+		return aliases;
+	}
 }

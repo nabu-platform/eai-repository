@@ -3,6 +3,7 @@ package be.nabu.eai.repository.api;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -103,6 +104,10 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	
 	default String getGroup() {
 		return getName();
+	}
+	
+	default List<String> getAliases() {
+		return new ArrayList<String>();
 	}
 	
 	// this returns a map where a message "category" points to a list of messages
