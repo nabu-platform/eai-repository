@@ -520,7 +520,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// if we have an entry on the root which is not found, it could be new, reset the root (if possible) and try again
 		// alternatively we can reload the entire root folder but this would have massive performance repercussions
 		if (entry == null && !id.contains(".")) {
-			getRoot().refresh(false);
+			getRoot().refresh(true, false);
 			entry = getEntry(id);
 		}
 		// when we are reloading recursively, we are in the first reload iteration (not iterative)
