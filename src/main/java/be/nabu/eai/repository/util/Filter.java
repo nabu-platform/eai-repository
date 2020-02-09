@@ -5,7 +5,7 @@ import java.util.List;
 public class Filter {
 	private String key, operator;
 	private List<Object> values;
-	private boolean caseInsensitive;
+	private boolean caseInsensitive, or;
 	public String getKey() {
 		return key;
 	}
@@ -29,5 +29,11 @@ public class Filter {
 	}
 	public void setCaseInsensitive(boolean caseInsensitive) {
 		this.caseInsensitive = caseInsensitive;
+	}
+	public boolean isOr() {
+		return or;
+	}
+	public void setOr(boolean or) {
+		this.or = or;
 	}
 }
