@@ -621,15 +621,99 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
 		load(entry, artifactRepositoryManagers);
 		// first load the repositories without dependencies
-		for (Entry manager : artifactRepositoryManagers) {
-			if (manager.getNode().getReferences() == null || manager.getNode().getReferences().isEmpty()) {
+		logger.info("Sorting artifact generators");
+		// if we optimize, we DON'T move the ones with no references to the front as this will trigger quite a few moves
+		// instead, we loop over the artifacts twice, first to load those without references, then to load those with
+		// without optimize, the sort took 3.5s on an average project, with optimize, it is reduced to under 1s
+		boolean optimize = true;
+		sortArtifactRepositoryManagers(artifactRepositoryManagers, optimize);
+		logger.info("Loading dynamically generated artifacts");
+		if (!optimize) {
+			for (Entry manager : artifactRepositoryManagers) {
 				loadArtifactManager(manager);
 			}
 		}
-		// then the rest
-		for (Entry manager : artifactRepositoryManagers) {
-			if (manager.getNode().getReferences() != null && !manager.getNode().getReferences().isEmpty()) {
-				loadArtifactManager(manager);
+		else {
+			for (Entry manager : artifactRepositoryManagers) {
+				if (manager.getNode().getReferences() == null || manager.getNode().getReferences().isEmpty()) {
+					loadArtifactManager(manager);
+				}
+			}
+			// then the rest
+			for (Entry manager : artifactRepositoryManagers) {
+				if (manager.getNode().getReferences() != null && !manager.getNode().getReferences().isEmpty()) {
+					loadArtifactManager(manager);
+				}
+			}
+		}
+	}
+	
+	private void sortArtifactRepositoryManagers(List<Entry> artifactRepositoryManagers, boolean optimize) {
+		Map<String, List<String>> allReferences = new HashMap<String, List<String>>();
+		for (int i = 0; i < artifactRepositoryManagers.size(); i++) {
+			List<String> references = artifactRepositoryManagers.get(i).getNode().getReferences();
+			if (references != null && !references.isEmpty()) {
+				allReferences.put(artifactRepositoryManagers.get(i).getId(), references);
+			}
+		}
+
+		boolean changed = true;
+		sorting: while(changed) {
+			changed = false;
+			
+			// if we check the first half we should be fine
+			for (int i = 0; i < (artifactRepositoryManagers.size() % 2 == 0 ? artifactRepositoryManagers.size() / 2 : (artifactRepositoryManagers.size() / 2) + 1); i++) {
+				for (int j = i + 1; j < artifactRepositoryManagers.size(); j++) {
+					if (i == j) {
+						continue;
+					}
+					int result = 0;
+					Entry o1 = artifactRepositoryManagers.get(i);
+					Entry o2 = artifactRepositoryManagers.get(j);
+					boolean o1Has = allReferences.containsKey(o1.getId());
+					boolean o2Has = allReferences.containsKey(o2.getId());
+					boolean o1DependsOnO2 = false;
+					boolean o2DependsOnO1 = false;
+					// we want o2 to be loaded before o1, as o2 definitely does not have references
+					if (o1Has && !o2Has) {
+						result = optimize ? 0 : 1;
+					}
+					// we want o1 to be loaded first in this case
+					else if (!o1Has && o2Has) {
+						result = optimize ? 0 : -1;
+					}
+					// if neither has references, we don't care but if they both have references, we should check if they are dependent on one another
+					else if (o1Has && o2Has) {
+						for (String reference : allReferences.get(o1.getId())) {
+							if (reference != null && (reference.equals(o2.getId()) || reference.startsWith(o2.getId() + "."))) {
+								o1DependsOnO2 = true;
+								break;
+							}
+						}
+						for (String reference : allReferences.get(o2.getId())) {
+							if (reference != null && (reference.equals(o1.getId()) || reference.startsWith(o1.getId() + "."))) {
+								o2DependsOnO1 = true;
+								break;
+							}
+						}
+						if (o1DependsOnO2 && !o2DependsOnO1) {
+							result = 1;
+						}
+						else if (!o1DependsOnO2 && o2DependsOnO1) {
+							result = -1;
+						}
+						else if (o1DependsOnO2 && o2DependsOnO1) {
+							logger.warn("Found a circular dependency between " + o1.getId() + " and " + o2.getId());
+						}
+					}
+					// we need to switch them
+					if ((i < j && result == 1) || (i > j && result == -1)) {
+						artifactRepositoryManagers.set(i, o2);
+						artifactRepositoryManagers.set(j, o1);
+						changed = true;
+						continue sorting;
+					}
+				}
 			}
 		}
 	}
