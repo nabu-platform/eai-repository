@@ -62,4 +62,13 @@ public interface Node {
 	 * The primary reason for this is "internal" services, so services you might want to use for internal stuff but not expose for developers to use
 	 */
 	public default boolean isHidden() { return false; }
+	
+	/**
+	 * You can deprecate nodes, they stay active but are colored differently or hidden alltogether if you want
+	 * The idea is that you want to warn people that something is deprecated meaning it might disappear in a while
+	 * Perhaps we should have a multi-level approach: deprecate so it is visually different for a while
+	 * Then also set it to hide so it is visually gone but things still work
+	 * Then, after a long time, delete it.
+	 */
+	public default Date getDeprecated() { return null; }
 }

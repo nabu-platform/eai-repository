@@ -323,6 +323,17 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		return (RepositoryEntry) child;
 	}
+	
+	public void saveNode() {
+		if (isNode()) {
+			try {
+				writeNode(getContainer(), getNode());
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
 
 	private void writeNode(ResourceContainer<?> nodeContainer, EAINode node) throws IOException {
 		Resource target = nodeContainer.getChild("node.xml");

@@ -34,7 +34,7 @@ public class EAINode implements Node {
 	private List<Validation<?>> messages = new ArrayList<Validation<?>>();
 	private Map<String, String> properties = new LinkedHashMap<String, String>();
 	private long version;
-	private Date lastModified, created;
+	private Date lastModified, created, deprecated;
 	private String environmentId;
 	private boolean hidden;
 	
@@ -191,5 +191,13 @@ public class EAINode implements Node {
 	public void setHidden(boolean hidden) {
 		this.hidden = hidden;
 	}
-	
+
+	@XmlAttribute
+	public Date getDeprecated() {
+		return deprecated;
+	}
+	public void setDeprecated(Date deprecated) {
+		this.deprecated = deprecated;
+	}
+
 }

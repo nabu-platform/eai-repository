@@ -646,6 +646,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		// reset the scanned items, otherwise not all dynamically loaded artifacts are present?
+		reset();
 	}
 	
 	private void sortArtifactRepositoryManagers(List<Entry> artifactRepositoryManagers, boolean optimize) {
