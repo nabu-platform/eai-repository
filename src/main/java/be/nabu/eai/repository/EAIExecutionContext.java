@@ -1,8 +1,11 @@
 package be.nabu.eai.repository;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import be.nabu.eai.repository.api.FeatureConfigurator;
+import be.nabu.eai.repository.api.FeaturedExecutionContext;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
@@ -15,7 +18,7 @@ import be.nabu.libs.services.api.SecurityContext;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.TransactionContext;
 
-public class EAIExecutionContext implements ForkableExecutionContext {
+public class EAIExecutionContext implements ForkableExecutionContext, FeaturedExecutionContext {
 
 	private TransactionContext transactionContext = new EAITransactionContext();
 	private SecurityContext securityContext;
@@ -24,6 +27,7 @@ public class EAIExecutionContext implements ForkableExecutionContext {
 	private ListableServiceContext serviceContext;
 	private Token token;
 	private List<Token> alternatives;
+	private List<String> enabledFeatures;
 	
 	public EAIExecutionContext(EAIResourceRepository repository, Token token, boolean isDebug, Token...alternatives) {
 		this.repository = repository;
@@ -88,11 +92,27 @@ public class EAIExecutionContext implements ForkableExecutionContext {
 
 	@Override
 	public ExecutionContext fork() {
-		return new EAIExecutionContext(repository, token, isDebug, alternatives.toArray(new Token[alternatives.size()]));
+		EAIExecutionContext context = new EAIExecutionContext(repository, token, isDebug, alternatives.toArray(new Token[alternatives.size()]));
+		context.enabledFeatures = new ArrayList<String>(getEnabledFeatures());
+		return context;
 	}
 
 	@Override
 	public EventTarget getEventTarget() {
 		return repository.getComplexEventDispatcher();
+	}
+
+	@Override
+	public List<String> getEnabledFeatures() {
+		if (enabledFeatures == null) {
+			enabledFeatures = new ArrayList<String>();
+			for (FeatureConfigurator configurator : repository.getArtifacts(FeatureConfigurator.class)) {
+				List<String> enabled = configurator.getEnabledFeatures();
+				if (enabled != null) {
+					enabledFeatures.addAll(enabled);
+				}
+			}
+		}
+		return enabledFeatures;
 	}
 }

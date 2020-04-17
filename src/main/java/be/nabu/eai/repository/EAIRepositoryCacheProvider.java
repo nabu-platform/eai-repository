@@ -19,7 +19,7 @@ public class EAIRepositoryCacheProvider implements CacheProvider {
 
 	@Override
 	public Cache get(String name) throws IOException {
-		for (CacheProviderArtifact artifact : repository.getArtifacts(CacheProviderArtifact.class)) {
+		for (CacheProvider artifact : repository.getArtifacts(CacheProvider.class)) {
 			Cache cache = artifact.get(name);
 			if (cache != null) {
 				return cache;
@@ -30,7 +30,7 @@ public class EAIRepositoryCacheProvider implements CacheProvider {
 
 	@Override
 	public void remove(String name) throws IOException {
-		for (CacheProviderArtifact artifact : repository.getArtifacts(CacheProviderArtifact.class)) {
+		for (CacheProvider artifact : repository.getArtifacts(CacheProvider.class)) {
 			artifact.remove(name);
 		}
 	}
