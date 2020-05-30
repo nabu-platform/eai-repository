@@ -13,6 +13,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
 
+import be.nabu.eai.api.LargeText;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Node;
@@ -37,6 +38,8 @@ public class EAINode implements Node {
 	private Date lastModified, created, deprecated;
 	private String environmentId;
 	private boolean hidden;
+	private String name, description, comment, summary;
+	private List<String> tags;
 	
 	/**
 	 * By default all nodes are leafs
@@ -200,4 +203,48 @@ public class EAINode implements Node {
 		this.deprecated = deprecated;
 	}
 
+	@Override
+	@XmlAttribute
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	@LargeText
+	@Override
+	public String getDescription() {
+		return description;
+	}
+	public void setDescription(String description) {
+		this.description = description;
+	}
+
+	@LargeText
+	@Override
+	public String getComment() {
+		return comment;
+	}
+	public void setComment(String comment) {
+		this.comment = comment;
+	}
+
+	@LargeText
+	@Override
+	public String getSummary() {
+		return summary;
+	}
+	public void setSummary(String summary) {
+		this.summary = summary;
+	}
+	
+	@Override
+	public List<String> getTags() {
+		return tags;
+	}
+	public void setTags(List<String> tags) {
+		this.tags = tags;
+	}
+	
 }

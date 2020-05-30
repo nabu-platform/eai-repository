@@ -306,6 +306,12 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		EAINode node = child == null ? new EAINode() : ((RepositoryEntry) child).getNode();
 		node.setArtifactManager(manager.getClass());
 		node.setLeaf(child == null);
+		if (child == null) {
+			node.setReferences(new ArrayList<String>());
+			node.setVersion(1);
+			node.setLastModified(new Date());
+			node.setEnvironmentId(InetAddress.getLocalHost().getHostName());
+		}
 		writeNode(nodeContainer, node);
 		if (child == null) {
 			child = new RepositoryEntry(getRepository(), nodeContainer, this, name);

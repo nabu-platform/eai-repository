@@ -48,6 +48,7 @@ import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.resources.MemoryEntry;
+import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
@@ -277,6 +278,21 @@ public class EAIRepositoryUtils {
 	public static interface EntryFilter {
 		public boolean accept(ResourceEntry entry);
 		public boolean recurse(ResourceEntry entry);
+	}
+	
+	public static ModifiableEntry mkdirs(RepositoryEntry root, String id, boolean includeLast) throws IOException {
+		ParsedPath path = ParsedPath.parse(id.replace('.', '/'));
+		// resolve a parent path
+		while ((includeLast && path != null) || (!includeLast && path.getChildPath() != null)) {
+			Entry entry = root.getChild(path.getName());
+			if (entry == null) {
+				root = root.createDirectory(path.getName());
+			}
+			else if (entry.isNode()) {
+				throw new IllegalArgumentException("Currently not allowed to embed nodes in existing nodes");
+			}
+		}
+		return root;
 	}
 	
 	public static ModifiableEntry getParent(ModifiableEntry root, String id, boolean includeLast) {

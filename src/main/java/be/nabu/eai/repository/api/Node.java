@@ -71,4 +71,24 @@ public interface Node {
 	 * Then, after a long time, delete it.
 	 */
 	public default Date getDeprecated() { return null; }
+	/**
+	 * We can set a human readable name for the node
+	 */
+	public default String getName() { return null; }
+	/**
+	 * We can set a description, this is meant to be read by business people
+	 */
+	public default String getDescription() { return null; }
+	/**
+	 * A comment is meant to be read by technical people 
+	 */
+	public default String getComment() { return null; }
+	/**
+	 * A summary is meant to be read by outsiders
+	 */
+	public default String getSummary() { return null; }
+	/**
+	 * You can tag a node so we can group them together based on context
+	 */
+	public default List<String> getTags() { return null; }
 }
