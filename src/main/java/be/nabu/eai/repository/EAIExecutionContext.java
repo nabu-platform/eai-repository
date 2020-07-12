@@ -17,6 +17,7 @@ import be.nabu.libs.services.api.ForkableExecutionContext;
 import be.nabu.libs.services.api.SecurityContext;
 import be.nabu.libs.services.api.ServiceContext;
 import be.nabu.libs.services.api.TransactionContext;
+import be.nabu.libs.services.api.UpgradeableSecurityContext;
 
 public class EAIExecutionContext implements ForkableExecutionContext, FeaturedExecutionContext {
 
@@ -67,7 +68,7 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 		return repository.getMetricInstance(id);
 	}
 	
-	public class EAISecurityContext implements SecurityContext {
+	public class EAISecurityContext implements UpgradeableSecurityContext {
 		
 		@Override
 		public Token getToken() {
@@ -87,6 +88,12 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 		@Override
 		public PermissionHandler getPermissionHandler() {
 			return repository.getPermissionHandler();
+		}
+
+		@Override
+		public void upgrade(Token token, Token...alternateTokens) {
+			EAIExecutionContext.this.token = token;
+			EAIExecutionContext.this.alternatives = alternateTokens == null ? new ArrayList<Token>() : Arrays.asList(alternateTokens);
 		}
 	}
 

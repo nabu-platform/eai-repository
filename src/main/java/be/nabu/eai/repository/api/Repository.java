@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import be.nabu.eai.repository.impl.RepositoryArtifactResolver;
 import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.events.api.EventDispatcher;
@@ -114,5 +115,9 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	// the map should be modifiable because it is used both for setting and reading messages 
 	default Map<String, List<Validation<?>>> getMessages(String nodeId) {
 		return null;
+	}
+	
+	default <T extends Artifact> T resolveFor(String artifactId, Class<T> type) {
+		return new RepositoryArtifactResolver<T>(this, type).getResolvedArtifact(artifactId);
 	}
 }

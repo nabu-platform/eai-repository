@@ -23,11 +23,17 @@ public class CombinedAuthenticator implements Authenticator {
 	
 	@Override
 	public Token authenticate(String realm, Principal... credentials) {
+		// make sure we get the device (if possible)
+		Device device = null;
 		for (Principal credential : credentials) {
-			Device device = null;
 			if (credential instanceof DevicePrincipal) {
 				device = ((DevicePrincipal) credential).getDevice();
+				if (device != null) {
+					break;
+				}
 			}
+		}
+		for (Principal credential : credentials) {
 			if (credential instanceof BasicPrincipal && passwordAuthenticator != null) {
 				Token token = passwordAuthenticator.authenticate(realm, (BasicPrincipal) credential, device);
 				if (token != null) {
