@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import be.nabu.eai.repository.api.FeatureConfigurator;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
@@ -112,13 +111,7 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 	@Override
 	public List<String> getEnabledFeatures() {
 		if (enabledFeatures == null) {
-			enabledFeatures = new ArrayList<String>();
-			for (FeatureConfigurator configurator : repository.getArtifacts(FeatureConfigurator.class)) {
-				List<String> enabled = configurator.getEnabledFeatures();
-				if (enabled != null) {
-					enabledFeatures.addAll(enabled);
-				}
-			}
+			enabledFeatures = repository.getEnabledFeatures();
 		}
 		return enabledFeatures;
 	}

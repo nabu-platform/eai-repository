@@ -25,7 +25,9 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
+import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.FeatureConfigurator;
 import be.nabu.eai.repository.api.LicenseManager;
 import be.nabu.eai.repository.api.LicensedRepository;
 import be.nabu.eai.repository.api.MavenRepository;
@@ -336,6 +338,22 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	}
 	
 	private void buildReferenceMap(String id, List<String> references) {
+		Entry entry = getEntry(id);
+		// @2020-09-29
+		// if it is not a resource entry, it is probably a dynamic one
+		// let's deduce the parent and add it as a reference to make sure the reloading is done correctly (reloading uses the reference/dependency map)
+		if (entry != null && entry instanceof DynamicEntry) {
+			String originatingArtifact = ((DynamicEntry) entry).getOriginatingArtifact();
+			if (references == null) {
+				references = new ArrayList<String>();
+			}
+			if (!references.contains(originatingArtifact)) {
+				references.add(originatingArtifact);
+			}
+		}
+		else if (entry == null) {
+			logger.warn("Could not find entry to build reference map for: " + id);
+		}
 		logger.debug("Loading references for '" + id + "': " + references);
 		if (references != null) {
 			this.references.put(id, new ArrayList<String>(references));
@@ -537,6 +555,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		if (entry != null) {
+			if (!entry.getId().equals(id)) {
+				logger.info("Actually reloading: " + entry.getId() + " (" + recursiveReload + ")");
+			}
 			unload(entry, false);
 			preload(entry);
 			load(entry);
@@ -588,7 +609,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			if (!blacklist.contains(directDependency)) {
 				Set<String> indirectDependencies = calculateDependenciesToReload(directDependency, blacklist);
 				// remove any dependencies that are also in the indirect ones
-				// we can add them again afterwards which means they will only be in the list once and in the correct order
+				// we can add them again afterwards which means they will only be in the list once _and_ in the correct order
 				dependenciesToReload.removeAll(indirectDependencies);
 				dependenciesToReload.addAll(indirectDependencies);
 			}
@@ -636,12 +657,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		else {
 			for (Entry manager : artifactRepositoryManagers) {
 				if (manager.getNode().getReferences() == null || manager.getNode().getReferences().isEmpty()) {
+					logger.info("Loading artifact manager without references: " + manager.getId());
 					loadArtifactManager(manager);
 				}
 			}
 			// then the rest
 			for (Entry manager : artifactRepositoryManagers) {
 				if (manager.getNode().getReferences() != null && !manager.getNode().getReferences().isEmpty()) {
+					logger.info("Loading artifact manager with references: " + manager.getId());
 					loadArtifactManager(manager);
 				}
 			}
@@ -664,7 +687,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			changed = false;
 			
 			// if we check the first half we should be fine
-			for (int i = 0; i < (artifactRepositoryManagers.size() % 2 == 0 ? artifactRepositoryManagers.size() / 2 : (artifactRepositoryManagers.size() / 2) + 1); i++) {
+			// Update @ 2020-09-03: suppose you have 10 artifacts and 8 depends on 9. this would not get picked up by only scanning the first half and comparing it to the second...? not sure why this was implemented as such...
+//			for (int i = 0; i < (artifactRepositoryManagers.size() % 2 == 0 ? artifactRepositoryManagers.size() / 2 : (artifactRepositoryManagers.size() / 2) + 1); i++) {
+			for (int i = 0; i < artifactRepositoryManagers.size(); i++) {
 				for (int j = i + 1; j < artifactRepositoryManagers.size(); j++) {
 					if (i == j) {
 						continue;
@@ -1590,4 +1615,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public List<String> getAliases() {
 		return aliases;
 	}
+	
+	public List<String> getEnabledFeatures() {
+		List<String> enabledFeatures = new ArrayList<String>();
+		for (FeatureConfigurator configurator : getArtifacts(FeatureConfigurator.class)) {
+			List<String> enabled = configurator.getEnabledFeatures();
+			if (enabled != null) {
+				enabledFeatures.addAll(enabled);
+			}
+		}
+		return enabledFeatures;
+	}
+	
 }
