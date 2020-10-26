@@ -179,7 +179,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		
 		@Override
 		public String getId() {
-			return "$self:" + getName();
+			return parent.getId() + ":" + getName();
 		}
 
 		@Override
@@ -256,7 +256,7 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 		Iterator<String> iterator = references.iterator();
 		while(iterator.hasNext()) {
 			String next = iterator.next();
-			if (next == null || next.startsWith("$self")) {
+			if (next == null || next.startsWith("$self") || next.startsWith(artifact.getId() + ":")) {
 				iterator.remove();
 			}
 		}

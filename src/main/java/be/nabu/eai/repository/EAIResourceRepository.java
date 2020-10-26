@@ -9,6 +9,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -354,8 +355,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		else if (entry == null) {
 			logger.warn("Could not find entry to build reference map for: " + id);
 		}
-		logger.debug("Loading references for '" + id + "': " + references);
 		if (references != null) {
+			logger.debug("Loading references for '" + id + "': " + references);
 			this.references.put(id, new ArrayList<String>(references));
 			for (String reference : references) {
 				if (!dependencies.containsKey(reference)) {
@@ -1407,14 +1408,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			synchronized(resources) {
 				if (!resources.containsKey(name)) {
 					Set<URL> urls = new LinkedHashSet<URL>();
+					List<URL> tmp = new ArrayList<URL>();
 					for (MavenArtifact artifact : mavenArtifacts) {
-						urls.addAll(artifact.getClassLoader().findResourcesNonRecursively(name, false));
+						tmp.addAll(artifact.getClassLoader().findResourcesNonRecursively(name, false));
 					}
 					for (ClassProvidingArtifact artifact : classProvidingArtifacts) {
 						for (LocalClassLoader classLoader : artifact.getClassLoaders()) {
-							urls.addAll(classLoader.findResourcesNonRecursively(name, false));
+							tmp.addAll(classLoader.findResourcesNonRecursively(name, false));
 						}
 					}
+					urls.addAll(tmp);
 					resources.put(name, urls);
 				}
 			}

@@ -37,7 +37,7 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 	}
 
 	public String getResolvedId(String forId, List<T> artifacts) {
-		// let's check if an artifact has been explicitly configured for this artifact
+		// let's check if an artifact has been explicitly configured for this artifact (or its parents)
 		String longest = getContextualFor(forId, artifacts);
 		if (longest != null) {
 			return longest;
@@ -107,6 +107,26 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 					}
 				}
 			}
+		}
+		// we also check system properties to see if there is a longer match
+		// you can configure for example "context.nabu=project.shared.jdbc,project.providers.impl"
+		// at that point, we will pick up the correct part
+		String idToCheck = forId;
+		while (idToCheck != null && (longestContext == null || idToCheck.length() > longestContext.length())) {
+			String property = System.getProperty("context." + idToCheck);
+			if (property != null) {
+				for (String part : property.split("[\\s]*,[\\s]*")) {
+					Artifact resolve = repository.resolve(part);
+					if (resolve != null && clazz.isAssignableFrom(resolve.getClass())) {
+						longest = resolve.getId();
+						longestContext = idToCheck;
+						// we won't find a longer one in this particular case...
+						break;
+					}
+				}
+			}
+			int index = idToCheck.lastIndexOf('.');
+			idToCheck = index <= 0 ? null : idToCheck.substring(0, index);
 		}
 		return longest;
 	}

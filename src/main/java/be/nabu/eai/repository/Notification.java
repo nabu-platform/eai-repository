@@ -28,6 +28,10 @@ public class Notification implements be.nabu.eai.repository.api.Notification {
 	private String identifier;
 	
 	public Notification() {
+		this(UUID.randomUUID().toString().replace("-", ""));
+	}
+	
+	public Notification(String identifier) {
 		ServiceRuntime runtime = ServiceRuntime.getRuntime();
 		if (runtime != null) {
 			setServiceContext(ServiceUtils.getServiceContext(runtime));
@@ -40,7 +44,7 @@ public class Notification implements be.nabu.eai.repository.api.Notification {
 			}
 		}
 		// use a specific identifier
-		this.identifier = UUID.randomUUID().toString().replace("-", "");
+		this.identifier = identifier;
 	}
 	
 	@Override
