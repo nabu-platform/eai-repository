@@ -13,4 +13,7 @@ public interface Entry extends ResourceContainer<Entry> {
 	
 	@Override
 	public Entry getParent();
+	
+	public default boolean isProject() { return false; }
+	public default Project getProject() { return null; }
 }

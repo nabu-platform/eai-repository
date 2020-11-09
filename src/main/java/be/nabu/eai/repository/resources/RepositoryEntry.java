@@ -17,12 +17,14 @@ import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
+import be.nabu.eai.repository.ProjectImpl;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.ModifiableNodeEntry;
+import be.nabu.eai.repository.api.Project;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.NodeEvent;
@@ -384,6 +386,83 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		writeNode(getContainer(), node);
 	}
 	
+	private ProjectImpl project;
+	private Date lastLoadedProject;
+
+	public boolean isProject() {
+		return container.getChild("project.xml") != null;
+	}
+	
+	@Override
+	public ProjectImpl getProject() {
+		Resource resource = container.getChild("project.xml");
+		if (resource != null && (project == null || lastLoadedProject == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoadedProject)))) {
+			synchronized(this) {
+				if (resource != null && (project == null || lastLoadedProject == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoadedProject)))) {
+					try {
+						ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
+						try {
+							project = (ProjectImpl) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
+						}
+						catch (JAXBException e) {
+							throw new IOException(e);
+						}
+						finally {
+							readable.close();
+						}
+					}
+					catch (IOException e) {
+						logger.error("Could not load project " + getId(), e);
+					}
+		
+					if (resource instanceof TimestampedResource) {
+						lastLoadedProject = ((TimestampedResource) resource).getLastModified();
+					}
+				}
+			}
+		}
+		return project;
+	}
+	
+	public void setProject(ProjectImpl project) {
+		try {
+			writeProject(getContainer(), project);
+			this.project = project;
+			this.lastLoadedProject = new Date();
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+	
+	public void saveProject() {
+		if (isProject()) {
+			try {
+				writeProject(getContainer(), getProject());
+			}
+			catch (IOException e) {
+				throw new RuntimeException(e);
+			}
+		}
+	}
+
+	private void writeProject(ResourceContainer<?> nodeContainer, ProjectImpl node) throws IOException {
+		Resource target = nodeContainer.getChild("project.xml");
+		if (target == null) {
+			target = ((ManageableContainer<?>) nodeContainer).create("project.xml", "application/xml");
+		}
+		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
+		try {
+			getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
+		}
+		catch (JAXBException e) {
+			throw new IOException(e);
+		}
+		finally {
+			writable.close();
+		}
+	}
+	
 	public EAINode getNode() {
 		Resource resource = container.getChild("node.xml");
 		if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
@@ -410,7 +489,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 						finally {
 							readable.close();
 						}
-						repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
 					}
 					catch (IOException e) {
 						logger.error("Could not load node " + getId(), e);
@@ -419,6 +497,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 					if (resource instanceof TimestampedResource) {
 						lastLoaded = ((TimestampedResource) resource).getLastModified();
 					}
+					// trigger a reload _after_ we have updated the lastLoaded
+					// otherwise we can get into a loop, the reload triggers a start in the server, the start (e.g. for a web application) does a getNode()
+					// the getNode() sees the already loaded node but wants to reload it cause the timestamp is not clear, and triggers a reload etc etc
+					repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
 				}
 			}
 		}
@@ -475,7 +557,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			synchronized(EAINode.class) {
 				if (jaxbContext == null) {
 					try {
-						jaxbContext = JAXBContext.newInstance(EAINode.class);
+						jaxbContext = JAXBContext.newInstance(EAINode.class, ProjectImpl.class);
 					}
 					catch (JAXBException e) {
 						throw new RuntimeException(e);

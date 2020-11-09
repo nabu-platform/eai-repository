@@ -28,12 +28,8 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 	}
 	
 	public String getResolvedId(String forId) {
-		ServiceRuntime runtime = ServiceRuntime.getRuntime();
-		if (runtime != null) {
-			List<T> artifacts = repository.getArtifacts(clazz);
-			return getResolvedId(forId, artifacts);
-		}
-		return null;
+		List<T> artifacts = repository.getArtifacts(clazz);
+		return getResolvedId(forId, artifacts);
 	}
 
 	public String getResolvedId(String forId, List<T> artifacts) {
