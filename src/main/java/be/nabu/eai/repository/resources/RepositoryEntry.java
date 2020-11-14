@@ -134,7 +134,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		List<String> existing = new ArrayList<String>(children.keySet());
 		for (Resource child : container) {
-			System.out.println("rescanning: " + child);
 			String childName = child.getName();
 			if (childName.endsWith(".nar")) {
 				childName = childName.substring(0, childName.length() - ".nar".length());
@@ -215,6 +214,9 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	public void deleteChild(String name, boolean recursive) throws IOException {
 		Entry entry = getChildren().get(name);
 		if (entry != null) {
+			// unload it from the repository to remove references/dependencies
+			// we unload it before we delete it, otherwise we might not be able to unload it correctly...cause its already gone!
+			repository.unload(entry.getId());
 			// if it is resource-based, delete the files
 			if (entry instanceof ResourceEntry) {
 				// if recursive, just delete everything
@@ -255,8 +257,6 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			if (getContainer() instanceof CacheableResource) {
 				((CacheableResource) getContainer()).resetCache();
 			}
-			// unload it from the repository to remove references/dependencies
-			repository.unload(entry.getId());
 		}
 	}
 	
