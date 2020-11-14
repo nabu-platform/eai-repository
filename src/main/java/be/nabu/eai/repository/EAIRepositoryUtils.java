@@ -67,6 +67,7 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceInterface;
+import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
@@ -85,6 +86,14 @@ public class EAIRepositoryUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
 
+	public static boolean isProject(Entry entry) {
+		return isProject(entry.getCollection());
+	}
+	
+	public static boolean isProject(be.nabu.eai.repository.api.Collection collection) {
+		return collection != null && "project".equals(collection.getType()); 
+	}
+	
 	private static String getCode(Throwable t) {
 		String code = null;
 		if (t.getCause() != null) {

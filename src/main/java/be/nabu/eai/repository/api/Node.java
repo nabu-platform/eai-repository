@@ -76,11 +76,11 @@ public interface Node {
 	 */
 	public default String getName() { return null; }
 	/**
-	 * We can set a description, this is meant to be read by business people
+	 * We can set a description, this is meant to be read by business people, not necessarily those building the application
 	 */
 	public default String getDescription() { return null; }
 	/**
-	 * A comment is meant to be read by technical people 
+	 * A comment is meant to be read by people building the application, using developer
 	 */
 	public default String getComment() { return null; }
 	/**

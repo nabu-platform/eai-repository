@@ -28,6 +28,7 @@ import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.eai.repository.util.NodeUtils;
 import be.nabu.libs.maven.api.Artifact;
 import be.nabu.libs.maven.api.DomainRepository;
+import be.nabu.libs.services.api.ServiceDescription;
 import be.nabu.libs.services.maven.DependencyResolver;
 import be.nabu.libs.services.maven.MavenArtifact;
 import be.nabu.libs.types.api.DefinedTypeResolver;
@@ -156,6 +157,21 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 						}
 						else if (annotation instanceof Hidden) {
 							hidden = true;
+						}
+						else if (annotation instanceof ServiceDescription) {
+							ServiceDescription description = (ServiceDescription) annotation;
+							if (!description.description().trim().isEmpty()) {
+								node.setDescription(description.description().trim());
+							}
+							if (!description.summary().trim().isEmpty()) {
+								node.setSummary(description.summary().trim());
+							}
+							if (!description.name().trim().isEmpty()) {
+								node.setName(description.name().trim());
+							}
+							if (!description.comment().trim().isEmpty()) {
+								node.setComment(description.comment().trim());
+							}
 						}
 					}
 					node.setLeaf(true);

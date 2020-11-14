@@ -2,12 +2,17 @@ package be.nabu.eai.repository.api;
 
 import java.util.List;
 
-public interface Project {
+public interface Collection {
 	/**
-	 * A stringified type of the project, can (amongst other things) be used to find an appropriate icon
-	 * In the future we might have a "ProjectManager" and/or "ProjectGUIManager" class, but currently there is no need for it yet (except perhaps the icon resolving which is a minor requirement for such a heavy feature)
+	 * We want broad categories of collection types (like project) which can have specific attached to it it
+	 * In such a broad type you can have a subtype to further distinguish yourself
 	 */
 	public String getType();
+	/**
+	 * You can have a subtype
+	 * For example the main type might be "project" while the subtype is "standard" or "web" or ... whatever types of projects you want
+	 */
+	public String getSubType();
 	/**
 	 * We can set a human readable name for the node
 	 */
@@ -33,4 +38,8 @@ public interface Project {
 	 * By having quick access to the version, we can do things like compare environments
 	 */
 	public String getVersion();
+	/**
+	 * A configured icon for this collection
+	 */
+	public String getIcon();
 }

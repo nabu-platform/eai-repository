@@ -4,11 +4,11 @@ import java.util.List;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
-import be.nabu.eai.repository.api.Project;
+import be.nabu.eai.repository.api.Collection;
 
-@XmlRootElement(name = "project")
-public class ProjectImpl implements Project {
-	private String name, description, summary, type, comment, version;
+@XmlRootElement(name = "collection")
+public class CollectionImpl implements Collection {
+	private String name, description, summary, type, subType, comment, version, icon;
 	private List<String> tags;
 	
 	@Override
@@ -72,6 +72,22 @@ public class ProjectImpl implements Project {
 
 	public void setVersion(String version) {
 		this.version = version;
+	}
+
+	@Override
+	public String getSubType() {
+		return subType;
+	}
+	public void setSubType(String subType) {
+		this.subType = subType;
+	}
+
+	@Override
+	public String getIcon() {
+		return icon;
+	}
+	public void setIcon(String icon) {
+		this.icon = icon;
 	}
 	
 }

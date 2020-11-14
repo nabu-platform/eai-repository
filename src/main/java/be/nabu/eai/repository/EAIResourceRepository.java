@@ -414,8 +414,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void unload(String id) {
 		Entry entry = getEntry(id);
 		if (entry != null) {
+			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.UNLOAD, false), this);
 			unload(entry, true);
-			entry.getParent().refresh(false);
+			if (entry.getParent() != null) {
+				entry.getParent().refresh(false);
+			}
+			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.UNLOAD, true), this);
 		}
 	}
 	
@@ -426,6 +430,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	 * Which means if those artifacts are/were artifact repository managers, they do not get to unload their previously loaded children
 	 * If however we skip the check "isLoaded", we can have other problems with dependencies between dynamically loaded artifacts (e.g. jdbc depends on uml type)
 	 * Currently on load, the nodes should be overwritten preventing any issues so we leave it as such....for now...
+	 * 
+	 * Additionally: suppose as developer you remove a folder which has subfolders and subnodes etc
+	 * We first unload the root folder and only then proceed to unload the children. However the files have already been deleted.
+	 * This currently works presumably due to the filesystem caching and only very specific resetting.
+	 * However this is a fragile system.
 	 */
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry, boolean trigger) {
@@ -477,6 +486,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (entry.getParent() != null) {
 			entry.getParent().refresh(false);
 		}
+		// recurse to children
 		for (Entry child : entry) {
 			unload(child, trigger);
 		}
