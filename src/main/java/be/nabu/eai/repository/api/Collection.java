@@ -39,7 +39,17 @@ public interface Collection {
 	 */
 	public String getVersion();
 	/**
-	 * A configured icon for this collection
+	 * A small icon at 16x16
 	 */
-	public String getIcon();
+	public String getSmallIcon();
+	
+	/**
+	 * An medium icon at 32x32
+	 */
+	public String getMediumIcon();
+	
+	/**
+	 * An large icon at 64x64
+	 */
+	public String getLargeIcon();
 }

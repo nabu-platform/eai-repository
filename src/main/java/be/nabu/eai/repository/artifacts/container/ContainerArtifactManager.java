@@ -318,6 +318,8 @@ abstract public class ContainerArtifactManager<T extends ContainerArtifact> impl
 						if (artifactManager instanceof BrokenReferenceArtifactManager) {
 							messages.addAll(((BrokenReferenceArtifactManager) artifactManager).updateBrokenReference(childToLoad, from, to));
 						}
+						// update any references in the container.xml as well!
+						EAIRepositoryUtils.updateBrokenReference(containerConfig, from, to, Charset.forName("UTF-8"));
 					}
 				}
 				catch(Exception e) {

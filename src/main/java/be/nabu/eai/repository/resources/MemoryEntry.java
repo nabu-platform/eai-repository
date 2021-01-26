@@ -120,4 +120,8 @@ public class MemoryEntry implements ModifiableEntry, DynamicEntry {
 		return originator;
 	}
 
+	@Override
+	public String toString() {
+		return getId() + "[memory]";
+	}
 }

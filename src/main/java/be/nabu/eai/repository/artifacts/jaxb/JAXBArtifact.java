@@ -12,6 +12,7 @@ import javax.xml.bind.Unmarshaller;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
 import be.nabu.libs.artifacts.api.LazyArtifact;
+import be.nabu.libs.artifacts.api.LiveReloadable;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceWritableContainer;
 import be.nabu.libs.resources.api.ManageableContainer;
@@ -27,7 +28,7 @@ import be.nabu.utils.io.api.ByteBuffer;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
-public class JAXBArtifact<T> implements LazyArtifact {
+public class JAXBArtifact<T> implements LazyArtifact, LiveReloadable {
 
 	private ResourceContainer<?> directory;
 	private String id;
@@ -35,6 +36,8 @@ public class JAXBArtifact<T> implements LazyArtifact {
 	private Class<T> configurationClazz;
 	private T configuration;
 	private Repository repository;
+	// false by default!
+	private boolean canLiveReload = false;
 
 	public JAXBArtifact(String id, ResourceContainer<?> directory, Repository repository, String fileName, Class<T> configurationClazz) {
 		this.id = id;
@@ -89,34 +92,38 @@ public class JAXBArtifact<T> implements LazyArtifact {
 		if (configuration == null) {
 			synchronized(this) {
 				if (configuration == null) {
-					Resource target = directory.getChild(fileName);
-					if (target == null) {
-						try {
-							configuration = configurationClazz.newInstance();
-						}
-						catch (InstantiationException e) {
-							throw new RuntimeException(e);
-						}
-						catch (IllegalAccessException e) {
-							throw new RuntimeException(e);
-						}
-					}
-					else {
-						ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) target);
-						try {
-							configuration = unmarshal(IOUtils.toInputStream(readable));
-						}
-						catch (JAXBException e) {
-							throw new IOException(e);
-						}
-						finally {
-							readable.close();
-						}
-					}
+					loadConfigurationLive();
 				}
 			}
 		}
 		return configuration;
+	}
+
+	private void loadConfigurationLive() throws IOException {
+		Resource target = directory.getChild(fileName);
+		if (target == null) {
+			try {
+				configuration = configurationClazz.newInstance();
+			}
+			catch (InstantiationException e) {
+				throw new RuntimeException(e);
+			}
+			catch (IllegalAccessException e) {
+				throw new RuntimeException(e);
+			}
+		}
+		else {
+			ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) target);
+			try {
+				configuration = unmarshal(IOUtils.toInputStream(readable));
+			}
+			catch (JAXBException e) {
+				throw new IOException(e);
+			}
+			finally {
+				readable.close();
+			}
+		}
 	}
 	
 	public void save(ResourceContainer<?> directory) throws IOException {
@@ -175,4 +182,20 @@ public class JAXBArtifact<T> implements LazyArtifact {
 	protected void setConfig(T config) {
 		this.configuration = config;
 	}
+
+	@Override
+	public void liveReload() {
+		try {
+			loadConfigurationLive();
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	@Override
+	public boolean canLiveReload() {
+		return canLiveReload;
+	}
+	
 }

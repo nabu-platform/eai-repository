@@ -37,6 +37,7 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.artifacts.container.ContainerArtifactManager;
 import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
@@ -50,6 +51,7 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ArtifactResolver;
 import be.nabu.libs.artifacts.api.ClassProvidingArtifact;
 import be.nabu.libs.artifacts.api.LazyArtifact;
+import be.nabu.libs.artifacts.api.LiveReloadable;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
 import be.nabu.libs.authentication.api.PermissionHandler;
@@ -163,6 +165,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private PermissionHandler permissionHandler;
 	private LicenseManager licenseManager;
 	private List<String> aliases = new ArrayList<String>();
+	
+	private static Boolean allowLiveReload = Boolean.parseBoolean(System.getProperty("live.reload", "" + isDevelopment()));
 	
 	private static EAIResourceRepository instance;
 	
@@ -439,44 +443,47 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void unload(Entry entry, boolean trigger) {
 		if (entry.isNode()) {
-			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, false), this);
-			// remove it from the classloading (if applicable)
-			if (entry.getNode().isLoaded() && ClassProvidingArtifact.class.isAssignableFrom(entry.getNode().getArtifactClass())) {
-				try {
-					classProvidingArtifacts.remove(entry.getNode().getArtifact());
+			Node node = entry.getNode();
+			if (node != null) {
+				getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, false), this);
+				// remove it from the classloading (if applicable)
+				if (node.isLoaded() && ClassProvidingArtifact.class.isAssignableFrom(entry.getNode().getArtifactClass())) {
+					try {
+						classProvidingArtifacts.remove(entry.getNode().getArtifact());
+					}
+					catch (Exception e) {
+						logger.error("Could not remove the entry from the classloading: " + entry.getId(), e);
+					}
 				}
-				catch (Exception e) {
-					logger.error("Could not remove the entry from the classloading: " + entry.getId(), e);
-				}
-			}
-			unbuildReferenceMap(entry.getId());
-			// if there is an artifact manager and it maintains a repository, remove it all
-			if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
-				try {
-					List<Entry> removedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
-					logger.info("Unloaded " + (removedChildren == null ? "no" : removedChildren.size()) + " dynamic children of artifact: " + entry.getId());
-					if (removedChildren != null) {
-						for (Entry removedChild : removedChildren) {
-							if (removedChild != null) {
-								unbuildReferenceMap(removedChild.getId());
+				unbuildReferenceMap(entry.getId());
+				// if there is an artifact manager and it maintains a repository, remove it all
+				if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
+					try {
+						List<Entry> removedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
+						logger.info("Unloaded " + (removedChildren == null ? "no" : removedChildren.size()) + " dynamic children of artifact: " + entry.getId());
+						if (removedChildren != null) {
+							for (Entry removedChild : removedChildren) {
+								if (removedChild != null) {
+									unbuildReferenceMap(removedChild.getId());
+								}
 							}
 						}
 					}
+					catch (InstantiationException e) {
+						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+					}
+					catch (IllegalAccessException e) {
+						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+					}
+					catch (IOException e) {
+						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+					}
+					catch (ParseException e) {
+						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
+					}
 				}
-				catch (InstantiationException e) {
-					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
-				}
-				catch (IllegalAccessException e) {
-					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
-				}
-				catch (IOException e) {
-					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
-				}
-				catch (ParseException e) {
-					logger.error("Could not finish unloading generated children for " + entry.getId(), e);
-				}
+				getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, true), this);
 			}
-			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, true), this);
 		}
 		entry.refresh(false);
 		logger.info("Unloading: " + entry.getId());
@@ -566,12 +573,27 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		if (entry != null) {
+			boolean liveReload = false;
+			if (canLiveReload(entry)) {
+				try {
+					liveReload = ((LiveReloadable) entry.getNode().getArtifact()).canLiveReload();
+				}
+				catch (Exception e) {
+					logger.warn("Can not check for live reload property", e);
+				}
+			}
+			
 			if (!entry.getId().equals(id)) {
 				logger.info("Actually reloading: " + entry.getId() + " (" + recursiveReload + ")");
 			}
-			unload(entry, false);
-			preload(entry);
-			load(entry);
+			if (liveReload) {
+				liveReload(entry);
+			}
+			else {
+				unload(entry, false);
+				preload(entry);
+				load(entry);
+			}
 			// also reload all the dependencies
 			// prevent concurrent modification
 			if (recursiveReload) {
@@ -593,10 +615,35 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		scanForTypes();
 	}
 	
+	private boolean canLiveReload(Entry entry) {
+		try {
+			return allowLiveReload && entry.isNode() && LiveReloadable.class.isAssignableFrom(entry.getNode().getArtifactClass()) && entry.getNode().isLoaded()
+				// we don't (yet) allow for live reload of these, cause they would need to re-examine the children and (if changed), reload anyway
+				&& !ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager());
+		}
+		catch (Exception e) {
+			logger.error("Can not check live reload for: " + entry.getId(), e);
+			return false;
+		}
+	}
+	
+	private void liveReload(Entry entry) {
+		try {
+			logger.info("Live reloading: " + entry.getId());
+			((LiveReloadable) entry.getNode().getArtifact()).liveReload();
+		}
+		catch (Exception e) {
+			logger.warn("Can not live reload artifact " + entry.getId(), e);
+		}
+	}
+	
 	private Set<String> calculateDependenciesToReload(Entry entry) {
 		Set<String> dependencies = new HashSet<String>();
 		if (entry.isNode()) {
-			dependencies.addAll(calculateDependenciesToReload(entry.getId()));
+			// if we can do a live reload, we don't need to reload dependencies
+			if (!canLiveReload(entry)) {
+				dependencies.addAll(calculateDependenciesToReload(entry.getId()));
+			}
 		}
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
@@ -834,7 +881,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
-				load(child, artifactRepositoryManagers);
+				try {
+					load(child, artifactRepositoryManagers);
+				}
+				catch (Exception e) {
+					logger.error("Can not load: " + child.getId(), e);
+				}
 			}
 		}
 	}
@@ -927,6 +979,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (newEntry == null) {
 			throw new IOException("Could not load new entry: " + newId);
 		}
+		remapContainerArtifactAfterRename(entry, newEntry);
 		load(newEntry);
 		List<Validation<?>> validations = new ArrayList<Validation<?>>();
 		// remove the contents from the old location if necessary
@@ -946,7 +999,6 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return validations;
 	}
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private Set<String> relink(Entry from, Entry to, List<Validation<?>> validations, boolean reload) {
 		logger.debug("Relinking: " + from.getId() + " to " + to.getId());
 		Set<String> dependencies = new HashSet<String>(getDependencies(from.getId()));
@@ -954,26 +1006,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			for (String dependency : dependencies) {
 				logger.debug("Relinking dependency: " + dependency);
 				Entry dependencyEntry = getEntry(dependency);
-				if (dependencyEntry instanceof ResourceEntry) {
-					Node node = dependencyEntry.getNode();
-					if (node != null) {
-						try {
-							ArtifactManager artifactManager = node.getArtifactManager().newInstance();
-							// update the references
-							validations.addAll(artifactManager.updateReference(node.getArtifact(), from.getId(), to.getId()));
-							// save the updated references
-							artifactManager.save((ResourceEntry) dependencyEntry, node.getArtifact());
-							// reload the new artifact
-							reload(dependency, false);
-						}
-						catch (Exception e) {
-							logger.error("Could not update reference for dependency '" + dependency + "' from '" + from.getId() + "' to '" + to.getId() + "'", e);
-						}
-					}
-				}
-				else {
-					validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependency + "' as it is not a resource entry"));
-				}
+				relinkSingle(from, to, validations, dependencyEntry);
 			}
 		}
 		// recurse!
@@ -992,6 +1025,53 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			reloadAll(dependencies, true);
 		}
 		return dependencies;
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
+	private void remapContainerArtifactAfterRename(Entry from, Entry to) {
+		// containers are...tricky
+		// when we rename them, they might have dependencies to one another, e.g. the blox service will have an interface dependency to the rest interface
+		// they all get renamed but don't know (from each other) that they are updated as they are not listed as dependencies to themselves
+		// using "classic" updateReference logic is impossible but we can't successfully load the renamed (because the old references don't resolve)
+		// for this reason, we do a hard broken update at this point
+		// it is not ideal but there are very few good ways at this point
+		// it was not a problem for a long time because internal references were done using $self
+		// it was decided to step away from the $self logic (commit 68f9a0541eee95896e134aec5eb2c4a79f08a7c7) for better logging (amongst other things)
+		// if we can't make this work, we may have to revert the $self
+		if (ContainerArtifactManager.class.isAssignableFrom(to.getNode().getArtifactManager()) && to instanceof ResourceEntry) {
+			logger.info("Relinking internal artifacts in container");
+			try {
+				ContainerArtifactManager manager = (ContainerArtifactManager) to.getNode().getArtifactManager().newInstance();
+				manager.updateBrokenReference(((ResourceEntry) to).getContainer(), from.getId(), to.getId());
+			}
+			catch (Exception e) {
+				logger.error("Could not relink internal artifacts for container", e);
+			}
+		}
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void relinkSingle(Entry from, Entry to, List<Validation<?>> validations, Entry dependencyEntry) {
+		if (dependencyEntry instanceof ResourceEntry) {
+			Node node = dependencyEntry.getNode();
+			if (node != null) {
+				try {
+					ArtifactManager artifactManager = node.getArtifactManager().newInstance();
+					// update the references
+					validations.addAll(artifactManager.updateReference(node.getArtifact(), from.getId(), to.getId()));
+					// save the updated references
+					artifactManager.save((ResourceEntry) dependencyEntry, node.getArtifact());
+					// reload the new artifact
+					reload(dependencyEntry.getId(), false);
+				}
+				catch (Exception e) {
+					logger.error("Could not update reference for dependency '" + dependencyEntry.getId() + "' from '" + from.getId() + "' to '" + to.getId() + "'", e);
+				}
+			}
+		}
+		else {
+			validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependencyEntry.getId() + "' as it is not a resource entry"));
+		}
 	}
 	
 	public String getId(ResourceContainer<?> container) {
@@ -1288,15 +1368,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private void scanForTypes(Entry entry, Map<Class<? extends Artifact>, Map<String, Node>> nodesByType) {
 		for (Entry child : entry) {
-			if (child.isNode()) {
-				Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
-				if (!nodesByType.containsKey(artifactClass)) {
-					nodesByType.put(artifactClass, new HashMap<String, Node>());
+			try {
+				if (child.isNode()) {
+					Class<? extends Artifact> artifactClass = child.getNode().getArtifactClass();
+					if (!nodesByType.containsKey(artifactClass)) {
+						nodesByType.put(artifactClass, new HashMap<String, Node>());
+					}
+					nodesByType.get(artifactClass).put(child.getId(), child.getNode());
 				}
-				nodesByType.get(artifactClass).put(child.getId(), child.getNode());
+				if (!child.isLeaf()) {
+					scanForTypes(child, nodesByType);
+				}
 			}
-			if (!child.isLeaf()) {
-				scanForTypes(child, nodesByType);
+			catch (Exception e) {
+				// if we can't load it, we ignore it, otherwise it can create endless problems
+				logger.error("Can not scan: " + entry.getId(), e);
 			}
 		}
 	}

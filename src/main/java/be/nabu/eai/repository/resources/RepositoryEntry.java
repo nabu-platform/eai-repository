@@ -11,6 +11,7 @@ import java.util.Map;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -350,7 +351,9 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
 		try {
-			getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
+			Marshaller marshaller = getJAXBContext().createMarshaller();
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+			marshaller.marshal(node, IOUtils.toOutputStream(writable));
 		}
 		catch (JAXBException e) {
 			throw new IOException(e);
@@ -450,7 +453,9 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		WritableContainer<ByteBuffer> writable = new ResourceWritableContainer((WritableResource) target);
 		try {
-			getJAXBContext().createMarshaller().marshal(node, IOUtils.toOutputStream(writable));
+			Marshaller marshaller = getJAXBContext().createMarshaller();
+			marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+			marshaller.marshal(node, IOUtils.toOutputStream(writable));
 		}
 		catch (JAXBException e) {
 			throw new IOException(e);

@@ -8,7 +8,7 @@ import be.nabu.eai.repository.api.Collection;
 
 @XmlRootElement(name = "collection")
 public class CollectionImpl implements Collection {
-	private String name, description, summary, type, subType, comment, version, icon;
+	private String name, description, summary, type, subType, comment, version, smallIcon, mediumIcon, largeIcon;
 	private List<String> tags;
 	
 	@Override
@@ -83,11 +83,27 @@ public class CollectionImpl implements Collection {
 	}
 
 	@Override
-	public String getIcon() {
-		return icon;
+	public String getSmallIcon() {
+		return smallIcon;
 	}
-	public void setIcon(String icon) {
-		this.icon = icon;
+	public void setSmallIcon(String smallIcon) {
+		this.smallIcon = smallIcon;
 	}
-	
+
+	@Override
+	public String getMediumIcon() {
+		return mediumIcon;
+	}
+	public void setMediumIcon(String mediumIcon) {
+		this.mediumIcon = mediumIcon;
+	}
+
+	@Override
+	public String getLargeIcon() {
+		return largeIcon;
+	}
+	public void setLargeIcon(String largeIcon) {
+		this.largeIcon = largeIcon;
+	}
+
 }
