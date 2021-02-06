@@ -10,6 +10,7 @@ public class RepositoryThreadFactory implements ThreadFactory {
 	private Repository repository;
 	private ThreadFactory parent;
 	private boolean daemonize;
+	private String name;
 
 	public RepositoryThreadFactory(Repository repository) {
 		this(repository, false);
@@ -26,7 +27,16 @@ public class RepositoryThreadFactory implements ThreadFactory {
 		Thread thread = this.parent.newThread(runnable);
 		thread.setDaemon(daemonize);
 		thread.setContextClassLoader(repository.getClassLoader());
+		if (name != null) {
+			thread.setName(name);
+		}
 		return thread;
 	}
-	
+
+	public String getName() {
+		return name;
+	}
+	public void setName(String name) {
+		this.name = name;
+	}
 }

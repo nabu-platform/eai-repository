@@ -9,7 +9,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -20,6 +19,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -165,6 +165,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private PermissionHandler permissionHandler;
 	private LicenseManager licenseManager;
 	private List<String> aliases = new ArrayList<String>();
+	private List<String> enableEvents = Arrays.asList(System.getProperty("metric.events", METRICS_SYSTEM).split("[\\s]*,[\\s]*"));
+	private static Boolean allowFileBasedRefactor = Boolean.parseBoolean(System.getProperty("file.refactor", "true"));
 	
 	private static Boolean allowLiveReload = Boolean.parseBoolean(System.getProperty("live.reload", "" + isDevelopment()));
 	
@@ -979,7 +981,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (newEntry == null) {
 			throw new IOException("Could not load new entry: " + newId);
 		}
-		remapContainerArtifactAfterRename(entry, newEntry);
+		// always do a broken reference update, there are too many edge cases otherwise (e.g. a folder of rest services)
+		if (allowFileBasedRefactor && newEntry instanceof ResourceEntry) {
+			EAIRepositoryUtils.updateBrokenReferences(((ResourceEntry) newEntry).getContainer(), entry.getId(), newEntry.getId(), charset);
+		}
+		// if we have a node, check if it is a container artifact (for the renaming of the rest service)
+		else if (newEntry.isNode()) {
+			remapContainerArtifactAfterRename(entry, newEntry);
+		}
 		load(newEntry);
 		List<Validation<?>> validations = new ArrayList<Validation<?>>();
 		// remove the contents from the old location if necessary
@@ -1038,7 +1047,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// it was not a problem for a long time because internal references were done using $self
 		// it was decided to step away from the $self logic (commit 68f9a0541eee95896e134aec5eb2c4a79f08a7c7) for better logging (amongst other things)
 		// if we can't make this work, we may have to revert the $self
-		if (ContainerArtifactManager.class.isAssignableFrom(to.getNode().getArtifactManager()) && to instanceof ResourceEntry) {
+		if (to.isNode() && ContainerArtifactManager.class.isAssignableFrom(to.getNode().getArtifactManager()) && to instanceof ResourceEntry) {
 			logger.info("Relinking internal artifacts in container");
 			try {
 				ContainerArtifactManager manager = (ContainerArtifactManager) to.getNode().getArtifactManager().newInstance();
@@ -1564,8 +1573,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public void enableMetrics(boolean enable) {
 		if (enable && metrics == null) {
+			RepositoryThreadFactory repositoryThreadFactory = new RepositoryThreadFactory(this, true);
+			repositoryThreadFactory.setName("metrics-events");
 			// create a new metrics dispatching pool, allowing you to intercept metric updates
-			metricsDispatcher = new EventDispatcherImpl(2);
+			metricsDispatcher = new EventDispatcherImpl(Executors.newFixedThreadPool(2, repositoryThreadFactory));
 			synchronized(this) {
 				if (metrics == null) {
 					metrics = new HashMap<String, MetricGrouper>();
@@ -1593,6 +1604,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		MetricInstanceImpl instance = new MetricInstanceImpl(id, this, metricsDispatcher);
+		// by default there are no events
+		instance.setEnableEvents(enableEvents.contains(id));
 		if (metricsGaugeHistorizer != null) {
 			metricsGaugeHistorizer.add(instance);
 		}

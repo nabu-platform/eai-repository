@@ -476,6 +476,17 @@ public class EAIRepositoryUtils {
 		return builder.toString();
 	}
 	
+	public static void updateBrokenReferences(Resource resource, String from, String to, Charset charset) throws IOException {
+		if (resource instanceof ReadableResource) {
+			updateBrokenReference(resource, from, to, charset);
+		}
+		if (resource instanceof ResourceContainer) {
+			for (Resource child : (ResourceContainer<?>) resource) {
+				updateBrokenReferences(child, from, to, charset);
+			}
+		}
+	}
+	
 	public static void updateBrokenReference(Resource resource, String from, String to, Charset charset) throws IOException {
 		ReadableContainer<ByteBuffer> readable = ((ReadableResource) resource).getReadable();
 		String content;
@@ -485,7 +496,8 @@ public class EAIRepositoryUtils {
 		finally {
 			readable.close();
 		}
-		String updated = content.replaceAll("(?s)\\b" + Pattern.quote(from) + "\\b", Matcher.quoteReplacement(to));
+		// must not be prefixed with a "." because that would mean it's a partial match
+		String updated = content.replaceAll("(?s)(?<!\\.)\\b" + Pattern.quote(from) + "\\b", Matcher.quoteReplacement(to));
 		if (!updated.equals(content)) {
 			WritableContainer<ByteBuffer> writable = ((WritableResource) resource).getWritable();
 			try {
