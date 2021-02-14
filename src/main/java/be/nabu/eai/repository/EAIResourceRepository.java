@@ -28,6 +28,7 @@ import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.ArtifactRepositoryManager;
 import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.EventEnricher;
 import be.nabu.eai.repository.api.FeatureConfigurator;
 import be.nabu.eai.repository.api.LicenseManager;
 import be.nabu.eai.repository.api.LicensedRepository;
@@ -37,11 +38,13 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
+import be.nabu.eai.repository.api.Templater;
 import be.nabu.eai.repository.artifacts.container.ContainerArtifactManager;
 import be.nabu.eai.repository.events.NodeEvent;
 import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
+import be.nabu.eai.repository.impl.CorrelationIdEnricher;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.resources.RepositoryResourceResolver;
@@ -188,6 +191,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 	
+	private List<Templater> templaters = new ArrayList<Templater>();
+	
 	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED });
 	public static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert", 
 			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
@@ -217,6 +222,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private long historizationInterval = 5000;
 	private int historySize = 500;
+	private Map<String, EventEnricher> eventEnrichers = new HashMap<String, EventEnricher>();
 
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -227,7 +233,27 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public EAIResourceRepository(ResourceContainer<?> repositoryRoot, ResourceContainer<?> mavenRoot) throws IOException {
 		// meant for complex event dispatching
-		complexDispatcher = new EventDispatcherImpl(Runtime.getRuntime().availableProcessors());
+		// we want to do the event enriching _synchronously_, allowing you to use thread locals etc to communicate if needed
+		complexDispatcher = new EventDispatcherImpl(Runtime.getRuntime().availableProcessors()) {
+			@SuppressWarnings("unchecked")
+			@Override
+			public <E> void fire(E event, Object source) {
+				if (event != null && !eventEnrichers.isEmpty()) {
+					for (EventEnricher enricher : new ArrayList<EventEnricher>(eventEnrichers.values())) {
+						try {
+							Object enriched = enricher.enrich(event);
+							if (enriched != null) {
+								event = (E) enriched;
+							}
+						}
+						catch (Exception e) {
+							logger.error("Failed to enrich event", e);
+						}
+					}
+				}
+				super.fire(event, source);
+			}
+		};
 		
 		internalDomains = new ArrayList<String>();
 		internalDomains.add("nabu");
@@ -619,7 +645,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	private boolean canLiveReload(Entry entry) {
 		try {
-			return allowLiveReload && entry.isNode() && LiveReloadable.class.isAssignableFrom(entry.getNode().getArtifactClass()) && entry.getNode().isLoaded()
+			return allowLiveReload && entry.isNode() && entry.getNode() != null && LiveReloadable.class.isAssignableFrom(entry.getNode().getArtifactClass()) && entry.getNode().isLoaded()
 				// we don't (yet) allow for live reload of these, cause they would need to re-examine the children and (if changed), reload anyway
 				&& !ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager());
 		}
@@ -1297,6 +1323,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			public ServiceAuthorizerProvider getServiceAuthorizerProvider() {
 				return authorizerProvider;
 			}
+			@Override
+			public String getCorrelationId() {
+				return CorrelationIdEnricher.getCorrelationId();
+			}
 		};
 	}
 	
@@ -1737,6 +1767,22 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		return enabledFeatures;
+	}
+
+	public void addEventEnricher(String name, EventEnricher enricher) {
+		synchronized(eventEnrichers) {
+			eventEnrichers.put(name, enricher);
+		}
+	}
+	
+	public void removeEventEnricher(String name) {
+		synchronized(eventEnrichers) {
+			eventEnrichers.remove(name);
+		}
+	}
+
+	public List<Templater> getTemplaters() {
+		return templaters;
 	}
 	
 }
