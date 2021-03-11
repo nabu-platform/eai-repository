@@ -7,7 +7,6 @@ import javax.jws.WebParam;
 import javax.validation.constraints.NotNull;
 
 import be.nabu.libs.artifacts.api.Artifact;
-import be.nabu.libs.types.api.KeyValuePair;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
 
 public interface NotificationProvider extends Artifact {
@@ -23,5 +22,5 @@ public interface NotificationProvider extends Artifact {
 			@WebParam(name = "alias") String alias,
 			@WebParam(name = "realm") String realm,
 			@WebParam(name = "deviceId") String deviceId,
-			@WebParam(name = "properties") List<KeyValuePair> properties);
+			@WebParam(name = "properties") Object properties);
 }

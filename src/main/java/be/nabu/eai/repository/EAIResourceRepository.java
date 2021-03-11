@@ -1415,13 +1415,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					}
 					nodesByType.get(artifactClass).put(child.getId(), child.getNode());
 				}
-				if (!child.isLeaf()) {
-					scanForTypes(child, nodesByType);
-				}
 			}
 			catch (Exception e) {
 				// if we can't load it, we ignore it, otherwise it can create endless problems
-				logger.error("Can not scan: " + entry.getId(), e);
+				logger.error("Can not scan: " + child.getId(), e);
+				child.refresh(false);
+			}
+			if (!child.isLeaf()) {
+				scanForTypes(child, nodesByType);
 			}
 		}
 	}
