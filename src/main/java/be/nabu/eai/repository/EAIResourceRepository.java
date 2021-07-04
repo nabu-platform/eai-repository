@@ -9,6 +9,8 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 
@@ -759,14 +762,89 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		reset();
 	}
 	
+	// in the beginning the reference check was not recursive, but then we had a case where an sql service was dependent on a structure which extended the output of a CRUD
+	// the sql service did not see the indirect reference to the CRUD and was loaded before the CRUD
+	// this forced the structure to load "early" at which point it could not resolve the reference to the CRUD (which was not yet loaded)
+	// this corrupted the document...
+	// recursive reference checking _will_ pick this up but slowed down the sort from sub-second to 11s on a pretty standard setup
+	// however, not _all_ references are relevant, we only want to determine dependencies between artifact managers, so if we strip down the references to only artifact managers, that can speed up the process
+	// additionally a lot of managers reference themselves (sometimes indirectly) so we remove those references as well
+	// this allowed us to get from 468 interdependencies to just 16 which massively updated performance of the sorting to sub 200ms
+	private Set<String> cleanupArtifactRepositoryManagerReferences(String currentId, List<String> artifactRepositoryManagerIds, Set<String> allReferences) {
+		Set<String> result = new HashSet<String>();
+		Iterator<String> iterator = allReferences.iterator();
+		outer: while (iterator.hasNext()) {
+			String next = iterator.next();
+			if (next == null) {
+				continue;
+			}
+			// if there is a direct reference, we retain it
+			if (artifactRepositoryManagerIds.contains(next)) {
+				result.add(next);
+				continue;
+			}
+			int index = -1;
+			do {
+				index = next.lastIndexOf('.');
+				if (index >= 0) {
+					next = next.substring(0, index);
+					// if we have a reference to a child of one, we also keep it
+					if (artifactRepositoryManagerIds.contains(next)) {
+						// not if it's yourself you don't!
+						// we don't continue outer just in case we ever want to do _really_ funky things with artifact managers that generate new artifact managers (probably not?)
+						if (currentId.equals(next)) {
+							continue;
+						}
+						result.add(next);
+						continue outer;
+					}
+				}
+			}
+			while (index >= 0);
+		}
+		return result;
+	}
+	
 	private void sortArtifactRepositoryManagers(List<Entry> artifactRepositoryManagers, boolean optimize) {
-		Map<String, List<String>> allReferences = new HashMap<String, List<String>>();
+		// keep track of the original list
+		List<Entry> original = artifactRepositoryManagers;
+		
+		// if we optimize, we don't care about all the repository managers that have no references, they will be loaded first anyway
+		// if we remove them now, the especially important part is that they don't show up in the references of the other artifact managers, so whilst for example the maven repository managers are "few" (in comparison)
+		// they do represent a reference for pretty much every other repository manager
+		// by assuming they will always be loaded first (which is the case in the optimize), we don't need to explicitly check that
+		// so our "cleaned up" artifact reference list will be a _lot_ smaller
+		// as a reference point, 468 entries (with complex interdependencies) are resolved in +- 11s on an i9
+		// by doing this optimize routine, we can reduce the actually checked managers to 306 in 2s
+		if (optimize) {
+			List<Entry> partList = new ArrayList<Entry>();
+			for (Entry single : artifactRepositoryManagers) {
+				if (single.getNode().getReferences() == null || single.getNode().getReferences().isEmpty()) {
+					continue;
+				}
+				partList.add(single);
+			}
+			artifactRepositoryManagers = partList;
+		}
+		Map<String, Set<String>> allReferences = new HashMap<String, Set<String>>();
+		List<String> artifactRepositoryManagerIds = new ArrayList<String>();
+		for (Entry entry : artifactRepositoryManagers) {
+			artifactRepositoryManagerIds.add(entry.getId());
+		}
+		// again we take a subpart of the full list, we are only interested in sorting the ones that have interdependencies
+		List<Entry> partList = new ArrayList<Entry>();
 		for (int i = 0; i < artifactRepositoryManagers.size(); i++) {
-			List<String> references = artifactRepositoryManagers.get(i).getNode().getReferences();
-			if (references != null && !references.isEmpty()) {
-				allReferences.put(artifactRepositoryManagers.get(i).getId(), references);
+			// this happens _after_ the load so it _should_ contain all the references already
+			Set<String> references = EAIRepositoryUtils.getAllReferences(this, artifactRepositoryManagers.get(i).getId());
+			if (!references.isEmpty()) {
+				Set<String> cleanupArtifactRepositoryManagerReferences = cleanupArtifactRepositoryManagerReferences(artifactRepositoryManagers.get(i).getId(), artifactRepositoryManagerIds, references);
+				if (!cleanupArtifactRepositoryManagerReferences.isEmpty()) {
+					allReferences.put(artifactRepositoryManagers.get(i).getId(), cleanupArtifactRepositoryManagerReferences);
+					partList.add(artifactRepositoryManagers.get(i));
+				}
 			}
 		}
+		artifactRepositoryManagers = partList;
 
 		boolean changed = true;
 		sorting: while(changed) {
@@ -785,39 +863,16 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					Entry o2 = artifactRepositoryManagers.get(j);
 					boolean o1Has = allReferences.containsKey(o1.getId());
 					boolean o2Has = allReferences.containsKey(o2.getId());
-					boolean o1DependsOnO2 = false;
-					boolean o2DependsOnO1 = false;
-					// we want o2 to be loaded before o1, as o2 definitely does not have references
-					if (o1Has && !o2Has) {
-						result = optimize ? 0 : 1;
+					boolean o1DependsOnO2 = o1Has && allReferences.get(o1.getId()).contains(o2.getId());
+					boolean o2DependsOnO1 = o2Has && allReferences.get(o2.getId()).contains(o1.getId());						
+					if (o1DependsOnO2 && !o2DependsOnO1) {
+						result = 1;
 					}
-					// we want o1 to be loaded first in this case
-					else if (!o1Has && o2Has) {
-						result = optimize ? 0 : -1;
+					else if (!o1DependsOnO2 && o2DependsOnO1) {
+						result = -1;
 					}
-					// if neither has references, we don't care but if they both have references, we should check if they are dependent on one another
-					else if (o1Has && o2Has) {
-						for (String reference : allReferences.get(o1.getId())) {
-							if (reference != null && (reference.equals(o2.getId()) || reference.startsWith(o2.getId() + "."))) {
-								o1DependsOnO2 = true;
-								break;
-							}
-						}
-						for (String reference : allReferences.get(o2.getId())) {
-							if (reference != null && (reference.equals(o1.getId()) || reference.startsWith(o1.getId() + "."))) {
-								o2DependsOnO1 = true;
-								break;
-							}
-						}
-						if (o1DependsOnO2 && !o2DependsOnO1) {
-							result = 1;
-						}
-						else if (!o1DependsOnO2 && o2DependsOnO1) {
-							result = -1;
-						}
-						else if (o1DependsOnO2 && o2DependsOnO1) {
-							logger.warn("Found a circular dependency between " + o1.getId() + " and " + o2.getId());
-						}
+					else if (o1DependsOnO2 && o2DependsOnO1) {
+						logger.warn("Found a circular dependency between " + o1.getId() + " and " + o2.getId());
 					}
 					// we need to switch them
 					if ((i < j && result == 1) || (i > j && result == -1)) {
@@ -829,6 +884,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		// so the original has tons more, but these are either without any references at all (which are loaded first anyway)
+		// or with references that are _not_ to other artifact managers
+		// the ones we sorted only contain artifact managers with references to one another
+		// we now remove them from the original list and re-add them in the correct order
+		original.removeAll(artifactRepositoryManagers);
+		original.addAll(artifactRepositoryManagers);
 	}
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -1302,6 +1363,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return new ListableServiceContext() {
 			private EAIRepositoryServiceTrackerProvider trackerProvider = new EAIRepositoryServiceTrackerProvider(EAIResourceRepository.this);
 			private EAIRepositoryServiceAuthorizerProvider authorizerProvider = new EAIRepositoryServiceAuthorizerProvider(EAIResourceRepository.this);
+			private String correlationId;
 			@SuppressWarnings("unchecked")
 			@Override
 			public <T extends Artifact> ArtifactResolver<T> getResolver(Class<T> arg0) {
@@ -1325,7 +1387,17 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 			@Override
 			public String getCorrelationId() {
-				return CorrelationIdEnricher.getCorrelationId();
+				if (CorrelationIdEnricher.getCorrelationId() != null) {
+					return CorrelationIdEnricher.getCorrelationId();
+				}
+				else if (correlationId == null) {
+					synchronized(this) {
+						if (correlationId == null) {
+							correlationId = UUID.randomUUID().toString().replace("-", "");
+						}
+					}
+				}
+				return correlationId;
 			}
 		};
 	}

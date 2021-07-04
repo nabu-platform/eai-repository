@@ -19,8 +19,10 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -684,5 +686,42 @@ public class EAIRepositoryUtils {
 			}
 		}
 		return device;
+	}
+	
+	public static Set<String> getAllReferences(Repository repository, String nodeId) {
+		Set<String> references = new HashSet<String>();
+		getAllReferences(repository, nodeId, new ArrayList<String>(), references);
+		return references;
+	}
+	
+	private static void getAllReferences(Repository repository, String nodeId, List<String> searchedNodes, Set<String> result) {
+		searchedNodes.add(nodeId);
+		List<String> references = repository.getReferences(nodeId);
+		result.addAll(references);
+		for (String reference : references) {
+			if (!searchedNodes.contains(reference)) {
+				getAllReferences(repository, reference, searchedNodes, result);
+			}
+		}
+	}
+	
+	public static Set<String> explodeReferences(Set<String> references) {
+		Set<String> additional = new HashSet<String>();
+		for (String reference : references) {
+			if (reference == null || reference.startsWith("java.") || reference.startsWith("javax.")) {
+				continue;
+			}
+			int index = -1;
+			do {
+				index = reference.lastIndexOf('.');
+				if (index >= 0) {
+					reference = reference.substring(0, index);
+					additional.add(reference);
+				}
+			}
+			while (index >= 0);
+		}
+		references.addAll(additional);
+		return references;
 	}
 }
