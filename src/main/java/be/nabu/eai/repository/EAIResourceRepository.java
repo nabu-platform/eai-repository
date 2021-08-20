@@ -397,7 +397,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				if (!dependencies.containsKey(reference)) {
 					dependencies.put(reference, new ArrayList<String>());
 				}
-				dependencies.get(reference).add(id);
+				if (!dependencies.get(reference).contains(id)) {
+					dependencies.get(reference).add(id);
+				}
 			}
 			Node node = getNode(id);
 			for (ClassProvidingArtifact provider : classProvidingArtifacts) {
@@ -1491,6 +1493,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			catch (Exception e) {
 				// if we can't load it, we ignore it, otherwise it can create endless problems
 				logger.error("Can not scan: " + child.getId(), e);
+				// the file system might be out of sync
+				if (child instanceof RepositoryEntry) {
+					((RepositoryEntry) child).refreshData();
+				}
 				child.refresh(false);
 			}
 			if (!child.isLeaf()) {
