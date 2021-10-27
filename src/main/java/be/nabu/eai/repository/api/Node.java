@@ -91,4 +91,8 @@ public interface Node {
 	 * You can tag a node so we can group them together based on context
 	 */
 	public default List<String> getTags() { return null; }
+	/**
+	 * This should contain either a resolvable URI to the merge script, or the actual script itself
+	 */
+	public default String getMergeScript() { return null; }
 }

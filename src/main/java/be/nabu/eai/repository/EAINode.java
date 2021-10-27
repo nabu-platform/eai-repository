@@ -40,6 +40,7 @@ public class EAINode implements Node {
 	private boolean hidden;
 	private String name, description, comment, summary;
 	private List<String> tags;
+	private String mergeScript;
 	
 	/**
 	 * By default all nodes are leafs
@@ -245,6 +246,15 @@ public class EAINode implements Node {
 	}
 	public void setTags(List<String> tags) {
 		this.tags = tags;
+	}
+
+	@LargeText
+	@Override
+	public String getMergeScript() {
+		return mergeScript;
+	}
+	public void setMergeScript(String mergeScript) {
+		this.mergeScript = mergeScript;
 	}
 	
 }

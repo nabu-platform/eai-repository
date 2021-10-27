@@ -111,7 +111,7 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 	@Override
 	public List<String> getEnabledFeatures() {
 		if (enabledFeatures == null) {
-			enabledFeatures = repository.getEnabledFeatures();
+			enabledFeatures = repository.getEnabledFeatures(getSecurityContext().getToken());
 		}
 		return enabledFeatures;
 	}

@@ -3,11 +3,20 @@ package be.nabu.eai.repository.artifacts.jaxb;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.Collection;
+import java.util.Iterator;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
 import javax.xml.bind.Marshaller;
 import javax.xml.bind.Unmarshaller;
+import javax.xml.bind.annotation.adapters.XmlJavaTypeAdapter;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.jaxb.ArtifactXMLAdapter;
@@ -38,6 +47,7 @@ public class JAXBArtifact<T> implements LazyArtifact, LiveReloadable {
 	private Repository repository;
 	// false by default!
 	private boolean canLiveReload = false;
+	private Logger logger = LoggerFactory.getLogger(getClass());
 
 	public JAXBArtifact(String id, ResourceContainer<?> directory, Repository repository, String fileName, Class<T> configurationClazz) {
 		this.id = id;
@@ -115,7 +125,7 @@ public class JAXBArtifact<T> implements LazyArtifact, LiveReloadable {
 		else {
 			ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) target);
 			try {
-				configuration = unmarshal(IOUtils.toInputStream(readable));
+				configuration = validateConfiguration(unmarshal(IOUtils.toInputStream(readable)));
 			}
 			catch (JAXBException e) {
 				throw new IOException(e);
@@ -123,6 +133,51 @@ public class JAXBArtifact<T> implements LazyArtifact, LiveReloadable {
 			finally {
 				readable.close();
 			}
+		}
+	}
+	
+	private T validateConfiguration(T configuration) {
+		validate(configuration);
+		return configuration;
+	}
+	// we use artifact xml adapter in numerous places and we can't tell it which type of artifact though that information is generally hidden in the generics
+	// we use this f*ed up meta-processing to figure out these problems and can't them
+	// this can only occur with generics which are wiped at compile time, for single artifacts this will probably simply error out
+	// we need another solution for that at some point...
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	private void validate(Object configuration) {
+		try {
+			for (Method method : configuration.getClass().getMethods()) {
+				// if we are getting a collection
+				if (method.getName().startsWith("get") && method.getParameterCount() == 0 && Collection.class.isAssignableFrom(method.getReturnType())) {
+					// that are converted with artifacts
+					XmlJavaTypeAdapter annotation = method.getAnnotation(XmlJavaTypeAdapter.class);
+					if (annotation != null) {
+						if (ArtifactXMLAdapter.class.isAssignableFrom(annotation.value())) {
+							Type returnType = method.getGenericReturnType();
+							if (returnType instanceof ParameterizedType) {
+								Type result = ((ParameterizedType) returnType).getActualTypeArguments()[0];
+								if (result instanceof Class) {
+									Collection collection = (Collection) method.invoke(configuration);
+									if (collection != null) {
+										Iterator iterator = collection.iterator();
+										while (iterator.hasNext()) {
+											Object next = iterator.next();
+											if (next != null && !((Class) result).isAssignableFrom(next.getClass())) {
+												logger.info("Skipping incorrect entry in " + getId() + " (" + method.getName() + "): " + next + " is not of type " + result);
+												iterator.remove();
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		catch (Exception e) {
+			logger.error("Could not standardize configuration", e);
 		}
 	}
 	

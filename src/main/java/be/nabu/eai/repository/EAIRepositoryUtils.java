@@ -89,11 +89,16 @@ public class EAIRepositoryUtils {
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
 
 	public static boolean isProject(Entry entry) {
-		return isProject(entry.getCollection());
-	}
-	
-	public static boolean isProject(be.nabu.eai.repository.api.Collection collection) {
-		return collection != null && "project".equals(collection.getType()); 
+		be.nabu.eai.repository.api.Collection collection = entry.getCollection();
+		if (collection != null && "project".equals(collection.getType())) {
+			return true;
+		}
+		// any root folder that is not nabu is currently flagged as a project (retroactive shizzle!)
+		// any root folder with an explicit collection that is not a project, does not count
+		else if (collection == null && entry.getParent() != null && entry.getParent().getParent() == null && !"nabu".equals(entry.getName())) {
+			return true;
+		}
+		return false;
 	}
 	
 	private static String getCode(Throwable t) {

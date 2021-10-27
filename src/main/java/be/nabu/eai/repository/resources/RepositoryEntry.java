@@ -105,6 +105,11 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	}
 	
 	public void refresh(boolean includeData, boolean recursive) {
+		// in development mode we add some logs to better pinpoint the reload issue
+		// it is assumed to lie here
+		if (EAIResourceRepository.isDevelopment()) {
+			logger.info("Refreshing node for " + getId() + " due to expliciet reloadNode request (" + lastLoaded + ") " + includeData + " / " + recursive);
+		}
 		lastLoaded = null;
 		reloadNode = true;
 		if (includeData) {
@@ -475,41 +480,46 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			Resource resource = container.getChild("node.xml");
 			if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
 				synchronized(this) {
-					if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
-						boolean isReload = false;
-						if (node != null) {
-							isReload = true;
-							repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
-							node = null;
-						}
-						else {
-							repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
-						}
-						try {
-							ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
+					boolean isReload = false;
+					try {
+						if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
+							if (node != null) {
+								isReload = true;
+								repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
+								node = null;
+							}
+							else {
+								repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
+							}
 							try {
-								node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
-								node.setEntry(this);
-								reloadNode = false;
+								ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
+								try {
+									node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
+									node.setEntry(this);
+									reloadNode = false;
+								}
+								catch (JAXBException e) {
+									throw new IOException(e);
+								}
+								finally {
+									readable.close();
+								}
 							}
-							catch (JAXBException e) {
-								throw new IOException(e);
+							catch (IOException e) {
+								logger.error("Could not " + (isReload ? "reload" : "load") + " node: " + getId(), e);
 							}
-							finally {
-								readable.close();
+				
+							if (resource instanceof TimestampedResource) {
+								lastLoaded = ((TimestampedResource) resource).getLastModified();
 							}
+							// trigger a reload _after_ we have updated the lastLoaded
+							// otherwise we can get into a loop, the reload triggers a start in the server, the start (e.g. for a web application) does a getNode()
+							// the getNode() sees the already loaded node but wants to reload it cause the timestamp is not clear, and triggers a reload etc etc
+							repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
 						}
-						catch (IOException e) {
-							logger.error("Could not load node " + getId(), e);
-						}
-			
-						if (resource instanceof TimestampedResource) {
-							lastLoaded = ((TimestampedResource) resource).getLastModified();
-						}
-						// trigger a reload _after_ we have updated the lastLoaded
-						// otherwise we can get into a loop, the reload triggers a start in the server, the start (e.g. for a web application) does a getNode()
-						// the getNode() sees the already loaded node but wants to reload it cause the timestamp is not clear, and triggers a reload etc etc
-						repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
+					}
+					catch (Exception e) {
+						logger.error("Could not " + (isReload ? "reload" : "load") + " node: " + getId(), e);
 					}
 				}
 			}

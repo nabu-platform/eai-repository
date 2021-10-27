@@ -33,6 +33,8 @@ import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.EventEnricher;
 import be.nabu.eai.repository.api.FeatureConfigurator;
+import be.nabu.eai.repository.api.FeatureDescription;
+import be.nabu.eai.repository.api.FeatureProviderService;
 import be.nabu.eai.repository.api.LicenseManager;
 import be.nabu.eai.repository.api.LicensedRepository;
 import be.nabu.eai.repository.api.MavenRepository;
@@ -681,6 +683,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
 				Set<String> calculateDependenciesToReload = calculateDependenciesToReload(child);
+				// sometimes it is listed as a dependency to itself?
+				calculateDependenciesToReload.remove(child.getId());
 				dependencies.removeAll(calculateDependenciesToReload);
 				dependencies.addAll(calculateDependenciesToReload);
 			}
@@ -1221,6 +1225,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public boolean isValidName(ResourceContainer<?> parent, String name) {
+		return isValidName(name);
+	}
+
+	public static boolean isValidName(String name) {
 		return name.matches("^[a-zA-Z]+[\\w]+$") && !RESERVED.contains(name);
 	}
 	
@@ -1837,12 +1845,23 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return aliases;
 	}
 	
-	public List<String> getEnabledFeatures() {
+	public List<String> getEnabledFeatures(Token token) {
 		List<String> enabledFeatures = new ArrayList<String>();
 		for (FeatureConfigurator configurator : getArtifacts(FeatureConfigurator.class)) {
-			List<String> enabled = configurator.getEnabledFeatures();
+			List<String> enabled = configurator.getEnabledFeatures(token);
 			if (enabled != null) {
 				enabledFeatures.addAll(enabled);
+			}
+		}
+		for (FeatureProviderService provider : getArtifacts(FeatureProviderService.class)) {
+			List<FeatureDescription> features = provider.features(token);
+			if (features != null) {
+				for (FeatureDescription description : features) {
+					Boolean enabled = description.getEnabled();
+					if (enabled != null && enabled) {
+						enabledFeatures.add(description.getName());
+					}
+				}
 			}
 		}
 		return enabledFeatures;
