@@ -1716,7 +1716,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				if (metricsGaugeHistorizer == null) {
 					metricsGaugeHistorizer = new GaugeHistorizer(historizationInterval);
 					// start the historizer thread
-					new Thread(metricsGaugeHistorizer).start();
+					Thread thread = new Thread(metricsGaugeHistorizer);
+					thread.setDaemon(true);
+					thread.start();
 				}
 			}
 		}

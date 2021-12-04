@@ -8,9 +8,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
+import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ValidatableArtifactManager;
@@ -18,6 +20,8 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.resources.api.Resource;
 import be.nabu.libs.resources.api.ResourceContainer;
 import be.nabu.libs.resources.api.TimestampedResource;
+import be.nabu.libs.resources.api.WritableResource;
+import be.nabu.libs.resources.memory.MemoryResource;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -54,17 +58,24 @@ public class RepositoryValidator {
 	}
 	
 	private void scan(Entry entry, Map<Class<?>, List<Entry>> nodes) {
-		if (entry.isNode()) {
-			boolean shouldCheck = lastChecked == null;
-			if (!shouldCheck && entry instanceof ResourceEntry) {
-				shouldCheck = shouldCheck(((ResourceEntry) entry).getContainer());
-			}
-			if (shouldCheck) {
-				Class<? extends Artifact> artifactClass = entry.getNode().getArtifactClass();
-				if (!nodes.containsKey(artifactClass)) {
-					nodes.put(artifactClass, new ArrayList<Entry>());
+		if (entry.isNode() && entry instanceof ResourceEntry) {
+			// we only want to validate things that are useful, in other words, things you can _fix_
+			// if you can't actually write to the node container, it doesn't matter that there are errors
+			// the quickest way to check this is to see if the node.xml is writable
+			Resource child = ((ResourceEntry) entry).getContainer().getChild("node.xml");
+			// if we have memory resources, they are writable but ineffective...
+			if (child instanceof WritableResource && !(child instanceof MemoryResource)) {
+				boolean shouldCheck = lastChecked == null;
+				if (!shouldCheck && entry instanceof ResourceEntry) {
+					shouldCheck = shouldCheck(((ResourceEntry) entry).getContainer());
 				}
-				nodes.get(artifactClass).add(entry);
+				if (shouldCheck) {
+					Class<? extends Artifact> artifactClass = entry.getNode().getArtifactClass();
+					if (!nodes.containsKey(artifactClass)) {
+						nodes.put(artifactClass, new ArrayList<Entry>());
+					}
+					nodes.get(artifactClass).add(entry);
+				}
 			}
 		}
 		for (Entry child : entry) {
@@ -83,10 +94,41 @@ public class RepositoryValidator {
 			for (Entry entry : nodes.get(clazz)) {
 				List<Validation<?>> validations = new ArrayList<Validation<?>>();
 				try {
+					// we are not interested in validation errors from already deprecated stuff, we won't be fixing it
+					if (entry.isNode()) {
+						Node node = entry.getNode();
+						if (node instanceof EAINode && ((EAINode) node).getDeprecated() != null && ((EAINode) node).getDeprecated().before(new Date())) {
+							continue;
+						}
+					}
+				}
+				catch (Exception e) {
+					validations.add(new ValidationMessage(Severity.ERROR, "Could not load artifact '" + entry.getId() + "': " + e.getMessage()));
+				}
+				try {
 					// check all the references
 					for (String reference : repository.getReferences(entry.getId())) {
+						// just...don't
+						if (reference != null && reference.equals("[B")) {
+							continue;
+						}
 						if (reference != null && EAIRepositoryUtils.isBrokenReference(repository, reference)) {
 							validations.add(new ValidationMessage(Severity.ERROR, "Broken reference: " + reference));
+						}
+						else if (reference != null) {
+							try {
+								Entry referenceEntry = repository.getEntry(reference);
+								if (referenceEntry != null && referenceEntry.isNode()) {
+									Node node = referenceEntry.getNode();
+									// if deprecated, we flag it
+									if (node instanceof EAINode && ((EAINode) node).getDeprecated() != null && ((EAINode) node).getDeprecated().before(new Date())) {
+										validations.add(new ValidationMessage(Severity.ERROR, "Deprecated reference: " + reference));
+									}
+								}
+							}
+							catch (Exception e) {
+								validations.add(new ValidationMessage(Severity.ERROR, "Could not load reference '" + reference + "': " + e.getMessage()));
+							}
 						}
 					}
 					
