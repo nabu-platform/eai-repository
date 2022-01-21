@@ -9,8 +9,6 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -53,6 +51,7 @@ import be.nabu.eai.repository.impl.CorrelationIdEnricher;
 import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.resources.RepositoryResourceResolver;
+import be.nabu.eai.repository.util.MetricStatistics;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.LocalClassLoader;
 import be.nabu.libs.artifacts.api.Artifact;
@@ -74,6 +73,8 @@ import be.nabu.libs.metrics.core.GaugeHistorizer;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
 import be.nabu.libs.metrics.core.api.ListableSinkProvider;
 import be.nabu.libs.metrics.core.api.Sink;
+import be.nabu.libs.metrics.core.api.SinkStatistics;
+import be.nabu.libs.metrics.core.api.StatisticsListener;
 import be.nabu.libs.metrics.core.sinks.LimitedHistorySinkWithStatistics;
 import be.nabu.libs.metrics.impl.MetricGrouper;
 import be.nabu.libs.metrics.impl.SystemMetrics;
@@ -228,6 +229,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private long historizationInterval = 5000;
 	private int historySize = 500;
 	private Map<String, EventEnricher> eventEnrichers = new HashMap<String, EventEnricher>();
+	
+	// defaults to 15 min for dev, 5 min voor prd
+	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "900000" : "300000"));
 
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -1700,7 +1704,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					synchronized(metrics) {
 						MetricGrouper metric = new MetricGrouper(newMetricInstance(METRICS_SYSTEM), new MetricsLevelProvider(METRICS_SYSTEM));
 						metrics.put(METRICS_SYSTEM, metric);
-						SystemMetrics.record(metric);
+						SystemMetrics.record(this);
 					}
 				}
 			}
@@ -1741,7 +1745,21 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (!sinks.containsKey(key)) {
 			synchronized(this) {
 				if (!sinks.containsKey(key)) {
-					sinks.put(key, new LimitedHistorySinkWithStatistics(historySize));
+					LimitedHistorySinkWithStatistics value = new LimitedHistorySinkWithStatistics(historySize);
+					value.setWindowInterval(metricInterval);
+					value.setStatisticsListener(new StatisticsListener() {
+						@Override
+						public void handle(long windowStart, long windowStop, SinkStatistics container) {
+							MetricStatistics statistics = new MetricStatistics();
+							statistics.setStatistics(container);
+							statistics.setWindowStart(windowStart);
+							statistics.setWindowStop(windowStop);
+							statistics.setId(id);
+							statistics.setCategory(category);
+							getMetricsDispatcher().fire(statistics, value);
+						}
+					});
+					sinks.put(key, value);
 				}
 			}
 		}
