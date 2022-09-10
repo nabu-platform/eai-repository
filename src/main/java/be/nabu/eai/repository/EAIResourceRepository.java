@@ -1656,6 +1656,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return classLoader;
 	}
 	
+	public void resetEntryMap() {
+		this.reset();
+	}
+	
 	private void reset() {
 		nodesByType = null;
 	}
@@ -1721,6 +1725,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					metricsGaugeHistorizer = new GaugeHistorizer(historizationInterval);
 					// start the historizer thread
 					Thread thread = new Thread(metricsGaugeHistorizer);
+					thread.setName("metrics-gauge-historizer");
 					thread.setDaemon(true);
 					thread.start();
 				}
@@ -1883,6 +1888,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					}
 				}
 			}
+		}
+		if (isDevelopment()) {
+			enabledFeatures.add("DEV");
+		}
+		else {
+			enabledFeatures.add("LIVE");
 		}
 		return enabledFeatures;
 	}

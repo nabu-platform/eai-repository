@@ -10,6 +10,7 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.Repository;
+import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.libs.resources.api.Resource;
 
 public class MemoryEntry implements ModifiableEntry, DynamicEntry {

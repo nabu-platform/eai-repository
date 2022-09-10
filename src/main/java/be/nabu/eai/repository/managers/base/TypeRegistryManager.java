@@ -67,6 +67,8 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
 						logger.debug("Adding " + name + " to " + parent.getId() + " / " + parent);
 						EAINode node = new EAINode();
+						// inherit deprecation status
+						node.setDeprecated(root.getNode().getDeprecated());
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
 						MemoryEntry child = new MemoryEntry(artifact.getId(), root.getRepository(), parent, node, parent.getId() + "." + name, name);
@@ -87,6 +89,8 @@ abstract public class TypeRegistryManager<T extends TypeRegistry & Artifact> imp
 						ModifiableEntry parent = EAIRepositoryUtils.getParent(root, id, false);
 						logger.debug("Adding " + name + " to " + parent.getId() + " / " + parent);
 						EAINode node = new EAINode();
+						// inherit deprecation status
+						node.setDeprecated(root.getNode().getDeprecated());
 						node.setArtifact((DefinedType) type);
 						node.setLeaf(true);
 						MemoryEntry child = new MemoryEntry(artifact.getId(), root.getRepository(), parent, node, parent.getId() + "." + name, name);
