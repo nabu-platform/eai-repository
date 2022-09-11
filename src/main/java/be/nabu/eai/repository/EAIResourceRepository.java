@@ -9,6 +9,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -161,6 +162,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public static final String METRICS_SYSTEM = "system";
 	
+	// keep track of when this repository was started, it paints a picture of uptime
+	private Date started = new Date();
 	private ResourceContainer<?> resourceRoot;
 	private RepositoryEntry repositoryRoot;
 	private EventDispatcher dispatcher = new EventDispatcherImpl();
@@ -1912,6 +1915,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	public List<Templater> getTemplaters() {
 		return templaters;
+	}
+
+	public Date getStarted() {
+		return started;
 	}
 	
 }
