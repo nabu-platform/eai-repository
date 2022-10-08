@@ -69,6 +69,7 @@ import be.nabu.libs.authentication.jaas.JAASConfiguration;
 import be.nabu.libs.cache.api.CacheProvider;
 import be.nabu.libs.events.api.EventDispatcher;
 import be.nabu.libs.events.impl.EventDispatcherImpl;
+import be.nabu.libs.http.core.HTTPRequestAuthenticatorFactory;
 import be.nabu.libs.maven.api.DomainRepository;
 import be.nabu.libs.metrics.core.GaugeHistorizer;
 import be.nabu.libs.metrics.core.MetricInstanceImpl;
@@ -295,6 +296,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		// this is important for clusters
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new RepositoryServiceInterfaceResolver(this));
 		DefinedServiceInterfaceResolverFactory.getInstance().addResolver(new SPIDefinedServiceInterfaceResolver());
+		HTTPRequestAuthenticatorFactory.getInstance().register(new RepositoryHTTPRequestAuthenticatorProvider(this));
 		instance = this;
 		// only important at runtime to resolve data
 		// should not impact clusters
