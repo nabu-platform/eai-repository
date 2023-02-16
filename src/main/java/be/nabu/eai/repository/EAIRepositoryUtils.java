@@ -69,7 +69,6 @@ import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceInterface;
-import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
@@ -99,6 +98,13 @@ public class EAIRepositoryUtils {
 			return true;
 		}
 		return false;
+	}
+	
+	public static Entry getProject(Entry entry) {
+		while (entry != null && !isProject(entry)) {
+			entry = entry.getParent();
+		}
+		return entry;
 	}
 	
 	private static String getCode(Throwable t) {
@@ -228,17 +234,26 @@ public class EAIRepositoryUtils {
 		}
 	}
 	
-	private static void zipEntry(ZipOutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
+	private static boolean zipEntry(ZipOutputStream output, Entry entry, EntryFilter acceptor) throws IOException {
+		boolean zipped = false;
 		if (entry instanceof ResourceEntry && entry.isNode() && (acceptor == null || acceptor.accept((ResourceEntry) entry))) {
 			zipNode(output, entry.getId().replace(".", "/"), ((ResourceEntry) entry).getContainer(), ((ResourceEntry) entry).getRepository(), true);
+			zipped = true;
 		}
 		if (!entry.isLeaf() && (acceptor == null || acceptor.recurse((ResourceEntry) entry))) {
 			for (Entry child : entry) {
 				if (child instanceof ResourceEntry) {
-					zipEntry(output, (ResourceEntry) child, acceptor);
+					zipped |= zipEntry(output, (ResourceEntry) child, acceptor);
 				}
 			}
+			// if we zipped anything in the folder, let's include any internal folders as well (e.g. documentation)
+			if (zipped && entry instanceof ResourceEntry && !entry.isNode()) {
+				ResourceContainer<?> container = ((ResourceEntry) entry).getContainer();
+				// we want files like collection.xml to get copied and folders like protected which might contain documentation
+				zipNode(output, entry.getId().replace(".",  "/"), container, ((ResourceEntry) entry).getRepository(), true);
+			}
 		}
+		return zipped;
 	}
 	
 	public static byte[] zipSingleEntry(ResourceEntry entry) throws IOException {
@@ -268,6 +283,7 @@ public class EAIRepositoryUtils {
 	private static void zipNode(ZipOutputStream output, String path, ResourceContainer<?> container, ResourceRepository repository, boolean limitToInternal) throws IOException {
 		for (Resource resource : container) {
 			String childPath = (path == null ? "" : path + "/") + resource.getName();
+			System.out.println("zipping " + childPath);
 			if (resource instanceof ReadableResource) {
 				ZipEntry entry = new ZipEntry(childPath);
 				if (resource instanceof FiniteResource) {

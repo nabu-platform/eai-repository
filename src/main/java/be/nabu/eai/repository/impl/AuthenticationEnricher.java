@@ -40,6 +40,24 @@ public class AuthenticationEnricher implements EventEnricher {
 						((ComplexContent) object).set("realm", token.getRealm());
 					}
 				}
+				if (token.getImpersonator() != null && ((ComplexContent) object).getType().get("impersonator") != null) {
+					Object current = ((ComplexContent) object).get("impersonator");
+					if (current == null) {
+						((ComplexContent) object).set("impersonator", token.getImpersonator());
+					}
+				}
+				if (token.getImpersonatorId() != null && ((ComplexContent) object).getType().get("impersonatorId") != null) {
+					Object current = ((ComplexContent) object).get("impersonatorId");
+					if (current == null) {
+						((ComplexContent) object).set("impersonatorId", token.getImpersonatorId());
+					}
+				}
+				if (token.getImpersonatorRealm() != null && ((ComplexContent) object).getType().get("impersonatorRealm") != null) {
+					Object current = ((ComplexContent) object).get("impersonatorRealm");
+					if (current == null) {
+						((ComplexContent) object).set("impersonatorRealm", token.getImpersonatorRealm());
+					}
+				}
 			}
 		}
 		return null;

@@ -6,9 +6,11 @@ import java.util.List;
 import be.nabu.eai.repository.api.ModifiableServiceRuntimeTrackerProvider;
 import be.nabu.libs.services.MultipleServiceRuntimeTracker;
 import be.nabu.libs.services.ServiceRuntime;
+import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceRuntimeTracker;
 import be.nabu.libs.services.api.ServiceRuntimeTrackerProvider;
+import be.nabu.libs.services.api.ServiceWrapper;
 
 public class EAIRepositoryServiceTrackerProvider implements ModifiableServiceRuntimeTrackerProvider {
 
@@ -19,13 +21,30 @@ public class EAIRepositoryServiceTrackerProvider implements ModifiableServiceRun
 		this.repository = repository;
 	}
 	
+	public static Service getService(ServiceRuntime runtime) {
+		return resolveService(runtime.getService());
+	}
+
+	private static Service resolveService(Service service) {
+		while (service instanceof ServiceWrapper) {
+			service = ((ServiceWrapper) service).getOriginal();
+		}
+		return service;
+	}
+	
+	private static boolean shouldTrack(ServiceRuntime runtime, String idToTrack) {
+		Service running = getService(runtime);
+		return running instanceof DefinedService ? ((DefinedService) running).getId().equals(idToTrack) : false;
+	}
+	
 	@Override
 	public ServiceRuntimeTracker getTracker(ServiceRuntime runtime) {
 		List<ServiceRuntimeTracker> trackers = new ArrayList<ServiceRuntimeTracker>();
 		// first check the ones that were dynamically inserted into this specific run
 		for (RuntimeRegistration registration : registrations) {
+			String serviceToTrack = ((DefinedService) registration.getService()).getId();
 			// if it's the service, start tracking
-			if (runtime.getService().equals(registration.getService())) {
+			if (shouldTrack(runtime, serviceToTrack)) {
 				trackers.add(registration.getTracker());
 			}
 			// non-recursive, just check next
@@ -36,9 +55,10 @@ public class EAIRepositoryServiceTrackerProvider implements ModifiableServiceRun
 			else {
 				ServiceRuntime runtimeToCheck = runtime.getParent();
 				while (runtimeToCheck != null) {
-					if (runtimeToCheck.getService().equals(registration.getService())) {
+					if (shouldTrack(runtimeToCheck, serviceToTrack)) {
 						trackers.add(registration.getTracker());
 					}
+					runtimeToCheck = runtimeToCheck.getParent();
 				}
 			}
 		}

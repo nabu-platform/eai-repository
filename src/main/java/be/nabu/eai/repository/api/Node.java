@@ -95,4 +95,14 @@ public interface Node {
 	 * This should contain either a resolvable URI to the merge script, or the actual script itself
 	 */
 	public default String getMergeScript() { return null; }
+	/**
+	 * You can "lock" a node which prevents accidental editing
+	 */
+	public default boolean isLocked() { return false; }
+	
+	/**
+	 * A logical reference, usually used to communicate with external parties
+	 * @return
+	 */
+	public default String getReference() { return null; }
 }

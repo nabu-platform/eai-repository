@@ -37,8 +37,8 @@ public class EAINode implements Node {
 	private long version;
 	private Date lastModified, created, deprecated;
 	private String environmentId;
-	private boolean hidden;
-	private String name, description, comment, summary;
+	private boolean hidden, locked;
+	private String name, description, comment, summary, reference;
 	private List<String> tags;
 	private String mergeScript;
 	
@@ -255,6 +255,22 @@ public class EAINode implements Node {
 	}
 	public void setMergeScript(String mergeScript) {
 		this.mergeScript = mergeScript;
+	}
+
+	@Override
+	public boolean isLocked() {
+		return locked;
+	}
+	public void setLocked(boolean locked) {
+		this.locked = locked;
+	}
+
+	@Override
+	public String getReference() {
+		return reference;
+	}
+	public void setReference(String reference) {
+		this.reference = reference;
 	}
 	
 }

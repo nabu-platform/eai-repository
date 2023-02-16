@@ -62,6 +62,10 @@ public class RepositoryHTTPRequestAuthenticatorProvider implements HTTPRequestAu
 		}
 		DefinedService service = cache.get(name);
 		if (service != null) {
+			// we reresolve the service in development in case there are updates
+			if (EAIResourceRepository.isDevelopment()) {
+				service = (DefinedService) repository.resolve(service.getId());
+			}
 			return POJOUtils.newProxy(HTTPRequestAuthenticator.class, service, repository, SystemPrincipal.ROOT);
 		}
 		else {

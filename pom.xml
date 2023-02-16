@@ -75,6 +75,10 @@
 			<artifactId>resources-alias</artifactId>
 		</dependency>
 		<dependency>
+			<groupId>be.nabu.libs.resources</groupId>
+			<artifactId>resources-url</artifactId>
+		</dependency>
+		<dependency>
 			<groupId>be.nabu.libs.events</groupId>
 			<artifactId>events-impl</artifactId>
 		</dependency>
