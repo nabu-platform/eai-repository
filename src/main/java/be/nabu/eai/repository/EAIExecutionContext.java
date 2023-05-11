@@ -4,11 +4,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import be.nabu.eai.repository.api.ClusteredServer;
+import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
+import be.nabu.libs.cluster.api.ClusterInstance;
 import be.nabu.libs.events.api.EventTarget;
+import be.nabu.libs.http.api.HTTPRequest;
+import be.nabu.libs.http.core.HTTPUtils;
 import be.nabu.libs.metrics.api.MetricInstance;
+import be.nabu.libs.nio.impl.RequestProcessor;
 import be.nabu.libs.services.ListableServiceContext;
 import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.FeaturedExecutionContext;
@@ -94,6 +100,16 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 			EAIExecutionContext.this.token = token;
 			EAIExecutionContext.this.alternatives = alternateTokens == null ? new ArrayList<Token>() : Arrays.asList(alternateTokens);
 		}
+
+		@Override
+		public Device getDevice() {
+			// if we have a request, attempt to get it from there!
+			Object currentRequest = RequestProcessor.getCurrentRequest();
+			if (currentRequest instanceof HTTPRequest) {
+				return HTTPUtils.getDevice(null, token, true, ((HTTPRequest) currentRequest).getContent().getHeaders());
+			}
+			return UpgradeableSecurityContext.super.getDevice();
+		}
 	}
 
 	@Override
@@ -115,4 +131,10 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 		}
 		return enabledFeatures;
 	}
+
+	@Override
+	public ClusterInstance getCluster() {
+		return repository.getServiceRunner() instanceof ClusteredServer ? ((ClusteredServer) repository.getServiceRunner()).getCluster() : null;
+	}
+	
 }

@@ -8,6 +8,8 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.artifacts.api.ContextualArtifact;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.ServiceUtils;
+import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.Service;
 
 public class RepositoryArtifactResolver<T extends Artifact> {
 
@@ -43,8 +45,26 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 		ServiceRuntime runtime = ServiceRuntime.getRuntime();
 		// check service-context
 		if (runtime != null) {
-			// we did not find for the explicit artifact, lets try the service context
+			// capture the context already
 			String context = ServiceUtils.getServiceContext(runtime);
+			
+			// @2023-03-15: we want to move more towards business packages that encapsulate business data. this means just checking the service itself and the overarching context is NOT enough
+			// we need to check all the intermediate services _first_ to see if a connection was defined for them.
+			// this does mean we can't have "stray" connections on intermediate services
+			// we only check for contextual, related matches are soft deprecated from now on because we (almost?) never use them
+			while (runtime != null) {
+				Service unwrapped = ServiceUtils.unwrap(runtime.getService());
+				if (unwrapped instanceof DefinedService) {
+					longest = getContextualFor(((DefinedService) unwrapped).getId(), artifacts);
+					if (longest != null) {
+						return longest;
+					}
+				}
+				runtime = runtime.getParent();
+			}
+			
+			
+			// we did not find for the explicit artifact, lets try the service context
 			// let's check if a pool has been explicitly configured for this service context
 			longest = getContextualFor(context, artifacts);
 			if (longest != null) {
