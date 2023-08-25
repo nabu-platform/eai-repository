@@ -166,7 +166,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 							catch (IOException e) {
 								throw new RuntimeException(e);
 							}
-							((RepositoryEntry) children.get(childName)).container = directory;
+							((RepositoryEntry) children.get(childName)).container = directory.toReadOnly();
 						}
 					}
 					else {
@@ -191,7 +191,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 					catch (IOException e) {
 						throw new RuntimeException(e);
 					}
-					children.put(childName, new RepositoryEntry(repository, directory, this, childName));
+					children.put(childName, new RepositoryEntry(repository, directory.toReadOnly(), this, childName));
 				}
 			}
 			else if (child instanceof ResourceContainer && !EAIResourceRepository.RESERVED.contains(child.getName()) && !child.getName().startsWith(".")) {
