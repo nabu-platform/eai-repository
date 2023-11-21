@@ -132,6 +132,10 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 		return enabledFeatures;
 	}
 
+	public void setEnabledFeatures(List<String> enabledFeatures) {
+		this.enabledFeatures = enabledFeatures;
+	}
+
 	@Override
 	public ClusterInstance getCluster() {
 		return repository.getServiceRunner() instanceof ClusteredServer ? ((ClusteredServer) repository.getServiceRunner()).getCluster() : null;

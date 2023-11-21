@@ -53,6 +53,7 @@ import be.nabu.eai.repository.managers.MavenManager;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.eai.repository.resources.RepositoryResourceResolver;
 import be.nabu.eai.repository.util.MetricStatistics;
+import be.nabu.eai.repository.util.SystemPrincipal;
 import be.nabu.libs.artifacts.ArtifactResolverFactory;
 import be.nabu.libs.artifacts.LocalClassLoader;
 import be.nabu.libs.artifacts.api.Artifact;
@@ -99,11 +100,14 @@ import be.nabu.libs.services.ServiceRunnerFactory;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.DefinedServiceInterfaceResolver;
 import be.nabu.libs.services.api.ExecutionContext;
+import be.nabu.libs.services.api.ExecutionContextProvider;
 import be.nabu.libs.services.api.ServiceAuthorizerProvider;
 import be.nabu.libs.services.api.ServiceRunner;
 import be.nabu.libs.services.api.ServiceRuntimeTrackerProvider;
 import be.nabu.libs.services.maven.MavenArtifact;
+import be.nabu.libs.services.pojo.MethodServiceInterface;
 import be.nabu.libs.services.pojo.POJOInterfaceResolver;
+import be.nabu.libs.services.pojo.POJOUtils;
 import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
@@ -1875,8 +1879,44 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return aliases;
 	}
 	
+	private Map<Class<?>, List<?>> serviceImplementationCache = new HashMap<Class<?>, List<?>>();
+	
+	@SuppressWarnings("unchecked")
+	public <T> List<T> getServiceImplementations(Class<T> clazz, String name, ExecutionContextProvider provider) {
+		if (!serviceImplementationCache.containsKey(clazz) || isDevelopment()) {
+			MethodServiceInterface wrap = MethodServiceInterface.wrap(clazz, name);
+			List<T> providers = new ArrayList<T>();
+			for (DefinedService service : getArtifacts(DefinedService.class)) {
+				if (POJOUtils.isImplementation(service, wrap)) {
+					providers.add(POJOUtils.newProxy(clazz, service, provider, SystemPrincipal.ROOT));
+				}
+			}
+			serviceImplementationCache.put(clazz, providers);
+		}
+		return (List<T>) serviceImplementationCache.get(clazz);
+	}
+	
+	// globally enabled features
+	private List<String> globalFeatures = new ArrayList<String>();
+	
+	public void toggleGlobalFeature(String feature, boolean enabled) {
+		boolean currentlyEnabled = globalFeatures.contains(feature);
+		if (enabled) {
+			if (!currentlyEnabled) {
+				synchronized(globalFeatures) {
+					globalFeatures.add(feature);
+				}
+			}
+		}
+		else if (currentlyEnabled) {
+			synchronized(globalFeatures) {
+				globalFeatures.remove(feature);
+			}
+		}
+	}
+	
 	public List<String> getEnabledFeatures(Token token) {
-		List<String> enabledFeatures = new ArrayList<String>();
+		List<String> enabledFeatures = new ArrayList<String>(globalFeatures);
 		for (FeatureConfigurator configurator : getArtifacts(FeatureConfigurator.class)) {
 			List<String> enabled = configurator.getEnabledFeatures(token);
 			if (enabled != null) {
@@ -1894,6 +1934,31 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		
+		// this currently always ends in a recursive loop, we try to override the eai execution context to not have features to prevent this, but this service will be run when the _actual_ service is already started, at which point there is an execution context already
+		// this means we ignore the execution context we pass in here
+		// it was a design that has a lot of overhead anyway, so instead we go for explicitly manipulatable features
+//		ExecutionContextProvider executionContextProvider = new ExecutionContextProvider() {
+//			@Override
+//			public ExecutionContext newExecutionContext(Token primaryToken, Token... alternativeTokens) {
+//				EAIExecutionContext eaiExecutionContext = new EAIExecutionContext(EAIResourceRepository.this, token, false, alternativeTokens);
+//				// make sure we have no features running for this, otherwise we will trigger resolving of the features!
+//				eaiExecutionContext.setEnabledFeatures(new ArrayList<String>());
+//				return eaiExecutionContext;
+//			}
+//		};
+//		for (FeatureProviderService provider : getServiceImplementations(FeatureProviderService.class, "features", executionContextProvider)) {
+//			List<FeatureDescription> features = provider.features(token);
+//			if (features != null) {
+//				for (FeatureDescription description : features) {
+//					Boolean enabled = description.getEnabled();
+//					if (enabled != null && enabled) {
+//						enabledFeatures.add(description.getName());
+//					}
+//				}
+//			}
+//		}
+		
 		if (isDevelopment()) {
 			enabledFeatures.add("DEV");
 		}

@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.impl;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import be.nabu.eai.repository.api.Repository;
@@ -10,6 +11,8 @@ import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.ServiceUtils;
 import be.nabu.libs.services.api.DefinedService;
 import be.nabu.libs.services.api.Service;
+import be.nabu.libs.types.ComplexContentWrapperFactory;
+import be.nabu.libs.types.api.ComplexContent;
 
 public class RepositoryArtifactResolver<T extends Artifact> {
 
@@ -106,6 +109,72 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 			return closest == null ? null : closest.getId();
 		}
 		return null;
+	}
+	
+	public static Object getContextualFor(String forId, List<Object> available, String field) {
+		Object result = null;
+		if (forId != null) {
+			result = getContextualObjectFor(forId, available, field);
+		}
+		if (result == null) {
+			ServiceRuntime runtime = ServiceRuntime.getRuntime();
+			String context = runtime == null ? null : ServiceUtils.getServiceContext(runtime);
+			while (runtime != null && result == null) {
+				Service unwrapped = ServiceUtils.unwrap(runtime.getService());
+				if (unwrapped instanceof DefinedService) {
+					result = getContextualObjectFor(((DefinedService) unwrapped).getId(), available, field);
+				}
+				runtime = runtime.getParent();
+			}
+			if (result == null && context != null) {
+				result = getContextualObjectFor(context, available, field);
+			}
+		}
+		return result;
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static Object getContextualObjectFor(String forId, List<Object> available, String field) {
+		Object longest = null;
+		String longestContext = null;
+		Object nullMatch = null;
+		for (Object object : available) {
+			if (object == null) {
+				continue;
+			}
+			if (!(object instanceof ComplexContent)) {
+				object = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(object);
+				if (object == null) {
+					continue;
+				}
+			}
+			Object contextValue = ((ComplexContent) object).get(field == null ? "context" : field);
+			if (contextValue == null) {
+				if (nullMatch == null) {
+					nullMatch = object;
+				}
+				continue;
+			}
+			else if (!(contextValue instanceof Iterable)) {
+				contextValue = Arrays.asList(contextValue.toString().split("[\\s]*,[\\s]*"));
+			}
+			for (Object single : (Iterable) contextValue) {
+				if (single == null) {
+					if (nullMatch == null) {
+						nullMatch = object;
+					}
+					continue;
+				}
+				String context = single.toString();
+				if (forId.equals(context) || forId.startsWith(context + ".")) {
+					if (longestContext == null || context.length() > longestContext.length()) {
+						longestContext = context;
+						longest = object;
+					}
+				}
+			}
+		}
+		return longest == null ? nullMatch : longest;
 	}
 	
 	private String getContextualFor(String forId, List<T> artifacts) {

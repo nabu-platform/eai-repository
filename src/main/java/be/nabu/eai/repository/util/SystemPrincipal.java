@@ -16,6 +16,7 @@ public class SystemPrincipal implements Token {
 	private static final long serialVersionUID = 1L;
 
 	public static final SystemPrincipal ROOT = new SystemPrincipal("root");
+	public static final SystemPrincipal GUEST = new SystemPrincipal("guest");
 	
 	private String name, realm;
 
