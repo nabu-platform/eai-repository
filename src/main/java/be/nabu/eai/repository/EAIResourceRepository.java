@@ -1121,7 +1121,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			for (String dependency : dependencies) {
 				logger.debug("Relinking dependency: " + dependency);
 				Entry dependencyEntry = getEntry(dependency);
-				relinkSingle(from, to, validations, dependencyEntry);
+				if (dependencyEntry == null) {
+					validations.add(new ValidationMessage(Severity.ERROR, "Can not find dependency '" + dependency + "' to relink " + from.getId() + " to " + to.getId()));
+				}
+				else {
+					relinkSingle(from, to, validations, dependencyEntry);
+				}
 			}
 		}
 		// recurse!
@@ -1184,7 +1189,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
-		else {
+		else if (dependencyEntry != null) {
 			validations.add(new ValidationMessage(Severity.ERROR, "Can not update dependency '" + dependencyEntry.getId() + "' as it is not a resource entry"));
 		}
 	}
