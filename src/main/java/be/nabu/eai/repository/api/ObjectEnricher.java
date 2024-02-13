@@ -4,6 +4,8 @@ import java.util.List;
 
 import javax.jws.WebParam;
 
+import be.nabu.libs.services.api.ServiceException;
+
 /**
  * Take a list of objects and enrich (or persist updates to) the listed fields
  * 
@@ -26,6 +28,6 @@ import javax.jws.WebParam;
  * This way CRUD can also perform enrichment on entirely different types. This should make it work end to end
  */
 public interface ObjectEnricher {
-	public void enrich(@WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToEnrich") List<String> fieldsToEnrich);
-	public void persist(@WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToPersist") List<String> fieldsToPersist);
+	public void apply(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToEnrich") List<String> fieldsToEnrich) throws ServiceException;
+	public void persist(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToPersist") List<String> fieldsToPersist) throws ServiceException;
 }

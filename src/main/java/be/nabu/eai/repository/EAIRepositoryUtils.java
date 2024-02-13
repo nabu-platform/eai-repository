@@ -20,6 +20,7 @@ import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -46,6 +47,7 @@ import be.nabu.eai.repository.api.ExecutorServiceProvider;
 import be.nabu.eai.repository.api.ExtensibleEntry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Node;
+import be.nabu.eai.repository.api.ObjectEnricher;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
@@ -55,6 +57,7 @@ import be.nabu.libs.artifacts.api.Artifact;
 import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.principals.DevicePrincipal;
+import be.nabu.libs.property.ValueUtils;
 import be.nabu.libs.resources.api.FiniteResource;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -66,13 +69,22 @@ import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.DefinedServiceResolverFactory;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.ExecutionContext;
 import be.nabu.libs.services.api.Service;
 import be.nabu.libs.services.api.ServiceException;
 import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.services.pojo.MethodServiceInterface;
+import be.nabu.libs.types.ComplexContentWrapperFactory;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.ParsedPath;
+import be.nabu.libs.types.TypeUtils;
+import be.nabu.libs.types.api.ComplexContent;
+import be.nabu.libs.types.api.ComplexType;
+import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.Element;
+import be.nabu.libs.types.properties.EnricherProperty;
+import be.nabu.libs.types.properties.PersisterProperty;
+import be.nabu.libs.types.properties.PrimaryKeyProperty;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -745,4 +757,128 @@ public class EAIRepositoryUtils {
 		references.addAll(additional);
 		return references;
 	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static void enrich(List<Object> objects, String language, ExecutionContext context) throws ServiceException {
+		Map<ComplexType, List<ComplexContent>> group = group(objects);
+		for (ComplexType type : group.keySet()) {
+			Map<String, List<String>> enrichedFields = new HashMap<String, List<String>>();
+			Map<String, String> enrichedKeyFields = new HashMap<String, String>();
+			Element<?> primary = null;
+			for (Element<?> child : TypeUtils.getAllChildren(type)) {
+				String enricher = ValueUtils.getValue(EnricherProperty.getInstance(), TypeUtils.getAllProperties(child));
+				if (enricher != null) {
+					// e.g. nabu.cms.core.providers.enricher.address:id;addressType=test;drop=street,number
+					String[] split = enricher.replaceAll("^(.*?);.*", "$1").split(":");
+					if (split.length >= 2) {
+						enricher = split[0];
+						enrichedKeyFields.put(enricher, split[1]);
+					}
+					if (!enrichedFields.containsKey(enricher)) {
+						enrichedFields.put(enricher, new ArrayList<String>());
+					}
+					enrichedFields.get(enricher).add(child.getName());
+				}
+				if (primary == null) {
+					Boolean isPrimary = ValueUtils.getValue(PrimaryKeyProperty.getInstance(), child.getProperties());
+					if (isPrimary != null && isPrimary) {
+						primary = child;
+					}
+				}
+			}
+			// if we have enriched fields, we need to enrich them
+			if (!enrichedFields.isEmpty()) {
+				EAIResourceRepository repository = EAIResourceRepository.getInstance();
+				// we need to run all enrichers separatly
+				for (String enricher : enrichedFields.keySet()) {
+					String keyField = enrichedKeyFields.get(enricher);
+					// fall back to the primary key if not specified
+					if (keyField == null && primary != null) {
+						keyField = primary.getName();
+					}
+					Artifact resolved = repository.resolve(enricher);
+					// it could be a native object enricher
+					if (resolved instanceof ObjectEnricher) {
+						List erase = group.get(type); 
+						((ObjectEnricher) resolved).apply(((DefinedType) type).getId(), language, erase, keyField, enrichedFields.get(enricher));
+					}
+					// or a service that implements the spec
+					else if (resolved instanceof Service) {
+						Service enricherService = (Service) resolved;
+						ComplexContent input = enricherService.getServiceInterface().getInputDefinition().newInstance();
+						if (type instanceof DefinedType) {
+							input.set("typeId", ((DefinedType) type).getId());
+						}
+						input.set("language", language);
+						input.set("instances", group.get(type));
+						input.set("keyField", keyField);
+						input.set("fieldsToEnrich", enrichedFields.get(enricher));
+						new ServiceRuntime(enricherService, context).run(input);
+					}
+					else {
+						throw new IllegalArgumentException("Invalid enricher: " + enricher);
+					}
+				}
+			}
+		}
+	}
+	
+	public static Map<String, String> getEnricherProperties(ComplexType type, String field) {
+		Element<?> element = type.get(field);
+		if (element == null) {
+			throw new IllegalArgumentException("Field does not exist: " + field);
+		}
+		String enricher = ValueUtils.getValue(EnricherProperty.getInstance(), TypeUtils.getAllProperties(element));
+		if (enricher == null) {
+			throw new IllegalArgumentException("Can not find enrichment settings for field: " + field);
+		}
+		Map<String, String> configuration = new HashMap<String, String>();
+		for (String part : enricher.replaceAll("^[^;]+", "").split(";")) {
+			String[] split = part.split("=");
+			configuration.put(split[0], split[1]);
+		}
+		return configuration;
+	}
+	public static Map<String, String> getPersisterProperties(ComplexType type, String field) {
+		Element<?> element = type.get(field);
+		if (element == null) {
+			throw new IllegalArgumentException("Field does not exist: " + field);
+		}
+		String persister = ValueUtils.getValue(PersisterProperty.getInstance(), TypeUtils.getAllProperties(element));
+		if (persister == null) {
+			throw new IllegalArgumentException("Can not find persist settings for field: " + field);
+		}
+		Map<String, String> configuration = new HashMap<String, String>();
+		for (String part : persister.replaceAll("^[^;]+", "").split(";")) {
+			String[] split = part.split("=");
+			configuration.put(split[0], split[1]);
+		}
+		return configuration;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static Map<ComplexType, List<ComplexContent>> group(List<Object> instances) {
+		// especially for insertion, the order _is_ important, hence linked
+		Map<ComplexType, List<ComplexContent>> grouped = new LinkedHashMap<ComplexType, List<ComplexContent>>();
+		for (Object instance : instances) {
+			if (instance != null) {
+				if (!(instance instanceof ComplexContent)) {
+					instance = ComplexContentWrapperFactory.getInstance().getWrapper().wrap(instance);
+					if (instance == null) {
+						throw new IllegalArgumentException("Can not be cast to complex content");
+					}
+				}
+				// if we are working with extensions, we need to figure out how the tables are laid out, we do this based on the collection name property
+				// each type with its own collection name is considered to be a separate table
+				ComplexType type = ((ComplexContent) instance).getType();
+				
+				if (!grouped.containsKey(type)) {
+					grouped.put(type, new ArrayList<ComplexContent>());
+				}
+				grouped.get(type).add((ComplexContent) instance);
+			}
+		}
+		return grouped;
+	}
+
 }
