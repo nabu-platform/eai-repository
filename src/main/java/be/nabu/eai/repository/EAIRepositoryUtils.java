@@ -958,7 +958,7 @@ public class EAIRepositoryUtils {
 		return grouped;
 	}
 
-	public static List<Todo> getTodos(String id) throws IOException, ParseException {
+	public static List<Todo> getTodos(String id) {
 		List<Todo> todos = new ArrayList<Todo>();
 		Node node = EAIResourceRepository.getInstance().getNode(id);
 		if (node != null) {
@@ -972,7 +972,12 @@ public class EAIRepositoryUtils {
 				todos.addAll(ArtifactUtils.scanForTodos(id, node.getComment()));
 			}
 			if (ArtifactWithTodo.class.isAssignableFrom(node.getArtifactClass())) {
-				todos.addAll(((ArtifactWithTodo) node.getArtifact()).getTodos());
+				try {
+					todos.addAll(((ArtifactWithTodo) node.getArtifact()).getTodos());
+				}
+				catch (Exception e) {
+					throw new RuntimeException(e);
+				}
 			}
 		}
 		return todos;

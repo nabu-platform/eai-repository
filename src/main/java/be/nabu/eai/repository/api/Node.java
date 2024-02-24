@@ -2,11 +2,13 @@ package be.nabu.eai.repository.api;
 
 import java.io.IOException;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.artifacts.api.Todo;
 
 public interface Node {
 	/**
@@ -105,4 +107,10 @@ public interface Node {
 	 * @return
 	 */
 	public default String getReference() { return null; }
+	
+	/**
+	 * Any todos related to this node
+	 * @return
+	 */
+	public default List<Todo> getTodos() { return new ArrayList<Todo>(); }
 }

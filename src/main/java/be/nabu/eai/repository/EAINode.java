@@ -21,6 +21,7 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.util.ClassAdapter;
 import be.nabu.eai.repository.util.KeyValueMapAdapter;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.artifacts.api.Todo;
 import be.nabu.libs.validator.api.Validation;
 
 @XmlRootElement(name = "node")
@@ -40,6 +41,8 @@ public class EAINode implements Node {
 	private boolean hidden, locked;
 	private String name, description, comment, summary, reference;
 	private List<String> tags;
+	// we persist any todos for easy lookup
+	private List<Todo> todos;
 	private String mergeScript;
 	
 	/**
@@ -271,6 +274,14 @@ public class EAINode implements Node {
 	}
 	public void setReference(String reference) {
 		this.reference = reference;
+	}
+
+	@Override
+	public List<Todo> getTodos() {
+		return todos;
+	}
+	public void setTodos(List<Todo> todos) {
+		this.todos = todos;
 	}
 	
 }

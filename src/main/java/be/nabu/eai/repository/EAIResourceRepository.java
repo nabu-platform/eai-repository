@@ -63,6 +63,7 @@ import be.nabu.libs.artifacts.api.LazyArtifact;
 import be.nabu.libs.artifacts.api.LiveReloadable;
 import be.nabu.libs.artifacts.api.StartableArtifact;
 import be.nabu.libs.artifacts.api.StoppableArtifact;
+import be.nabu.libs.artifacts.api.Todo;
 import be.nabu.libs.authentication.api.PermissionHandler;
 import be.nabu.libs.authentication.api.RoleHandler;
 import be.nabu.libs.authentication.api.Token;
@@ -221,6 +222,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private boolean updateMavenSnapshots = false;
 	
 	private Map<String, List<String>> references = new HashMap<String, List<String>>(), dependencies = new HashMap<String, List<String>>();
+	private Map<String, List<Todo>> todos = new HashMap<String, List<Todo>>();
 	private List<MavenManager> mavenManagers = new ArrayList<MavenManager>();
 	private List<MavenArtifact> mavenArtifacts = new ArrayList<MavenArtifact>();
 	private MavenManager mavenManager;
@@ -387,6 +389,25 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void updateReferences(String id, List<String> references) {
 		unbuildReferenceMap(id);
 		buildReferenceMap(id, references);
+	}
+	
+	private void buildTodoMap(String id) {
+		Entry entry = getEntry(id);
+		if (entry.isNode()) {
+			updateTodos(id, entry.getNode().getTodos());
+		}
+	}
+	public void updateTodos(String id, List<Todo> list) {
+		if (list != null && !list.isEmpty()) {
+			this.todos.put(id, list);
+		}
+		else {
+			this.todos.remove(id);
+		}
+	}
+	
+	public Map<String, List<Todo>> getTodos() {
+		return todos;
 	}
 	
 	private void buildReferenceMap(String id, List<String> references) {
@@ -964,6 +985,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		if (entry.isNode()) {
 			logger.info("Loading entry: " + entry.getId());
 			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
+			updateTodos(entry.getId(), entry.getNode().getTodos());
 			if (entry instanceof ModifiableEntry && entry.isNode() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				artifactRepositoryManagers.add(entry);
 			}

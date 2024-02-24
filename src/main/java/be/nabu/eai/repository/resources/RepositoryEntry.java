@@ -17,6 +17,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.repository.EAINode;
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.CollectionImpl;
 import be.nabu.eai.repository.api.ArtifactManager;
@@ -379,11 +380,14 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		}
 		node.setReferences(references == null ? new ArrayList<String>() : references);
 		node.setVersion(node.getVersion() + 1);
+		// we also update the todos at this point
+		node.setTodos(EAIRepositoryUtils.getTodos(getId()));
 		node.setLastModified(new Date());
 		node.setEnvironmentId(InetAddress.getLocalHost().getHostName());
 		writeNode(getContainer(), node);
 		if (repository instanceof EAIResourceRepository) {
 			((EAIResourceRepository) repository).updateReferences(getId(), references);
+			((EAIResourceRepository) repository).updateTodos(getId(), node.getTodos());
 		}
 	}
 	
