@@ -28,6 +28,6 @@ import be.nabu.libs.services.api.ServiceException;
  * This way CRUD can also perform enrichment on entirely different types. This should make it work end to end
  */
 public interface ObjectEnricher {
-	public void apply(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToEnrich") List<String> fieldsToEnrich) throws ServiceException;
-	public void persist(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fieldsToPersist") List<String> fieldsToPersist) throws ServiceException;
+	public void apply(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fields") List<String> fieldsToEnrich) throws ServiceException;
+	public void persist(@WebParam(name = "typeId") String typeId, @WebParam(name = "language") String language, @WebParam(name = "instances") List<Object> instances, @WebParam(name = "keyField") String keyField, @WebParam(name = "fields") List<String> fieldsToPersist) throws ServiceException;
 }

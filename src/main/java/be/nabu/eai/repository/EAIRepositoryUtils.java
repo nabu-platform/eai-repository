@@ -815,7 +815,7 @@ public class EAIRepositoryUtils {
 							input.set("language", language);
 							input.set("instances", group.get(type));
 							input.set("keyField", keyField);
-							input.set("fieldsToPersist", persistedFields.get(persister));
+							input.set("fields", persistedFields.get(persister));
 							new ServiceRuntime(persisterService, context).run(input);
 						}
 						catch (Exception e) {
@@ -885,7 +885,7 @@ public class EAIRepositoryUtils {
 							input.set("language", language);
 							input.set("instances", group.get(type));
 							input.set("keyField", keyField);
-							input.set("fieldsToEnrich", enrichedFields.get(enricher));
+							input.set("fields", enrichedFields.get(enricher));
 							new ServiceRuntime(enricherService, context).run(input);
 						}
 						catch (Exception e) {

@@ -208,8 +208,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private List<Templater> templaters = new ArrayList<Templater>();
 	
 	private static List<String> INTERNAL = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED });
-	public static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert", 
-			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
+	public static List<String> RESERVED = Arrays.asList(new String [] { PRIVATE, PUBLIC, PROTECTED, "abstract", "assert",
+			// want to be able to create new types that extend the existing ones while retaining the same simple name
+//			"boolean", "integer", "short", "int", "double", "float", "char", "byte", 
 			"case", "catch", "class", "const", "continue", "default", "do", "else", "enum", "extends", "final", "finally", 
 			"for", "goto", "if", "implements", "import", "instanceof", "interface", "native", "new", "package", 
 			"return", "static", "strictfp", "super", "switch", "synchronized", "this", "throw", "throws", "transient", "try", "void", "volatile", "while", 
