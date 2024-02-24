@@ -53,7 +53,10 @@ import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
+import be.nabu.libs.artifacts.ArtifactUtils;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.artifacts.api.ArtifactWithTodo;
+import be.nabu.libs.artifacts.api.Todo;
 import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.principals.DevicePrincipal;
@@ -758,6 +761,75 @@ public class EAIRepositoryUtils {
 		return references;
 	}
 	
+	public static void persist(List<Object> objects, String language, ExecutionContext context) throws ServiceException {
+		Map<ComplexType, List<ComplexContent>> group = group(objects);
+		for (ComplexType type : group.keySet()) {
+			Map<String, List<String>> persistedFields = new HashMap<String, List<String>>();
+			Map<String, String> persistedKeyFields = new HashMap<String, String>();
+			Element<?> primary = null;
+			for (Element<?> child : TypeUtils.getAllChildren(type)) {
+				String persister = ValueUtils.getValue(PersisterProperty.getInstance(), TypeUtils.getAllProperties(child));
+				if (persister != null) {
+					// e.g. nabu.cms.core.providers.enricher.address:id;addressType=test;drop=street,number
+					String[] split = persister.replaceAll("^(.*?);.*", "$1").split(":");
+					if (split.length >= 2) {
+						persister = split[0];
+						persistedKeyFields.put(persister, split[1]);
+					}
+					if (!persistedFields.containsKey(persister)) {
+						persistedFields.put(persister, new ArrayList<String>());
+					}
+					persistedFields.get(persister).add(child.getName());
+				}
+				if (primary == null) {
+					Boolean isPrimary = ValueUtils.getValue(PrimaryKeyProperty.getInstance(), child.getProperties());
+					if (isPrimary != null && isPrimary) {
+						primary = child;
+					}
+				}
+			}
+			// if we have enriched fields, we need to enrich them
+			if (!persistedFields.isEmpty()) {
+				EAIResourceRepository repository = EAIResourceRepository.getInstance();
+				// we need to run all enrichers separatly
+				for (String persister : persistedFields.keySet()) {
+					String keyField = persistedKeyFields.get(persister);
+					// fall back to the primary key if not specified
+					if (keyField == null && primary != null) {
+						keyField = primary.getName();
+					}
+					Artifact resolved = repository.resolve(persister);
+					// it could be a native object enricher
+					if (resolved instanceof ObjectEnricher) {
+						List erase = group.get(type); 
+						((ObjectEnricher) resolved).persist(((DefinedType) type).getId(), language, erase, keyField, persistedFields.get(persister));
+					}
+					// or a service that implements the spec
+					else if (resolved instanceof Service) {
+						try {
+							Service persisterService = (Service) resolved;
+							ComplexContent input = persisterService.getServiceInterface().getInputDefinition().newInstance();
+							if (type instanceof DefinedType) {
+								input.set("typeId", ((DefinedType) type).getId());
+							}
+							input.set("language", language);
+							input.set("instances", group.get(type));
+							input.set("keyField", keyField);
+							input.set("fieldsToPersist", persistedFields.get(persister));
+							new ServiceRuntime(persisterService, context).run(input);
+						}
+						catch (Exception e) {
+							throw new ServiceException("ENRICHMENT-2", "Could not run persister service " + persister, e);
+						}
+					}
+					else {
+						throw new IllegalArgumentException("Invalid persister: " + persister);
+					}
+				}
+			}
+		}
+	}
+	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	public static void enrich(List<Object> objects, String language, ExecutionContext context) throws ServiceException {
 		Map<ComplexType, List<ComplexContent>> group = group(objects);
@@ -804,16 +876,21 @@ public class EAIRepositoryUtils {
 					}
 					// or a service that implements the spec
 					else if (resolved instanceof Service) {
-						Service enricherService = (Service) resolved;
-						ComplexContent input = enricherService.getServiceInterface().getInputDefinition().newInstance();
-						if (type instanceof DefinedType) {
-							input.set("typeId", ((DefinedType) type).getId());
+						try {
+							Service enricherService = (Service) resolved;
+							ComplexContent input = enricherService.getServiceInterface().getInputDefinition().newInstance();
+							if (type instanceof DefinedType) {
+								input.set("typeId", ((DefinedType) type).getId());
+							}
+							input.set("language", language);
+							input.set("instances", group.get(type));
+							input.set("keyField", keyField);
+							input.set("fieldsToEnrich", enrichedFields.get(enricher));
+							new ServiceRuntime(enricherService, context).run(input);
 						}
-						input.set("language", language);
-						input.set("instances", group.get(type));
-						input.set("keyField", keyField);
-						input.set("fieldsToEnrich", enrichedFields.get(enricher));
-						new ServiceRuntime(enricherService, context).run(input);
+						catch (Exception e) {
+							throw new ServiceException("ENRICHMENT-1", "Could not run enricher service " + enricher, e);
+						}
 					}
 					else {
 						throw new IllegalArgumentException("Invalid enricher: " + enricher);
@@ -881,4 +958,23 @@ public class EAIRepositoryUtils {
 		return grouped;
 	}
 
+	public static List<Todo> getTodos(String id) throws IOException, ParseException {
+		List<Todo> todos = new ArrayList<Todo>();
+		Node node = EAIResourceRepository.getInstance().getNode(id);
+		if (node != null) {
+			if (node.getDescription() != null) {
+				todos.addAll(ArtifactUtils.scanForTodos(id, node.getDescription()));
+			}
+			if (node.getSummary() != null) {
+				todos.addAll(ArtifactUtils.scanForTodos(id, node.getSummary()));
+			}
+			if (node.getComment() != null) {
+				todos.addAll(ArtifactUtils.scanForTodos(id, node.getComment()));
+			}
+			if (ArtifactWithTodo.class.isAssignableFrom(node.getArtifactClass())) {
+				todos.addAll(((ArtifactWithTodo) node.getArtifact()).getTodos());
+			}
+		}
+		return todos;
+	}
 }
