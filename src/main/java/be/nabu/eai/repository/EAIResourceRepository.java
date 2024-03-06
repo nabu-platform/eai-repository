@@ -167,6 +167,7 @@ import be.nabu.utils.io.api.WritableContainer;
 public class EAIResourceRepository implements ResourceRepository, MavenRepository, ListableSinkProvider, LicensedRepository {
 	
 	public static final String METRICS_SYSTEM = "system";
+	public static final Integer SHADOW_PORT_OFFSET = 10000;
 	
 	// keep track of when this repository was started, it paints a picture of uptime
 	private Date started = new Date();
@@ -973,8 +974,29 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return false;
 	}
 	
+	private static List<String> blacklistedEntries;
+	private static List<String> getBlacklistedEntries() {
+		if (blacklistedEntries == null) {
+			synchronized(EAIResourceRepository.class) {
+				if (blacklistedEntries == null) {		
+					List<String> blacklistedEntries = new ArrayList<String>();
+					String blacklist = System.getProperty("blacklist");
+					if (blacklist != null && !blacklist.trim().isEmpty()) {
+						blacklistedEntries.addAll(Arrays.asList(blacklist.trim().split("[\\s]*,[\\s]*")));
+					}
+					EAIResourceRepository.blacklistedEntries = blacklistedEntries;
+				}
+			}
+		}
+		return blacklistedEntries;
+	}
+	
 	@SuppressWarnings({ "rawtypes" })
 	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
+		// don't load...
+		if (entry.getId() != null && !entry.getId().trim().isEmpty() && getBlacklistedEntries().indexOf(entry.getId()) >= 0) {
+			return;
+		}
 		// don't refresh on initial load, this messes up performance for remote file systems
 		if (!isLoading && !isPreload(entry)) {
 			// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
@@ -1610,6 +1632,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public static boolean isDevelopment() {
 		return Boolean.TRUE.equals(Boolean.parseBoolean(System.getProperty("development", "false")));
+	}
+	// in shadow mode, everything starts up but on a different port, it is primarily aimed at testing so the main dev server can keep running and i can restart the shadow multiple times to validate changes. copying the entire instance was deemed too much work
+	// we might still disable select things like task pickup
+	public static boolean isShadow() {
+		return Boolean.TRUE.equals(Boolean.parseBoolean(System.getProperty("shadow", "false")));
 	}
 
 	@Override
