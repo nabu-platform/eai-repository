@@ -16,10 +16,45 @@ import be.nabu.libs.types.api.ComplexContent;
 
 public class RepositoryArtifactResolver<T extends Artifact> {
 
+	/**
+	 * There are at least two strategies for resolving connections depending on the usecase at hand.
+	 * 
+	 * We want to have "business" packages (and utility packages) that have their own connections and can be used by other higher level packages.
+	 * 
+	 * This means our service stack might look like this:
+	 * 
+	 * higherPackageRootService -> businessPackageUtilityService -> nabuFrameworkService
+	 * 
+	 * It should always be possible to set a contextual intercept/override (whatever you want to call it) on the framework service for instance dictating that the system should use a particular connection for anything in that namespace
+	 * 
+	 * But assuming you haven't done that, there are two ways to look at this:
+	 * 
+	 * 1) resolve the root (the higher package) because we assume all relevant data is there (this was the old way of doing things)
+	 * The problem here is that this means our intermediate business package can never maintain its own data. Instead it should get a choice in whether or not it wants to store anything. This leads to option 2.
+	 * 
+	 * 2) resolve every service from the caller up to see if there is a valid connection, allowing data to be encapsulated at a certain level
+	 * 
+	 * By default at runtime, when you are dynamically asking the system to resolve a connection, the second strategy will be used (hierarchy).
+	 * 
+	 * However, suppose you have frameworks like the process engine, logging, signals... frameworks that intercept existing logic to log the results somewhere (and perhaps act on them).
+	 * The rules for these frameworks will mostly reside in the higher business package because it is (usually) from these end results that we coordinate the logic, those frameworks might op for the root strategy, skippîng the intermediate
+	 * 
+	 * However that does mean that intermediate packages can never really use the process engine...(?)
+	 */
+	public enum Strategy {
+		// we scan the hierarchy of services to find the closest match to wherever we are running
+		// the root service context is the _last_ one that is checked
+		HIERARCHY,
+		// we scan for a contextual match for the artifact directly and if not found, we fall back to the root rather than checking everything in between
+		ROOT
+	}
+	
 	public static final String REGEX = System.getProperty("be.nabu.artifact.resolver", "^([^.]+)\\..*");
 	public static final Boolean STRICT = Boolean.parseBoolean(System.getProperty("be.nabu.artifact.resolver.strict", "true"));
 	private Class<T> clazz;
 	private Repository repository;
+	private Strategy strategy = Strategy.HIERARCHY;
+	private List<String> requiredDependencies;
 	
 	public RepositoryArtifactResolver(Repository repository, Class<T> clazz) {
 		this.repository = repository;
@@ -41,7 +76,9 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 		// let's check if an artifact has been explicitly configured for this artifact (or its parents)
 		String longest = getContextualFor(forId, artifacts);
 		if (longest != null) {
-			return longest;
+			if (checkAvailableDependencies(longest)) {
+				return longest;
+			}
 		}
 		
 		List<T> hits = null;
@@ -51,27 +88,32 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 			// capture the context already
 			String context = ServiceUtils.getServiceContext(runtime);
 			
-			// @2023-03-15: we want to move more towards business packages that encapsulate business data. this means just checking the service itself and the overarching context is NOT enough
-			// we need to check all the intermediate services _first_ to see if a connection was defined for them.
-			// this does mean we can't have "stray" connections on intermediate services
-			// we only check for contextual, related matches are soft deprecated from now on because we (almost?) never use them
-			while (runtime != null) {
-				Service unwrapped = ServiceUtils.unwrap(runtime.getService());
-				if (unwrapped instanceof DefinedService) {
-					longest = getContextualFor(((DefinedService) unwrapped).getId(), artifacts);
-					if (longest != null) {
-						return longest;
+			if (strategy == Strategy.HIERARCHY) {
+				// @2023-03-15: we want to move more towards business packages that encapsulate business data. this means just checking the service itself and the overarching context is NOT enough
+				// we need to check all the intermediate services _first_ to see if a connection was defined for them.
+				// this does mean we can't have "stray" connections on intermediate services
+				// we only check for contextual, related matches are soft deprecated from now on because we (almost?) never use them
+				while (runtime != null) {
+					Service unwrapped = ServiceUtils.unwrap(runtime.getService());
+					if (unwrapped instanceof DefinedService) {
+						longest = getContextualFor(((DefinedService) unwrapped).getId(), artifacts);
+						if (longest != null) {
+							if (checkAvailableDependencies(longest)) {
+								return longest;
+							}
+						}
 					}
+					runtime = runtime.getParent();
 				}
-				runtime = runtime.getParent();
 			}
-			
 			
 			// we did not find for the explicit artifact, lets try the service context
 			// let's check if a pool has been explicitly configured for this service context
 			longest = getContextualFor(context, artifacts);
 			if (longest != null) {
-				return longest;
+				if (checkAvailableDependencies(longest)) {
+					return longest;
+				}
 			}
 			// get related hits for the service context
 			hits = getRelatedFor(context, artifacts);
@@ -83,7 +125,9 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 
 		// if we have exactly one hit, return that
 		if (hits.size() == 1) {
-			return hits.get(0).getId();
+			if (checkAvailableDependencies(hits.get(0).getId())) {
+				return hits.get(0).getId();
+			}
 		}
 		// if we have multiple, do a match based on ids, the closest one wins
 		else if (hits.size() > 1) {
@@ -106,9 +150,31 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 					closest = hit;
 				}
 			}
-			return closest == null ? null : closest.getId();
+			if (closest != null && checkAvailableDependencies(closest.getId())) {
+				return closest.getId();
+			}
 		}
 		return null;
+	}
+
+	private boolean checkAvailableDependencies(String longest) {
+		boolean dependenciesAvailable = true;
+		// if we have required dependencies, validate that they are present
+		if (requiredDependencies != null && !requiredDependencies.isEmpty()) {
+			List<String> dependencies = repository.getReferences(longest);
+			if (dependencies == null || dependencies.isEmpty()) {
+				dependenciesAvailable = false;
+			}
+			if (dependenciesAvailable) {
+				for (String requiredDependency : requiredDependencies) {
+					if (dependencies.indexOf(requiredDependency) < 0) {
+						dependenciesAvailable = false;
+						break;
+					}
+				}
+			}
+		}
+		return dependenciesAvailable;
 	}
 	
 	public static Object getContextualFor(String forId, List<Object> available, String field) {
@@ -233,6 +299,22 @@ public class RepositoryArtifactResolver<T extends Artifact> {
 			}
 		}
 		return matches;
+	}
+
+	public Strategy getStrategy() {
+		return strategy;
+	}
+
+	public void setStrategy(Strategy strategy) {
+		this.strategy = strategy;
+	}
+
+	public List<String> getRequiredDependencies() {
+		return requiredDependencies;
+	}
+
+	public void setRequiredDependencies(List<String> requiredDependencies) {
+		this.requiredDependencies = requiredDependencies;
 	}
 
 }

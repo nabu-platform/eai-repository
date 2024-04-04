@@ -74,7 +74,7 @@ public interface Node {
 	 */
 	public default Date getDeprecated() { return null; }
 	/**
-	 * We can set a human readable name for the node
+	 * We can set a human readable name for the node. The name is visible to people using developer.
 	 */
 	public default String getName() { return null; }
 	/**
@@ -86,7 +86,7 @@ public interface Node {
 	 */
 	public default String getComment() { return null; }
 	/**
-	 * A summary is meant to be read by outsiders
+	 * A summary is meant to be read by outsiders, it should be a short (oneliner) description of what the service does.
 	 */
 	public default String getSummary() { return null; }
 	/**
@@ -104,13 +104,17 @@ public interface Node {
 	
 	/**
 	 * A logical reference, usually used to communicate with external parties
-	 * @return
 	 */
 	public default String getReference() { return null; }
 	
 	/**
 	 * Any todos related to this node
-	 * @return
 	 */
 	public default List<Todo> getTodos() { return new ArrayList<Todo>(); }
+	
+	/**
+	 * The priority for this node
+	 * This is mostly used when we need to automatically choose a node (e.g. based on spec)
+	 */
+	public default Integer getPriority() { return null; }
 }

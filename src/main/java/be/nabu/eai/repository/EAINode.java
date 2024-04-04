@@ -44,6 +44,7 @@ public class EAINode implements Node {
 	// we persist any todos for easy lookup
 	private List<Todo> todos;
 	private String mergeScript;
+	private Integer priority;
 	
 	/**
 	 * By default all nodes are leafs
@@ -283,5 +284,13 @@ public class EAINode implements Node {
 	public void setTodos(List<Todo> todos) {
 		this.todos = todos;
 	}
-	
+
+	@XmlAttribute
+	public Integer getPriority() {
+		return priority;
+	}
+
+	public void setPriority(Integer priority) {
+		this.priority = priority;
+	}
 }
