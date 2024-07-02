@@ -113,11 +113,14 @@ import be.nabu.libs.types.DefinedSimpleTypeResolver;
 import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
+import be.nabu.libs.types.api.ComplexContent;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.types.java.DomainObjectFactory;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
+import be.nabu.utils.cep.api.ComplexEvent;
+import be.nabu.utils.cep.api.EventSeverity;
 import be.nabu.utils.io.ContentTypeMap;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
@@ -243,7 +246,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<String, EventEnricher> eventEnrichers = new HashMap<String, EventEnricher>();
 	
 	// defaults to 15 min for dev, 5 min voor prd
-	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "900000" : "300000"));
+	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "300000" : "60000"));
 
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
@@ -271,8 +274,25 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 							logger.error("Failed to enrich event", e);
 						}
 					}
+					EventSeverity severity = null;
+					if (event instanceof ComplexEvent) {
+						severity = ((ComplexEvent) event).getSeverity();
+					}
+					else if (event instanceof ComplexContent) {
+						Object object = ((ComplexContent) event).get("severity");
+						if (object != null) {
+							severity = EventSeverity.valueOf(object.toString());
+						}
+					}
+					// anything beyond mere info is done synchronously
+					if (severity != null && severity.ordinal() >= EventSeverity.NOTIFICATION.ordinal()) {
+						super.fire(event, source, null);
+						event = null;
+					}
 				}
-				super.fire(event, source);
+				if (event != null) {
+					super.fire(event, source);
+				}
 			}
 		};
 		

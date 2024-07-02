@@ -34,6 +34,8 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 	private Token token;
 	private List<Token> alternatives;
 	private List<String> enabledFeatures;
+	// you can disable events for a particular execution context
+	private boolean disableEvents;
 	
 	public EAIExecutionContext(EAIResourceRepository repository, Token token, boolean isDebug, Token...alternatives) {
 		this.repository = repository;
@@ -121,7 +123,7 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 
 	@Override
 	public EventTarget getEventTarget() {
-		return repository.getComplexEventDispatcher();
+		return disableEvents == false ? repository.getComplexEventDispatcher() : null;
 	}
 
 	@Override
@@ -139,6 +141,13 @@ public class EAIExecutionContext implements ForkableExecutionContext, FeaturedEx
 	@Override
 	public ClusterInstance getCluster() {
 		return repository.getServiceRunner() instanceof ClusteredServer ? ((ClusteredServer) repository.getServiceRunner()).getCluster() : null;
+	}
+
+	public boolean isDisableEvents() {
+		return disableEvents;
+	}
+	public void setDisableEvents(boolean disableEvents) {
+		this.disableEvents = disableEvents;
 	}
 	
 }
