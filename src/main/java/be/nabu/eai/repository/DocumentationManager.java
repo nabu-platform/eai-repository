@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,13 +35,26 @@ public class DocumentationManager {
 				ResourceContainer<?> documentationFolder = (ResourceContainer<?>) protectedFolder.getChild("documentation");
 				if (documentationFolder != null) {
 					Resource child = documentationFolder.getChild("readme.md");
+					DocumentedImpl documented = null;
 					if (child != null) {
-						return read(child);
+						documented = read(child);
 					}
 					child = documentationFolder.getChild("readme.html");
 					if (child != null) {
-						return readHtml(child);
+						documented = readHtml(child);
 					}
+					for (Resource documentChild : documentationFolder) {
+						// if it is a readable file, add it
+						if (documentChild instanceof ReadableResource && !documentChild.getName().equals("readme.md") && !documentChild.getName().equals("readme.html")) {
+							if (documentChild.getName().endsWith(".md")) {
+								documented.getFragments().add(read(documentChild));
+							}
+							else if (documentChild.getName().endsWith(".html")) {
+								documented.getFragments().add(readHtml(documentChild));
+							}
+						}
+					}
+					return documented;
 				}
 			}
 		}
@@ -234,6 +248,7 @@ public class DocumentationManager {
 		private String title, description;
 		private Collection<String> tags;
 		private String mimeType;
+		private List<Documented> fragments = new ArrayList<Documented>();
 		
 		public DocumentedImpl() {
 			this("text/x-markdown");
@@ -268,6 +283,16 @@ public class DocumentationManager {
 		@Override
 		public String getMimeType() {
 			return mimeType;
+		}
+		public void setMimeType(String mimeType) {
+			this.mimeType = mimeType;
+		}
+		@Override
+		public List<Documented> getFragments() {
+			return fragments;
+		}
+		public void setFragments(List<Documented> fragments) {
+			this.fragments = fragments;
 		}
 	}
 }

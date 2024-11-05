@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 
 import org.slf4j.Logger;
@@ -180,7 +181,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private EventDispatcher complexDispatcher;
 	private List<DomainRepository> mavenRepositories = new ArrayList<DomainRepository>();
 	private List<String> internalDomains;
-	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new ArrayList<ServiceRuntimeTrackerProvider>();
+	// @2024-09-20: in some exceptional cases starting a new tracker could lead to a concurrentmodification error because at the same time we were trying to resolve trackers needed for a particular runtime
+	// this array is costly to write to but the vast majority of interactions is traversal which is unaffected and the array is always very small
+	private List<ServiceRuntimeTrackerProvider> dynamicRuntimeTrackers = new CopyOnWriteArrayList<ServiceRuntimeTrackerProvider>();
 	private String name;
 	private String group;
 	private RoleHandler roleHandler;
