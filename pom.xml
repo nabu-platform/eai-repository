@@ -156,10 +156,6 @@
 			<scope>compile</scope>
 		</dependency>
 		<dependency>
-			<groupId>nabu</groupId>
-			<artifactId>eai-module-maven</artifactId>
-		</dependency>
-		<dependency>
 			<groupId>com.fasterxml.woodstox</groupId>
 			<artifactId>woodstox-core</artifactId>
 			<version>6.0.1</version>
