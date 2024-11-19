@@ -17,7 +17,11 @@
 
 package be.nabu.eai.repository;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
@@ -132,8 +136,12 @@ import be.nabu.libs.types.DefinedTypeResolverFactory;
 import be.nabu.libs.types.SPIDefinedTypeResolver;
 import be.nabu.libs.types.SimpleTypeWrapperFactory;
 import be.nabu.libs.types.api.ComplexContent;
+import be.nabu.libs.types.binding.api.Window;
+import be.nabu.libs.types.binding.json.JSONBinding;
 import be.nabu.libs.types.java.BeanResolver;
 import be.nabu.libs.types.java.DomainObjectFactory;
+import be.nabu.libs.types.map.MapTypeGenerator;
+import be.nabu.libs.types.structure.Structure;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -268,6 +276,33 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	// defaults to 15 min for dev, 5 min voor prd
 	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "300000" : "60000"));
 
+	
+	private static ComplexContent nabuConfiguration;
+	public static ComplexContent getGlobalNabuConfiguration() {
+		if (nabuConfiguration == null) {
+			try {
+				File file = new File(System.getProperty("user.home"), ".nabu-configuration.json");
+				if (file.exists()) {
+					JSONBinding binding = new JSONBinding(new MapTypeGenerator(), Charset.defaultCharset());
+					binding.setAllowDynamicElements(true);
+					binding.setAddDynamicElementDefinitions(true);
+					binding.setIgnoreRootIfArrayWrapper(true);
+					binding.setParseNumbers(true);
+					try (InputStream input = new BufferedInputStream(new FileInputStream(file))) {
+						nabuConfiguration = binding.unmarshal(input, new Window[0]);
+					}
+				}
+				else {
+					nabuConfiguration = new Structure().newInstance();
+				}
+			}
+			catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return nabuConfiguration;
+	}
+	
 	public EAIResourceRepository() throws IOException, URISyntaxException {
 		this(
 			(ManageableContainer<?>) ResourceFactory.getInstance().resolve(new URI(System.getProperty("repository.uri", "file:/" + System.getProperty("user.home") + "/repository")), null),
