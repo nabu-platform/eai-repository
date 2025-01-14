@@ -274,7 +274,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<String, EventEnricher> eventEnrichers = new HashMap<String, EventEnricher>();
 	
 	// defaults to 15 min for dev, 5 min voor prd
-	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "300000" : "60000"));
+	private long metricInterval = Long.parseLong(System.getProperty("metric.interval", isDevelopment() ? "1500000" : "300000"));
 
 	
 	private static ComplexContent nabuConfiguration;
