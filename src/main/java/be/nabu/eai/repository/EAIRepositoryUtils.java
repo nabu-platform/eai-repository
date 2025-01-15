@@ -928,8 +928,12 @@ public class EAIRepositoryUtils {
 		}
 		Map<String, String> configuration = new HashMap<String, String>();
 		for (String part : enricher.replaceAll("^[^;]+", "").split(";")) {
-			String[] split = part.split("=");
-			configuration.put(split[0], split[1]);
+			if (!part.isEmpty()) {
+				String[] split = part.split("=");
+				if (split.length == 2) {
+					configuration.put(split[0], split[1]);
+				}
+			}
 		}
 		return configuration;
 	}
@@ -944,8 +948,12 @@ public class EAIRepositoryUtils {
 		}
 		Map<String, String> configuration = new HashMap<String, String>();
 		for (String part : persister.replaceAll("^[^;]+", "").split(";")) {
-			String[] split = part.split("=");
-			configuration.put(split[0], split[1]);
+			if (!part.isEmpty()) {
+				String[] split = part.split("=");
+				if (split.length == 2) {
+					configuration.put(split[0], split[1]);
+				}
+			}
 		}
 		return configuration;
 	}
