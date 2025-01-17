@@ -858,7 +858,8 @@ public class EAIRepositoryUtils {
 				String enricher = ValueUtils.getValue(EnricherProperty.getInstance(), TypeUtils.getAllProperties(child));
 				if (enricher != null) {
 					// e.g. nabu.cms.core.providers.enricher.address:id;addressType=test;drop=street,number
-					String[] split = enricher.replaceAll("^(.*?);.*", "$1").split(":");
+					enricher = enricher.replaceAll("^([^;]+);.*", "$1");
+					String[] split = enricher.split(":");
 					if (split.length >= 2) {
 						enricher = split[0];
 						enrichedKeyFields.put(enricher, split[1]);
