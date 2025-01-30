@@ -19,6 +19,7 @@ package be.nabu.eai.repository.impl;
 
 import be.nabu.eai.repository.api.EventEnricher;
 import be.nabu.libs.http.api.HTTPRequest;
+import be.nabu.libs.http.core.ServerHeader;
 import be.nabu.libs.nio.impl.RequestProcessor;
 import be.nabu.libs.services.ServiceRuntime;
 import be.nabu.libs.types.ComplexContentWrapperFactory;
@@ -44,6 +45,15 @@ public class CorrelationIdEnricher implements EventEnricher {
 						((ComplexContent) object).set("correlationId", value);
 					}
 				}
+				String conversationId = getConversationId();
+				if (conversationId != null) {
+					if (((ComplexContent) object).getType().get("conversationId") != null) {
+						Object current = ((ComplexContent) object).get("conversationId");
+						if (current == null) {
+							((ComplexContent) object).set("conversationId", conversationId);
+						}
+					}	
+				}
 			}
 		}
 		return null;
@@ -66,9 +76,28 @@ public class CorrelationIdEnricher implements EventEnricher {
 		if (currentRequest instanceof HTTPRequest) {
 			ModifiablePart content = ((HTTPRequest) currentRequest).getContent();
 			if (content != null) {
-				Header header = MimeUtils.getHeader("X-Correlation-Id", content.getHeaders());
+				Header header = MimeUtils.getHeader(ServerHeader.NAME_CORRELATION_ID, content.getHeaders());
 				if (header != null) {
-					return header.getValue();
+					String value = header.getValue();
+					String conversationId = getConversationId();
+					if (conversationId != null) {
+						value = conversationId + "-" + value;
+					}
+					return value;
+				}
+			}
+		}
+		return null;
+	}
+	
+	public static String getConversationId() {
+		Object currentRequest = RequestProcessor.getCurrentRequest();
+		if (currentRequest instanceof HTTPRequest) {
+			ModifiablePart content = ((HTTPRequest) currentRequest).getContent();
+			if (content != null) {
+				Header header = MimeUtils.getHeader(ServerHeader.NAME_CONVERSATION_ID, content.getHeaders());
+				if (header != null && !header.getValue().trim().isEmpty()) {
+					return header.getValue().trim();
 				}
 			}
 		}
