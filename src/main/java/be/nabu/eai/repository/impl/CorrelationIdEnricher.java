@@ -79,10 +79,11 @@ public class CorrelationIdEnricher implements EventEnricher {
 				Header header = MimeUtils.getHeader(ServerHeader.NAME_CORRELATION_ID, content.getHeaders());
 				if (header != null) {
 					String value = header.getValue();
-					String conversationId = getConversationId();
-					if (conversationId != null) {
-						value = conversationId + "-" + value;
-					}
+					// the http processor already prepends this?
+//					String conversationId = getConversationId();
+//					if (conversationId != null) {
+//						value = conversationId + ":" + value;
+//					}
 					return value;
 				}
 			}
