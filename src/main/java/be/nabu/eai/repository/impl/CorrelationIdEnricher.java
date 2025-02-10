@@ -54,9 +54,27 @@ public class CorrelationIdEnricher implements EventEnricher {
 						}
 					}	
 				}
+				String narrativeId = getNarrativeId();
+				if (narrativeId != null) {
+					if (((ComplexContent) object).getType().get("narrativeId") != null) {
+						Object current = ((ComplexContent) object).get("narrativeId");
+						if (current == null) {
+							((ComplexContent) object).set("narrativeId", narrativeId);
+						}
+					}	
+				}
 			}
 		}
 		return null;
+	}
+	
+	private static String getNarrativeId() {
+		String value = null;
+		ServiceRuntime runtime = ServiceRuntime.getRuntime();
+		if (runtime != null) {
+			value = runtime.getCorrelationId();
+		}
+		return value;
 	}
 	
 	private static String getCorrelationIdAnywhere() {
