@@ -63,7 +63,8 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	 * However, this cascades down and "infects" a lot of libraries with additional dependencies. This is centrally provided however by developer/server and I don't want to retrofit all poms (or library artifacts) to explicitly ignore these libraries
 	 * So I added a global ignore list
 	 */
-	private static List<String> artifactsToIgnore = Arrays.asList("javax.xml.bind:jaxb-api", "com.sun.xml.bind:jaxb-impl", "com.sun.xml.bind:jaxb-core", "javax.activation:activation", "javax.jws:javax.jws-api");
+	private static List<String> artifactsToIgnore = Arrays.asList("javax.xml.bind:jaxb-api", "com.sun.xml.bind:jaxb-impl", "com.sun.xml.bind:jaxb-core", "javax.activation:activation", "javax.jws:javax.jws-api",
+			"org.openjfx:javafx-swing");
 	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 
@@ -76,17 +77,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	public MavenArtifact load(Repository repository, Artifact artifact, boolean updateSnapshots, URI...mavenServer) {
 		try {
-			List<URI> endpoints = new ArrayList<URI>();
-			if (mavenServer != null) {
-				for (URI uri : mavenServer) {
-					endpoints.add(uri);
-				}
-			}
-			endpoints.add(new URI("http://central.maven.org/maven2"));
-			endpoints.add(new URI("http://mirrors.ibiblio.org/maven2"));
-			DependencyResolver dependencyResolver = new DependencyResolver(endpoints.toArray(new URI[endpoints.size()]));
-			dependencyResolver.setUpdateSnapshots(updateSnapshots);
-			dependencyResolver.setArtifactsToIgnore(artifactsToIgnore);
+			DependencyResolver dependencyResolver = getResolver(updateSnapshots, mavenServer);
 			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
 			MavenArtifact mavenArtifact = new MavenArtifact(
 				repository.getClassLoader(),
@@ -101,6 +92,21 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 		catch (URISyntaxException e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	private DependencyResolver getResolver(boolean updateSnapshots, URI...mavenServer) throws URISyntaxException {
+		List<URI> endpoints = new ArrayList<URI>();
+		if (mavenServer != null) {
+			for (URI uri : mavenServer) {
+				endpoints.add(uri);
+			}
+		}
+		endpoints.add(new URI("http://central.maven.org/maven2"));
+		endpoints.add(new URI("http://mirrors.ibiblio.org/maven2"));
+		DependencyResolver dependencyResolver = new DependencyResolver(endpoints.toArray(new URI[endpoints.size()]));
+		dependencyResolver.setUpdateSnapshots(updateSnapshots);
+		dependencyResolver.setArtifactsToIgnore(artifactsToIgnore);
+		return dependencyResolver;
 	}
 	
 	@Override
@@ -121,7 +127,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			throw new IOException("Can not find the artifact " + id);
 		}
 		try {
-			return new MavenArtifact(entry.getRepository().getClassLoader(), definedTypeResolver, new DependencyResolver(new URI("http://central.maven.org/maven2"), new URI("http://ibiblio.org/maven2")), repository, id, mavenArtifact);
+			return new MavenArtifact(entry.getRepository().getClassLoader(), definedTypeResolver, getResolver(false), repository, id, mavenArtifact);
 		}
 		catch (URISyntaxException e) {
 			logger.error("Could not load: " + id, e);
