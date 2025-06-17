@@ -23,6 +23,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -55,6 +56,15 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 	
 	private DefinedTypeResolver definedTypeResolver;
 	
+	/**
+	 * @2025-06-17
+	 * Due to changes in java packaging, some core libraries that were originally present (e.g. jaxb) were booted from the default distributions
+	 * This necessitates adding them as dependencies to maven to be able to build
+	 * However, this cascades down and "infects" a lot of libraries with additional dependencies. This is centrally provided however by developer/server and I don't want to retrofit all poms (or library artifacts) to explicitly ignore these libraries
+	 * So I added a global ignore list
+	 */
+	private static List<String> artifactsToIgnore = Arrays.asList("javax.xml.bind:jaxb-api", "com.sun.xml.bind:jaxb-impl", "com.sun.xml.bind:jaxb-core", "javax.activation:activation", "javax.jws:javax.jws-api");
+	
 	private Logger logger = LoggerFactory.getLogger(getClass());
 
 	private DomainRepository repository;
@@ -76,6 +86,7 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 			endpoints.add(new URI("http://mirrors.ibiblio.org/maven2"));
 			DependencyResolver dependencyResolver = new DependencyResolver(endpoints.toArray(new URI[endpoints.size()]));
 			dependencyResolver.setUpdateSnapshots(updateSnapshots);
+			dependencyResolver.setArtifactsToIgnore(artifactsToIgnore);
 			String id = artifact.getGroupId() + "." + artifact.getArtifactId();
 			MavenArtifact mavenArtifact = new MavenArtifact(
 				repository.getClassLoader(),
