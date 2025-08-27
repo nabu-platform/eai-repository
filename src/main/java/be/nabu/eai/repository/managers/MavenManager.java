@@ -22,6 +22,7 @@ import java.lang.annotation.Annotation;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -205,6 +206,21 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 							}
 							if (!description.comment().trim().isEmpty()) {
 								node.setComment(description.comment().trim());
+							}
+						}
+						else if (annotation instanceof Deprecated) {
+							String since = ((Deprecated) annotation).since();
+							// we don't know
+							if (since == null || !since.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")) {
+								since = "2000-01-01T00:00:00";
+							}
+							SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+							try {
+								node.setDeprecated(formatter.parse(since));
+							}
+							// shouldn't happen
+							catch (ParseException e) {
+								e.printStackTrace();
 							}
 						}
 					}
