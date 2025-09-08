@@ -19,6 +19,7 @@ package be.nabu.eai.repository.managers;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.text.ParseException;
@@ -209,7 +210,17 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 							}
 						}
 						else if (annotation instanceof Deprecated) {
-							String since = ((Deprecated) annotation).since();
+							// the "since" was only added in java 9, to try and stay backwards compatible with 8, we use this
+							String since = null;
+							try {
+								Method method = annotation.getClass().getMethod("since");
+								if (method != null) {
+									since = (String) method.invoke(annotation);
+								}
+							}
+							catch (Exception e) {
+								// ok, no date then
+							}
 							// we don't know
 							if (since == null || !since.matches("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")) {
 								since = "2000-01-01T00:00:00";
