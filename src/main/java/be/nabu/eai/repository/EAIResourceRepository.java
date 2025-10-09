@@ -692,8 +692,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 	}
 
-	
-	private void reload(String id, boolean recursiveReload) {
+	@Override
+	public void reload(String id, boolean recursiveReload) {
 		logger.info("Reloading: " + id + " (" + recursiveReload + ")");
 		if (recursiveReload) {
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
@@ -737,6 +737,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 			else {
 				unload(entry, false);
+				// @2025-09-22: suppose you do a "move" locally in developer (e.g. rename), developer will update all the dependencies to the new artifact
+				// however, it only triggers a "reload" on the server of those dependencies. without revisiting the updated node.xml however, the server will keep seeing the old references which no longer match with any existing node and the map becomes incomplete
+				// we do a non-recursive refresh during reload (reload should only ever be because of development?) to force picking up the new node.xml
+				entry.refresh(false);
 				preload(entry);
 				load(entry);
 			}
@@ -776,7 +780,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void liveReload(Entry entry) {
 		try {
 			logger.info("Live reloading: " + entry.getId());
+			entry.refresh(false);
 			((LiveReloadable) entry.getNode().getArtifact()).liveReload();
+			// potentially update any references!
+			updateReferences(entry.getId(), entry.getNode().getReferences());
 		}
 		catch (Exception e) {
 			logger.warn("Can not live reload artifact " + entry.getId(), e);

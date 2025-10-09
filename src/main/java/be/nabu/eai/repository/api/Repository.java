@@ -71,6 +71,12 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 */
 	public void reload(String id);
 	/**
+	 * Choose whether it is recursive or not (if supported)
+	 */
+	public default void reload(String id, boolean recursive) {
+		reload(id);
+	}
+	/**
 	 * Reload everything
 	 */
 	public void reloadAll();
