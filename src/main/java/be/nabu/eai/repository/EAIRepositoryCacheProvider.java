@@ -29,6 +29,8 @@ import be.nabu.libs.cache.api.CacheProvider;
 public class EAIRepositoryCacheProvider implements CacheProvider {
 
 	private EAIResourceRepository repository;
+	
+	private ThreadLocal<List<CacheProvider>> temporaryCacheProviders = new ThreadLocal<>();
 
 	public EAIRepositoryCacheProvider(EAIResourceRepository repository) {
 		this.repository = repository;
@@ -36,6 +38,13 @@ public class EAIRepositoryCacheProvider implements CacheProvider {
 
 	@Override
 	public Cache get(String name) throws IOException {
+		List<CacheProvider> temporary = temporaryCacheProviders.get();
+		if (temporary != null) {
+			for (CacheProvider temporaryProvider : temporary) {
+				Cache cache = temporaryProvider.get(name);
+				return cache;
+			}
+		}
 		for (CacheProvider artifact : repository.getArtifacts(CacheProvider.class)) {
 			Cache cache = artifact.get(name);
 			if (cache != null) {
@@ -58,5 +67,31 @@ public class EAIRepositoryCacheProvider implements CacheProvider {
 			caches.addAll(artifact.getCaches());
 		}
 		return caches;
+	}
+	
+	public void registerThreadLocalCacheProvider(CacheProvider provider) {
+		List<CacheProvider> localCacheProvider = temporaryCacheProviders.get();
+		if (localCacheProvider == null) {
+			localCacheProvider = new ArrayList<>();
+			temporaryCacheProviders.set(localCacheProvider);
+		}
+		if (!localCacheProvider.contains(provider)) {
+			localCacheProvider.add(provider);
+		}
+	}
+	
+	public void unregisterThreadLocalCacheProvider(CacheProvider provider) {
+		List<CacheProvider> localCacheProvider = temporaryCacheProviders.get();
+		if (localCacheProvider != null) {
+			localCacheProvider.remove(provider);
+		}
+	}
+	
+	public void unregisterAllThreadLocalCacheProvider() {
+		temporaryCacheProviders.set(null);
+	}
+	
+	public List<CacheProvider> getThreadLocalCacheProviders() {
+		return temporaryCacheProviders.get();
 	}
 }
