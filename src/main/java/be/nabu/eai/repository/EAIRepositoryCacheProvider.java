@@ -42,7 +42,9 @@ public class EAIRepositoryCacheProvider implements CacheProvider {
 		if (temporary != null) {
 			for (CacheProvider temporaryProvider : temporary) {
 				Cache cache = temporaryProvider.get(name);
-				return cache;
+				if (cache != null) {
+					return cache;
+				}
 			}
 		}
 		for (CacheProvider artifact : repository.getArtifacts(CacheProvider.class)) {
