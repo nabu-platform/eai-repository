@@ -270,7 +270,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private Map<String, LimitedHistorySinkWithStatistics> sinks = new HashMap<String, LimitedHistorySinkWithStatistics>();
 	
 	private long historizationInterval = 5000;
-	private int historySize = 500;
+	// used to be 100
+	private int historySize = 100;
 	private Map<String, EventEnricher> eventEnrichers = new HashMap<String, EventEnricher>();
 	
 	// defaults to 15 min for dev, 5 min voor prd
