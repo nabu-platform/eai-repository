@@ -1550,7 +1550,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					synchronized(this) {
 						if (correlationId == null) {
 							String conversationId = CorrelationIdEnricher.getConversationId();
-							correlationId = (conversationId != null && !conversationId.trim().isEmpty() ? conversationId + ":" : "") + UUID.randomUUID().toString().replace("-", "");
+							String traceId = CorrelationIdEnricher.getOtelTraceId();
+							String idValue = traceId != null ? traceId : UUID.randomUUID().toString().replace("-", "");
+							correlationId = (conversationId != null && !conversationId.trim().isEmpty() ? conversationId + ":" : "") + idValue;
 						}
 					}
 				}

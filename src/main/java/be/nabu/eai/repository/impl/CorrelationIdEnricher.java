@@ -29,6 +29,8 @@ import be.nabu.utils.mime.api.ModifiablePart;
 import be.nabu.utils.mime.impl.MimeUtils;
 
 public class CorrelationIdEnricher implements EventEnricher {
+	private static final String TRACEPARENT_HEADER = "traceparent";
+	private static final int TRACE_ID_LENGTH = 32;
 	@SuppressWarnings("unchecked")
 	@Override
 	public Object enrich(Object object) {
@@ -72,7 +74,7 @@ public class CorrelationIdEnricher implements EventEnricher {
 		String value = null;
 		ServiceRuntime runtime = ServiceRuntime.getRuntime();
 		if (runtime != null) {
-			value = runtime.getCorrelationId();
+			value = runtime.getNarrativeId();
 		}
 		return value;
 	}
@@ -97,14 +99,43 @@ public class CorrelationIdEnricher implements EventEnricher {
 				Header header = MimeUtils.getHeader(ServerHeader.NAME_CORRELATION_ID, content.getHeaders());
 				if (header != null) {
 					String value = header.getValue();
-					// the http processor already prepends this?
-//					String conversationId = getConversationId();
-//					if (conversationId != null) {
-//						value = conversationId + ":" + value;
-//					}
 					return value;
 				}
+				Header traceHeader = MimeUtils.getHeader(TRACEPARENT_HEADER, content.getHeaders());
+				if (traceHeader != null) {
+					String traceId = extractTraceIdFromTraceParent(traceHeader.getValue());
+					if (traceId != null) {
+						return traceId;
+					}
+				}
 			}
+		}
+		return null;
+	}
+
+	public static String getOtelTraceId() {
+		try {
+			Class<?> spanClass = Class.forName("io.opentelemetry.api.trace.Span");
+			Object span = spanClass.getMethod("current").invoke(null);
+			if (span == null) {
+				return null;
+			}
+			Object spanContext = spanClass.getMethod("getSpanContext").invoke(span);
+			if (spanContext == null) {
+				return null;
+			}
+			Class<?> spanContextClass = Class.forName("io.opentelemetry.api.trace.SpanContext");
+			Object traceIdValue = spanContextClass.getMethod("getTraceId").invoke(spanContext);
+			if (traceIdValue instanceof String) {
+				String traceId = ((String) traceIdValue).trim();
+				return isValidTraceId(traceId) ? traceId : null;
+			}
+		}
+		catch (ClassNotFoundException e) {
+			return null;
+		}
+		catch (Exception e) {
+			return null;
 		}
 		return null;
 	}
@@ -121,5 +152,43 @@ public class CorrelationIdEnricher implements EventEnricher {
 			}
 		}
 		return null;
+	}
+
+	private static String extractTraceIdFromTraceParent(String value) {
+		if (value == null) {
+			return null;
+		}
+		String trimmed = value.trim();
+		if (trimmed.isEmpty()) {
+			return null;
+		}
+		String[] parts = trimmed.split("-", -1);
+		if (parts.length < 4) {
+			return null;
+		}
+		String traceId = parts[1];
+		return isValidTraceId(traceId) ? traceId : null;
+	}
+
+	private static boolean isValidTraceId(String traceId) {
+		if (traceId == null) {
+			return false;
+		}
+		String value = traceId.trim();
+		if (value.length() != TRACE_ID_LENGTH) {
+			return false;
+		}
+		boolean allZeros = true;
+		for (int i = 0; i < value.length(); i++) {
+			char ch = value.charAt(i);
+			int digit = Character.digit(ch, 16);
+			if (digit < 0) {
+				return false;
+			}
+			if (digit != 0) {
+				allZeros = false;
+			}
+		}
+		return !allZeros;
 	}
 }
