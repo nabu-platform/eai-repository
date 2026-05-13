@@ -31,7 +31,7 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	}
 
 	@Override
-	public List<Validation<?>> updateFragment(T artifact, String path, String content) {
+	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent) {
 		throw new UnsupportedOperationException("Updating fragments is not supported for defined services");
 	}
 

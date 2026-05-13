@@ -101,7 +101,7 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 	}
 
 	@Override
-	public List<Validation<?>> updateFragment(DefinedType artifact, String path, String content) {
+	public List<Validation<?>> updateFragment(DefinedType artifact, String path, String oldContent, String newContent) {
 		throw new UnsupportedOperationException("Updating fragments is not supported for defined types");
 	}
 
@@ -129,4 +129,5 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 	protected String getArtifactType(DefinedType artifact) {
 		return artifact instanceof ComplexType ? COMPLEX_ARTIFACT_TYPE : SIMPLE_ARTIFACT_TYPE;		
 	}
+
 }
