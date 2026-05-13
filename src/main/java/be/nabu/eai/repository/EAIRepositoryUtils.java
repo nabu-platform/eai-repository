@@ -58,6 +58,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import be.nabu.eai.api.NamingConvention;
+import be.nabu.eai.repository.api.ArtifactFragmentManager;
 import be.nabu.eai.repository.api.ArtifactManager;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ExecutorServiceProvider;
@@ -451,6 +452,34 @@ public class EAIRepositoryUtils {
 			}
 			catch (Exception e) {
 				logger.error("Could not load manager: " + managerClass, e);
+			}
+		}
+		return closest;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static <T extends Artifact> ArtifactFragmentManager<T> getArtifactFragmentManager(T artifact) {
+		return artifact == null ? null : getArtifactFragmentManager((Class<T>) artifact.getClass());
+	}
+	
+	public static <T extends Artifact> ArtifactFragmentManager<T> getArtifactFragmentManager(Class<T> artifactClass) {
+		return getArtifactFragmentManager(Thread.currentThread().getContextClassLoader(), artifactClass);
+	}
+	
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	public static <T extends Artifact> ArtifactFragmentManager<T> getArtifactFragmentManager(ClassLoader loader, Class<T> artifactClass) {
+		ArtifactFragmentManager<T> closest = null;
+		for (Class<ArtifactFragmentManager> managerClass : getImplementationsFor(loader, ArtifactFragmentManager.class, false)) {
+			try {
+				ArtifactFragmentManager manager = managerClass.newInstance();
+				if (manager.getArtifactClass().isAssignableFrom(artifactClass)) {
+					if (closest == null || closest.getArtifactClass().isAssignableFrom(manager.getArtifactClass())) {
+						closest = (ArtifactFragmentManager<T>) manager;
+					}
+				}
+			}
+			catch (Exception e) {
+				logger.error("Could not load fragment manager: " + managerClass, e);
 			}
 		}
 		return closest;
