@@ -1,2 +1,3 @@
 be.nabu.eai.repository.impl.DefinedTypeArtifactFragmentManager
+be.nabu.eai.repository.impl.DefinedSimpleTypeArtifactFragmentManager
 be.nabu.eai.repository.impl.DefinedServiceArtifactFragmentManager

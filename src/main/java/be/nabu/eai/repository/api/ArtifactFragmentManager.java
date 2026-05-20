@@ -46,7 +46,8 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 	 * The logical type of artifact managed by this manager, used for manager and guideline resolution.
 	 * Need a stable slug for this, based on the "name" (prettified), but ideally provide a stable slug.
 	 */
-	public String getArtifactType(T artifact);
+	public String getArtifactType();
+	public String getArtifactCategory();
 	public List<ArtifactFragment> listFragments(T artifact);
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent);
 	public List<Validation<?>> deleteFragment(T artifact, String path);
@@ -55,7 +56,7 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 	 * Explain how these fragments can be used.
 	 * If fragment types are provided, only return the relevant subset of the guidance.
 	 */
-	public String getGuidelines(List<String> fragmentTypes);
+	public default String getGuidelines(List<String> fragmentTypes) { return null; }
 	
 	public Class<T> getArtifactClass();
 	

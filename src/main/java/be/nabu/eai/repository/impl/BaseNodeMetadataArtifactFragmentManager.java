@@ -51,8 +51,13 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 	}
 
 	@Override
-	public String getArtifactType(T artifact) {
-		return artifact.getClass().getSimpleName();
+	public String getArtifactType() {
+		return getArtifactClass().getSimpleName();
+	}
+
+	@Override
+	public String getArtifactCategory() {
+		return null;
 	}
 
 	@Override
@@ -214,9 +219,9 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 
 	@Override
 	public String getGuidelines(List<String> fragmentTypes) {
-		if (fragmentTypes == null || fragmentTypes.isEmpty() || fragmentTypes.contains("metadata")) {
-			return "## Fragment: metadata\n\n"
-				+ "Use `metadata.xml` to update repository node metadata that surrounds the artifact itself.\n\n"
+		if (fragmentTypes == null || fragmentTypes.isEmpty() || fragmentTypes.contains("metadata") || fragmentTypes.contains("metadata.xml")) {
+			return "## Fragment: metadata.xml\n\n"
+				+ "Use `metadata.xml` to read and update repository node metadata that surrounds the artifact itself.\n\n"
 				+ "Supported fields include:\n"
 				+ "- `title`\n"
 				+ "- `summary`\n"
@@ -231,7 +236,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 				+ "- `deprecated` must use `yyyy-MM-dd'T'HH:mm:ss`.\n\n"
 				+ "Example:\n"
 				+ "```xml\n"
-				+ "<metadata>\n"
+				+ "<metadata artifactId=\"example.services.myService\">\n"
 				+ "\t<title>Customer API</title>\n"
 				+ "\t<summary>Public customer operations</summary>\n"
 				+ "\t<description>Used by storefront and CRM flows.</description>\n"
@@ -279,8 +284,8 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 			try {
 				Document document = DocumentBuilderFactory.newInstance().newDocumentBuilder().newDocument();
 				Element metadata = document.createElement("metadata");
+				metadata.setAttribute("artifactId", artifact.getId());
 				document.appendChild(metadata);
-				append(document, metadata, "artifactId", artifact.getId());
 				append(document, metadata, "title", node == null ? null : node.getName());
 				append(document, metadata, "summary", node == null ? null : node.getSummary());
 				append(document, metadata, "description", node == null ? null : node.getDescription());
@@ -293,6 +298,19 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 					for (String tag : node.getTags()) {
 						append(document, tags, "tag", tag);
 					}
+				}
+				Element fragments = document.createElement("fragments");
+				metadata.appendChild(fragments);
+				for (ArtifactFragment fragment : BaseNodeMetadataArtifactFragmentManager.this.listFragments(artifact)) {
+					Element fragmentElement = document.createElement("fragment");
+					fragmentElement.setAttribute("path", fragment.getPath());
+					fragmentElement.setAttribute("type", fragment.getFragmentType());
+					fragmentElement.setAttribute("editable", Boolean.toString(fragment.isEditable()));
+					fragmentElement.setAttribute("removable", Boolean.toString(fragment.isRemovable()));
+					if (fragment.getContentType() != null && !fragment.getContentType().trim().isEmpty()) {
+						fragmentElement.setAttribute("contentType", fragment.getContentType());
+					}
+					fragments.appendChild(fragmentElement);
 				}
 				Transformer transformer = TransformerFactory.newInstance().newTransformer();
 				transformer.setOutputProperty(OutputKeys.INDENT, "yes");

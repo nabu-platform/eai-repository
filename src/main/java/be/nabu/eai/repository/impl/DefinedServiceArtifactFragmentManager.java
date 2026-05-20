@@ -18,9 +18,10 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	private static final String INPUT_PATH = "input.xml";
 	private static final String OUTPUT_PATH = "output.xml";
 	private static final String CONTENT_TYPE = "application/xml";
-	private static final String ARTIFACT_TYPE = "service";
-	private static final String INPUT_FRAGMENT_TYPE = "input-definition";
-	private static final String OUTPUT_FRAGMENT_TYPE = "output-definition";
+	private static final String ARTIFACT_TYPE = "generic-service";
+	private static final String ARTIFACT_CATEGORY = "service";
+	private static final String INPUT_FRAGMENT_TYPE = "structure";
+	private static final String OUTPUT_FRAGMENT_TYPE = "structure";
 
 	@Override
 	public List<ArtifactFragment> listFragments(T artifact) {
@@ -45,21 +46,6 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	@Override
 	public List<Validation<?>> createFragment(T artifact, String path, String content) {
 		throw new UnsupportedOperationException("Creating fragments is not supported for defined services");
-	}
-
-	@Override
-	public String getGuidelines(List<String> fragmentTypes) {
-		if (fragmentTypes == null || fragmentTypes.isEmpty()) {
-			return "Defined services expose read-only input and output fragments with the XML type definitions of the service interface.";
-		}
-		List<String> filtered = new ArrayList<String>();
-		if (fragmentTypes.contains("input-definition")) {
-			filtered.add("input.xml is a read-only XML type definition of the service input.");
-		}
-		if (fragmentTypes.contains("output-definition")) {
-			filtered.add("output.xml is a read-only XML type definition of the service output.");
-		}
-		return filtered.isEmpty() ? null : String.join(" ", filtered);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -131,8 +117,13 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	}
 
 	@Override
-	public String getArtifactType(T artifact) {
+	public String getArtifactType() {
 		return ARTIFACT_TYPE;
+	}
+
+	@Override
+	public String getArtifactCategory() {
+		return ARTIFACT_CATEGORY;
 	}
 	
 }

@@ -36,4 +36,8 @@ public interface MCPTraceProvider {
 	public default void report(MCPTraceContext context, Object object) throws IOException {
 		// do nothing
 	}
+
+	public default String getGuidelines() {
+		return null;
+	}
 }
