@@ -68,8 +68,8 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 			}
 
 			@Override
-			public String getArtifactType() {
-				return DefinedTypeArtifactFragmentManager.this.getArtifactType(artifact);
+			public String getFragmentType() {
+				return "structure";
 			}
 
 			@Override
@@ -116,8 +116,11 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 	}
 
 	@Override
-	public String getGuidelines() {
-		return "Defined complex types expose a read-only structure.xml fragment with the XML type definition. Simple defined types are not supported.";
+	public String getGuidelines(List<String> fragmentTypes) {
+		if (fragmentTypes == null || fragmentTypes.isEmpty() || fragmentTypes.contains("structure")) {
+			return "Defined complex types expose a read-only structure.xml fragment with the XML type definition. Simple defined types are not supported.";
+		}
+		return null;
 	}
 
 	@Override
@@ -126,8 +129,8 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 	}
 	
 	@Override
-	protected String getArtifactType(DefinedType artifact) {
-		return artifact instanceof ComplexType ? COMPLEX_ARTIFACT_TYPE : SIMPLE_ARTIFACT_TYPE;		
+	public String getArtifactType(DefinedType artifact) {
+		return artifact instanceof ComplexType ? COMPLEX_ARTIFACT_TYPE : SIMPLE_ARTIFACT_TYPE;
 	}
 
 }

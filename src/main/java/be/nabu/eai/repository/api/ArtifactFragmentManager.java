@@ -33,23 +33,29 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 		 */
 		public String getArtifactId();
 		/**
-		 * The type of artifact it belongs to, this may impact what should go into the fragment
-		 * Need a stable slug for this, based it on the "name" (prettified), but ideally provide a stable slug
+		 * The logical fragment type within the artifact, for example metadata, structure, pipeline or service.
+		 * This is intended for fragment-specific guidance lookup.
 		 */
-		public String getArtifactType();
+		public String getFragmentType();
 		/**
-		 * Structural metadata for this fragment, for example it might contain super types for references for data types for easily resolving the extension hierarchy
+		 * Structural metadata for this fragment, for example it might contain super types or references for easier downstream resolution.
 		 */
 		public Map<String, String> getProperties();
 	}
+	/**
+	 * The logical type of artifact managed by this manager, used for manager and guideline resolution.
+	 * Need a stable slug for this, based on the "name" (prettified), but ideally provide a stable slug.
+	 */
+	public String getArtifactType(T artifact);
 	public List<ArtifactFragment> listFragments(T artifact);
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent);
 	public List<Validation<?>> deleteFragment(T artifact, String path);
 	public List<Validation<?>> createFragment(T artifact, String path, String initialContent);
 	/**
 	 * Explain how these fragments can be used.
+	 * If fragment types are provided, only return the relevant subset of the guidance.
 	 */
-	public String getGuidelines();
+	public String getGuidelines(List<String> fragmentTypes);
 	
 	public Class<T> getArtifactClass();
 	

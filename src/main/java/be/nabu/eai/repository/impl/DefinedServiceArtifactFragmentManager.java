@@ -19,6 +19,8 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	private static final String OUTPUT_PATH = "output.xml";
 	private static final String CONTENT_TYPE = "application/xml";
 	private static final String ARTIFACT_TYPE = "service";
+	private static final String INPUT_FRAGMENT_TYPE = "input-definition";
+	private static final String OUTPUT_FRAGMENT_TYPE = "output-definition";
 
 	@Override
 	public List<ArtifactFragment> listFragments(T artifact) {
@@ -46,8 +48,18 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	}
 
 	@Override
-	public String getGuidelines() {
-		return "Defined services expose read-only input and output fragments with the XML type definitions of the service interface.";
+	public String getGuidelines(List<String> fragmentTypes) {
+		if (fragmentTypes == null || fragmentTypes.isEmpty()) {
+			return "Defined services expose read-only input and output fragments with the XML type definitions of the service interface.";
+		}
+		List<String> filtered = new ArrayList<String>();
+		if (fragmentTypes.contains("input-definition")) {
+			filtered.add("input.xml is a read-only XML type definition of the service input.");
+		}
+		if (fragmentTypes.contains("output-definition")) {
+			filtered.add("output.xml is a read-only XML type definition of the service output.");
+		}
+		return filtered.isEmpty() ? null : String.join(" ", filtered);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -108,8 +120,8 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 		}
 
 		@Override
-		public String getArtifactType() {
-			return DefinedServiceArtifactFragmentManager.this.getArtifactType(artifact);
+		public String getFragmentType() {
+			return INPUT_PATH.equals(path) ? INPUT_FRAGMENT_TYPE : OUTPUT_FRAGMENT_TYPE;
 		}
 
 		@Override
@@ -119,7 +131,7 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	}
 
 	@Override
-	protected String getArtifactType(T artifact) {
+	public String getArtifactType(T artifact) {
 		return ARTIFACT_TYPE;
 	}
 	
