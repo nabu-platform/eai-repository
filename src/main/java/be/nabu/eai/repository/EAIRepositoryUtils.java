@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -119,6 +121,42 @@ import be.nabu.utils.io.api.WritableContainer;
 public class EAIRepositoryUtils {
 
 	private static Logger logger = LoggerFactory.getLogger(EAIRepositoryUtils.class);
+	private static final ConcurrentMap<String, String> classpathResourceCache = new ConcurrentHashMap<String, String>();
+
+	public static String loadCachedClasspathResource(Class<?> anchor, String resourcePath) {
+		if (anchor == null) {
+			throw new IllegalArgumentException("Anchor class must not be null");
+		}
+		if (resourcePath == null || resourcePath.trim().isEmpty()) {
+			throw new IllegalArgumentException("Resource path must not be empty");
+		}
+		String trimmedPath = resourcePath.trim();
+		String cacheKey = anchor.getName() + ":" + trimmedPath;
+		String cached = classpathResourceCache.get(cacheKey);
+		if (cached != null) {
+			return cached;
+		}
+		InputStream input = anchor.getResourceAsStream(trimmedPath);
+		if (input == null) {
+			throw new RuntimeException("Could not load classpath resource: " + trimmedPath);
+		}
+		try {
+			String loaded = new String(IOUtils.toBytes(IOUtils.wrap(input)), "UTF-8").trim();
+			String previous = classpathResourceCache.putIfAbsent(cacheKey, loaded);
+			return previous == null ? loaded : previous;
+		}
+		catch (IOException e) {
+			throw new RuntimeException("Could not load classpath resource: " + trimmedPath, e);
+		}
+		finally {
+			try {
+				input.close();
+			}
+			catch (IOException e) {
+				// Ignore close failures for cached classpath resources.
+			}
+		}
+	}
 
 	public static boolean isProject(Entry entry) {
 		be.nabu.eai.repository.api.Collection collection = entry.getCollection();

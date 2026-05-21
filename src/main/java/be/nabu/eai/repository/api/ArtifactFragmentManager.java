@@ -52,6 +52,7 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent);
 	public List<Validation<?>> deleteFragment(T artifact, String path);
 	public List<Validation<?>> createFragment(T artifact, String path, String initialContent);
+	
 	/**
 	 * Explain how these fragments can be used.
 	 * If fragment types are provided, only return the relevant subset of the guidance.
