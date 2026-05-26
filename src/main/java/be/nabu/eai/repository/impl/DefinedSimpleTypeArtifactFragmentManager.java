@@ -68,6 +68,11 @@ public class DefinedSimpleTypeArtifactFragmentManager extends BaseNodeMetadataAr
 				}
 				return properties;
 			}
+
+			@Override
+			public Long getLastModified() {
+				return getFragmentLastModified(artifact.getId(), SIMPLE_TYPE_PATH);
+			}
 		});
 		return fragments;
 	}

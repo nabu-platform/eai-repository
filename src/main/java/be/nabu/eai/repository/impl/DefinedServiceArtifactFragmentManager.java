@@ -114,6 +114,11 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 		public Map<String, String> getProperties() {
 			return Collections.emptyMap();
 		}
+
+		@Override
+		public Long getLastModified() {
+			return getFragmentLastModified(artifact.getId(), path);
+		}
 	}
 
 	@Override

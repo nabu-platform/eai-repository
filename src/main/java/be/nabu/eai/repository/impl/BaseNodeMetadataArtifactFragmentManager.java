@@ -1,6 +1,7 @@
 package be.nabu.eai.repository.impl;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
@@ -32,7 +33,9 @@ import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.resources.RepositoryEntry;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.Resource;
+import be.nabu.libs.resources.api.TimestampedResource;
 import be.nabu.libs.validator.api.Validation;
 import be.nabu.libs.validator.api.ValidationMessage;
 import be.nabu.libs.validator.api.ValidationMessage.Severity;
@@ -346,6 +349,40 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 		@Override
 		public Map<String, String> getProperties() {
 			return Collections.emptyMap();
+		}
+
+		@Override
+		public Long getLastModified() {
+			return getFragmentLastModified(artifact.getId(), NODE_PATH);
+		}
+	}
+
+	protected Long getFragmentLastModified(String artifactId, String path) {
+		try {
+			Entry entry = EAIResourceRepository.getInstance().getEntry(artifactId);
+			if (entry == null) {
+				return null;
+			}
+			if (entry instanceof ResourceEntry) {
+				Resource resource = ResourceUtils.resolve(((ResourceEntry) entry).getContainer(), path);
+				if (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified() != null) {
+					return ((TimestampedResource) resource).getLastModified().getTime();
+				}
+			}
+			Entry current = entry;
+			while (current != null) {
+				if (current instanceof RepositoryEntry) {
+					Node node = current.getNode();
+					if (node != null && node.getLastModified() != null) {
+						return node.getLastModified().getTime();
+					}
+				}
+				current = current.getParent();
+			}
+			return null;
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
 		}
 	}
 

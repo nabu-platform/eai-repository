@@ -29,6 +29,11 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 		 */
 		public String getContentType();
 		/**
+		 * A cheap freshness marker for the fragment content when available.
+		 * Returning null means callers must fall back to reading content.
+		 */
+		public default Long getLastModified() { return null; }
+		/**
 		 * The artifact it belongs to
 		 */
 		public String getArtifactId();
