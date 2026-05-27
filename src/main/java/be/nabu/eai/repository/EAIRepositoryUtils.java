@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -55,6 +56,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +122,7 @@ import be.nabu.utils.cep.impl.CEPUtils;
 import be.nabu.utils.cep.impl.ComplexEventImpl;
 import be.nabu.utils.io.IOUtils;
 import be.nabu.utils.io.api.ByteBuffer;
+import org.w3c.dom.Document;
 import be.nabu.utils.io.api.ReadableContainer;
 import be.nabu.utils.io.api.WritableContainer;
 
@@ -156,6 +164,41 @@ public class EAIRepositoryUtils {
 				// Ignore close failures for cached classpath resources.
 			}
 		}
+	}
+
+	public static void prettyPrint(Document document, OutputStream output) throws Exception {
+		Transformer transformer = TransformerFactory.newInstance().newTransformer();
+		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+		transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+		transformer.transform(new DOMSource(document), new StreamResult(buffer));
+		output.write(retabIndentation(new String(buffer.toByteArray(), StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static String retabIndentation(String content) {
+		StringBuilder builder = new StringBuilder();
+		String[] lines = content.split("\\r?\\n", -1);
+		for (int i = 0; i < lines.length; i++) {
+			String line = lines[i];
+			int index = 0;
+			while (index < line.length() && line.charAt(index) == ' ') {
+				index++;
+			}
+			int tabs = index / 4;
+			int remainder = index % 4;
+			for (int j = 0; j < tabs; j++) {
+				builder.append('\t');
+			}
+			for (int j = 0; j < remainder; j++) {
+				builder.append(' ');
+			}
+			builder.append(line.substring(index));
+			if (i + 1 < lines.length) {
+				builder.append('\n');
+			}
+		}
+		return builder.toString();
 	}
 
 	public static boolean isProject(Entry entry) {
