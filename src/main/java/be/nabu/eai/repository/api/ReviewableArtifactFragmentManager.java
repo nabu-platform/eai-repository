@@ -1,6 +1,6 @@
 package be.nabu.eai.repository.api;
 
-import java.util.List;
+import java.util.Map;
 
 import be.nabu.libs.artifacts.api.Artifact;
 
@@ -11,17 +11,17 @@ public interface ReviewableArtifactFragmentManager<T extends Artifact> extends A
 		 */
 		public String getName();
 		/**
-		 * The default resource is the main resource sent back via review 
+		 * The content type to expose for this resource.
 		 */
-		public boolean isDefault();
+		public String getContentType();
 		/**
-		 * Static resources can be stored for all reviews and must not be stored per review 
-		 */
-		public boolean isStatic();
-		/**
-		 * The actual content
+		 * The actual content.
 		 */
 		public byte [] getContent();
 	}
-	public List<ReviewResource> reviewFragmentUpdate(T artifact, String path, String oldContent, String newContent);
+	/**
+	 * Returns the static review resource to use per logical fragment type.
+	 * The key matches ArtifactFragment.getFragmentType().
+	 */
+	public Map<String, ReviewResource> getReviewResources();
 }

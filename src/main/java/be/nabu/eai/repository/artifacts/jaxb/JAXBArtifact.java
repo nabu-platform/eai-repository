@@ -251,7 +251,7 @@ public class JAXBArtifact<T> implements LazyArtifact, LiveReloadable {
 		}
 	}
 
-	protected void setConfig(T config) {
+	public void setConfig(T config) {
 		this.configuration = config;
 	}
 

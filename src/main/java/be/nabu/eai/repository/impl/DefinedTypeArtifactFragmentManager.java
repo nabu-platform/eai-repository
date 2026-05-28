@@ -117,15 +117,7 @@ public class DefinedTypeArtifactFragmentManager extends BaseNodeMetadataArtifact
 		throw new UnsupportedOperationException("Updating fragments is not supported for defined types");
 	}
 
-	@Override
-	public List<Validation<?>> deleteFragment(DefinedType artifact, String path) {
-		throw new UnsupportedOperationException("Deleting fragments is not supported for defined types");
-	}
 
-	@Override
-	public List<Validation<?>> createFragment(DefinedType artifact, String path, String content) {
-		throw new UnsupportedOperationException("Creating fragments is not supported for defined types");
-	}
 
 	@Override
 	public String getGuidelines(List<String> fragmentTypes) {

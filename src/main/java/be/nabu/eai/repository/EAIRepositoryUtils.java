@@ -167,6 +167,13 @@ public class EAIRepositoryUtils {
 	}
 
 	public static void prettyPrint(Document document, OutputStream output) throws Exception {
+		prettyPrint(document, output, true);
+	}
+
+	public static void prettyPrint(Document document, OutputStream output, boolean cleanupWhitespace) throws Exception {
+		if (cleanupWhitespace) {
+			removeWhitespaceNodes(document);
+		}
 		Transformer transformer = TransformerFactory.newInstance().newTransformer();
 		transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
 		transformer.setOutputProperty(OutputKeys.INDENT, "yes");
@@ -174,6 +181,19 @@ public class EAIRepositoryUtils {
 		ByteArrayOutputStream buffer = new ByteArrayOutputStream();
 		transformer.transform(new DOMSource(document), new StreamResult(buffer));
 		output.write(retabIndentation(new String(buffer.toByteArray(), StandardCharsets.UTF_8)).getBytes(StandardCharsets.UTF_8));
+	}
+
+	private static void removeWhitespaceNodes(org.w3c.dom.Node node) {
+		org.w3c.dom.NodeList childNodes = node.getChildNodes();
+		for (int i = childNodes.getLength() - 1; i >= 0; i--) {
+			org.w3c.dom.Node child = childNodes.item(i);
+			if (child.getNodeType() == org.w3c.dom.Node.TEXT_NODE && (child.getTextContent() == null || child.getTextContent().trim().isEmpty())) {
+				node.removeChild(child);
+			}
+			else {
+				removeWhitespaceNodes(child);
+			}
+		}
 	}
 
 	private static String retabIndentation(String content) {

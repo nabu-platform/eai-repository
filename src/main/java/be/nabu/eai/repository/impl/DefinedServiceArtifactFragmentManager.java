@@ -5,10 +5,14 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.ServiceInterface;
 import be.nabu.libs.types.api.ComplexType;
 import be.nabu.libs.types.definition.xml.XMLDefinitionMarshaller;
 import be.nabu.libs.validator.api.Validation;
@@ -22,6 +26,7 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	private static final String ARTIFACT_CATEGORY = "service";
 	private static final String INPUT_FRAGMENT_TYPE = "structure";
 	private static final String OUTPUT_FRAGMENT_TYPE = "structure";
+	private static final String IMPLEMENTED_INTERFACES = "implemented-interfaces";
 
 	@Override
 	public List<ArtifactFragment> listFragments(T artifact) {
@@ -38,15 +43,7 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 		throw new UnsupportedOperationException("Updating fragments is not supported for defined services");
 	}
 
-	@Override
-	public List<Validation<?>> deleteFragment(T artifact, String path) {
-		throw new UnsupportedOperationException("Deleting fragments is not supported for defined services");
-	}
 
-	@Override
-	public List<Validation<?>> createFragment(T artifact, String path, String content) {
-		throw new UnsupportedOperationException("Creating fragments is not supported for defined services");
-	}
 
 	@SuppressWarnings("unchecked")
 	@Override
@@ -112,13 +109,43 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 
 		@Override
 		public Map<String, String> getProperties() {
-			return Collections.emptyMap();
+			return getDefinedServiceProperties(artifact);
 		}
 
 		@Override
 		public Long getLastModified() {
 			return getFragmentLastModified(artifact.getId(), path);
 		}
+	}
+
+	protected Map<String, String> getDefinedServiceProperties(T artifact) {
+		Map<String, String> properties = new LinkedHashMap<String, String>();
+		String implementedInterfaces = getImplementedInterfaces(artifact);
+		if (!implementedInterfaces.isEmpty()) {
+			properties.put(IMPLEMENTED_INTERFACES, implementedInterfaces);
+		}
+		return properties;
+	}
+
+	private String getImplementedInterfaces(T artifact) {
+		Set<String> implementedInterfaces = new LinkedHashSet<String>();
+		ServiceInterface serviceInterface = artifact.getServiceInterface();
+		while (serviceInterface != null) {
+			if (serviceInterface instanceof DefinedService) {
+				String id = ((DefinedService) serviceInterface).getId();
+				if (id != null && !id.trim().isEmpty()) {
+					implementedInterfaces.add(id.trim());
+				}
+			}
+			else {
+				String id = serviceInterface.getClass().getName();
+				if (id != null && !id.trim().isEmpty()) {
+					implementedInterfaces.add(id.trim());
+				}
+			}
+			serviceInterface = serviceInterface.getParent();
+		}
+		return String.join(",", implementedInterfaces);
 	}
 
 	@Override

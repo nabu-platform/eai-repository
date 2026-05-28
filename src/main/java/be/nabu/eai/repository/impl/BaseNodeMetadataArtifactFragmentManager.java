@@ -9,6 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import org.w3c.dom.NodeList;
 import be.nabu.eai.repository.EAINode;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactFragmentManager;
+import be.nabu.eai.repository.api.DynamicEntry;
 import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.Node;
 import be.nabu.eai.repository.api.ResourceEntry;
@@ -51,6 +53,35 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 		List<ArtifactFragment> fragments = new ArrayList<ArtifactFragment>();
 		fragments.add(new MetadataFragment(artifact));
 		return fragments;
+	}
+
+	protected Map<String, String> getMetadataProperties(T artifact) {
+		Map<String, String> properties = new LinkedHashMap<String, String>();
+		Entry entry = EAIResourceRepository.getInstance().getEntry(artifact.getId());
+		if (entry instanceof DynamicEntry) {
+			String originatingArtifact = ((DynamicEntry) entry).getOriginatingArtifact();
+			if (originatingArtifact != null && !originatingArtifact.trim().isEmpty()) {
+				properties.put("originatingArtifact", originatingArtifact);
+			}
+		}
+		properties.putAll(getDerivedMetadataProperties(artifact));
+		return properties;
+	}
+
+	protected Map<String, String> getDerivedMetadataProperties(T artifact) {
+		Map<String, String> properties = new LinkedHashMap<String, String>();
+		EAIResourceRepository repository = EAIResourceRepository.getInstance();
+		if (repository != null && artifact != null && artifact.getId() != null) {
+			List<String> references = repository.getReferences(artifact.getId());
+			if (references != null && !references.isEmpty()) {
+				properties.put("references", String.join(",", references));
+			}
+			List<String> dependencies = repository.getDependencies(artifact.getId());
+			if (dependencies != null && !dependencies.isEmpty()) {
+				properties.put("dependencies", String.join(",", dependencies));
+			}
+		}
+		return properties;
 	}
 
 	@Override
@@ -236,6 +267,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 				+ "Notes:\n"
 				+ "- This updates `node.xml`, not the artifact content file.\n"
 				+ "- Unknown or invalid values return validation errors.\n"
+				+ "- Derived graph details such as references and dependencies are exposed as fragment properties, not XML elements.\n"
 				+ "- `deprecated` must use `yyyy-MM-dd'T'HH:mm:ss`.\n\n"
 				+ "Example:\n"
 				+ "```xml\n"
@@ -348,7 +380,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 
 		@Override
 		public Map<String, String> getProperties() {
-			return Collections.emptyMap();
+			return getMetadataProperties(artifact);
 		}
 
 		@Override
