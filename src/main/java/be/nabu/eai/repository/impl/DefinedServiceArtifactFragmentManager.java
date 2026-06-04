@@ -40,7 +40,10 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 
 	@Override
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent) {
-		throw new UnsupportedOperationException("Updating fragments is not supported for defined services");
+		if ("metadata.xml".equals(path)) {
+			return super.updateFragment(artifact, path, oldContent, newContent);
+		}
+		throw new UnsupportedOperationException("Updating fragments is only supported for metadata.xml on defined services");
 	}
 
 

@@ -228,6 +228,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public static final String PRIVATE = "private";
 	public static final String PUBLIC = "public";
+	private static final long SLOW_RELOAD_PHASE_LOG_THRESHOLD = Long.getLong("reload.slow.phase.threshold", 5000L).longValue();
 	public static final String PROTECTED = "protected";
 	
 	private Map<String, Map<String, List<Validation<?>>>> messages = new HashMap<String, Map<String, List<Validation<?>>>>();
@@ -695,6 +696,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public void reload(String id, boolean recursiveReload) {
+		long reloadStarted = System.currentTimeMillis();
 		logger.info("Reloading: " + id + " (" + recursiveReload + ")");
 		if (recursiveReload) {
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, false), this);
@@ -734,36 +736,88 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				logger.info("Actually reloading: " + entry.getId() + " (" + recursiveReload + ")");
 			}
 			if (liveReload) {
+				long started = System.currentTimeMillis();
 				liveReload(entry);
+				logSlowReloadPhase("live reload", entry.getId(), started);
 			}
 			else {
+				long started = System.currentTimeMillis();
 				unload(entry, false);
+				logSlowReloadPhase("unload", entry.getId(), started);
 				// @2025-09-22: suppose you do a "move" locally in developer (e.g. rename), developer will update all the dependencies to the new artifact
 				// however, it only triggers a "reload" on the server of those dependencies. without revisiting the updated node.xml however, the server will keep seeing the old references which no longer match with any existing node and the map becomes incomplete
 				// we do a non-recursive refresh during reload (reload should only ever be because of development?) to force picking up the new node.xml
+				started = System.currentTimeMillis();
 				entry.refresh(false);
+				logSlowReloadPhase("refresh", entry.getId(), started);
+				started = System.currentTimeMillis();
 				preload(entry);
+				logSlowReloadPhase("preload", entry.getId(), started);
+				started = System.currentTimeMillis();
 				load(entry);
+				logSlowReloadPhase("load", entry.getId(), started);
 			}
 			// also reload all the dependencies
 			// prevent concurrent modification
 			if (recursiveReload) {
+				long started = System.currentTimeMillis();
 				Set<String> dependenciesToReload = calculateDependenciesToReload(entry);
+				logSlowReloadPhase("calculate dependencies", entry.getId(), started);
+				started = System.currentTimeMillis();
+				int reloadedDependencies = 0;
+				int skippedDependencies = 0;
+				long slowestDependencyDuration = 0;
+				String slowestDependency = null;
 				for (String dependency : dependenciesToReload) {
 					// don't reload dependencies inside the entry, they have already been reloaded
 					if (!dependency.startsWith(entry.getId() + ".")) {
+						long dependencyStarted = System.currentTimeMillis();
 						reload(dependency, false);
+						long dependencyDuration = System.currentTimeMillis() - dependencyStarted;
+						reloadedDependencies++;
+						if (dependencyDuration > slowestDependencyDuration) {
+							slowestDependencyDuration = dependencyDuration;
+							slowestDependency = dependency;
+						}
+						if (dependencyDuration >= SLOW_RELOAD_PHASE_LOG_THRESHOLD) {
+							logger.warn("Slow dependency reload for " + entry.getId() + ": " + dependency + " took " + dependencyDuration + "ms");
+						}
+					}
+					else {
+						skippedDependencies++;
 					}
 				}
+				logSlowReloadDependencies(entry.getId(), started, dependenciesToReload.size(), reloadedDependencies, skippedDependencies, slowestDependency, slowestDependencyDuration);
 			}
 		}
 		if (recursiveReload) {
+			long started = System.currentTimeMillis();
 			// TODO: remove
 			reattachMavenArtifacts();
+			logSlowReloadPhase("reattach maven artifacts", id, started);
+			started = System.currentTimeMillis();
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
+			logSlowReloadPhase("repository reload event", id, started);
 		}
+		long started = System.currentTimeMillis();
 		// rescan so we don't have surprises later on, otherwise the first scan might be triggered by a shutdown which will trigger an infinite reload loop
 		scanForTypes();
+		logSlowReloadPhase("scan types", id, started);
+		logSlowReloadPhase("total reload", id, reloadStarted);
+	}
+	
+	private void logSlowReloadPhase(String phase, String id, long started) {
+		long duration = System.currentTimeMillis() - started;
+		if (duration >= SLOW_RELOAD_PHASE_LOG_THRESHOLD) {
+			logger.warn("Slow reload phase '" + phase + "' for " + id + " took " + duration + "ms");
+		}
+	}
+	
+	private void logSlowReloadDependencies(String id, long started, int dependencyCount, int reloadedDependencies, int skippedDependencies, String slowestDependency, long slowestDependencyDuration) {
+		long duration = System.currentTimeMillis() - started;
+		if (duration >= SLOW_RELOAD_PHASE_LOG_THRESHOLD) {
+			logger.warn("Slow reload phase 'reload dependencies' for " + id + " took " + duration + "ms (dependencies=" + dependencyCount + ", reloaded=" + reloadedDependencies + ", skipped=" + skippedDependencies + ", slowest=" + slowestDependency + ", slowestMs=" + slowestDependencyDuration + ")");
+		}
 	}
 	
 	private boolean canLiveReload(Entry entry) {
@@ -854,15 +908,20 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void load(Entry entry) {
 		logger.info("Loading: " + entry.getId());
 		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
+		long started = System.currentTimeMillis();
 		load(entry, artifactRepositoryManagers);
+		logSlowReloadPhase("load traversal", entry.getId(), started);
 		// first load the repositories without dependencies
 		logger.info("Sorting artifact generators");
 		// if we optimize, we DON'T move the ones with no references to the front as this will trigger quite a few moves
 		// instead, we loop over the artifacts twice, first to load those without references, then to load those with
 		// without optimize, the sort took 3.5s on an average project, with optimize, it is reduced to under 1s
 		boolean optimize = true;
+		started = System.currentTimeMillis();
 		sortArtifactRepositoryManagers(artifactRepositoryManagers, optimize);
+		logSlowReloadPhase("sort artifact generators", entry.getId(), started);
 		logger.info("Loading dynamically generated artifacts");
+		started = System.currentTimeMillis();
 		if (!optimize) {
 			for (Entry manager : artifactRepositoryManagers) {
 				loadArtifactManager(manager);
@@ -883,6 +942,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		logSlowReloadPhase("load generated artifacts", entry.getId(), started);
 		// reset the scanned items, otherwise not all dynamically loaded artifacts are present?
 		reset();
 	}
@@ -1019,6 +1079,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void loadArtifactManager(Entry entry) {
+		long started = System.currentTimeMillis();
 		logger.debug("Loading children of: " + entry.getId());
 		try {
 			List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
@@ -1030,6 +1091,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		catch (Exception e) {
 			logger.error("Could not finish loading generated children for: " + entry.getId(), e);
+		}
+		finally {
+			logSlowReloadPhase("load artifact manager", entry.getId(), started);
 		}
 	}
 
