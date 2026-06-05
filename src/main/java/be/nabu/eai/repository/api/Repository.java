@@ -85,6 +85,12 @@ public interface Repository extends ArtifactResolver<Artifact>, ExecutionContext
 	 */
 	public void reloadAll(Collection<String> ids);
 	/**
+	 * Reload artifacts that depend on the given ids.
+	 */
+	public default void reloadDependencies(Collection<String> ids) {
+		reloadAll(ids);
+	}
+	/**
 	 * Unload an id
 	 */
 	public void unload(String id);

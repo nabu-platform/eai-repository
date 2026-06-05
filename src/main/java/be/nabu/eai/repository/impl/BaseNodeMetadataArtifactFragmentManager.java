@@ -122,7 +122,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 	}
 
 	private void applyMetadata(Element metadata, EAINode node, List<Validation<?>> validations) {
-		node.setName(readValue(metadata, "title"));
+		node.setName(readValue(metadata, "label"));
 		node.setSummary(readValue(metadata, "summary"));
 		node.setDescription(readValue(metadata, "description"));
 		node.setComment(readValue(metadata, "comment"));
@@ -257,7 +257,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 			return "## Fragment: metadata.xml\n\n"
 				+ "Use `metadata.xml` to read and update repository node metadata that surrounds the artifact itself.\n\n"
 				+ "Supported fields include:\n"
-				+ "- `title`: an alternative display name for the artifact\n"
+				+ "- `label`: an alternative display name for the artifact\n"
 				+ "- `summary`: a short summary aimed at people using the service\n"
 				+ "- `description`: a longer description aimed at people using the service\n"
 				+ "- `comment`: a comment aimed at people developing the service\n"
@@ -272,7 +272,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 				+ "Example:\n"
 				+ "```xml\n"
 				+ "<metadata artifactId=\"example.services.myService\">\n"
-				+ "\t<title>Customer API</title>\n"
+				+ "\t<label>Customer API</label>\n"
 				+ "\t<summary>Public customer operations</summary>\n"
 				+ "\t<description>Used by storefront and CRM flows.</description>\n"
 				+ "\t<comment>Owned by integration team</comment>\n"
@@ -321,7 +321,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 				Element metadata = document.createElement("metadata");
 				metadata.setAttribute("artifactId", artifact.getId());
 				document.appendChild(metadata);
-				append(document, metadata, "title", node == null ? null : node.getName());
+				append(document, metadata, "label", node == null ? null : node.getName());
 				append(document, metadata, "summary", node == null ? null : node.getSummary());
 				append(document, metadata, "description", node == null ? null : node.getDescription());
 				append(document, metadata, "comment", node == null ? null : node.getComment());

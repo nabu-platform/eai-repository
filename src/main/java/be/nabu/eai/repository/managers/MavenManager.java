@@ -42,8 +42,6 @@ import be.nabu.eai.repository.api.Entry;
 import be.nabu.eai.repository.api.ModifiableEntry;
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.eai.repository.api.ResourceEntry;
-import be.nabu.eai.repository.events.NodeEvent;
-import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.resources.MemoryEntry;
 import be.nabu.eai.repository.util.NodeUtils;
 import be.nabu.libs.maven.api.Artifact;
@@ -173,7 +171,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 				String childName = index < 0 ? childId : childId.substring(index + 1);
 				if (parent.getChild(childName) == null) {
 					String entryId = parent.getId() + "." + childName;
-					root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, null, State.LOAD, false), artifact);
 					EAINode node = new EAINode();
 					if (parentId != null && !parentId.equals("")) {
 						node.getReferences().add(parentId);
@@ -243,7 +240,6 @@ public class MavenManager implements ArtifactRepositoryManager<MavenArtifact> {
 						parent.addChildren(child);
 //					}
 					node.setHidden(hidden);
-					root.getRepository().getEventDispatcher().fire(new NodeEvent(entryId, node, State.LOAD, true), artifact);
 					entries.add(child);
 				}
 			}

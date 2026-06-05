@@ -603,19 +603,14 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 						logger.error("Could not remove the entry from the classloading: " + entry.getId(), e);
 					}
 				}
+				List<Entry> generatedChildren = getGeneratedChildren(entry.getId());
+				fireGeneratedLifecycle(generatedChildren, State.UNLOAD, false);
 				unbuildReferenceMap(entry.getId());
 				// if there is an artifact manager and it maintains a repository, remove it all
 				if (entry.getNode().isLoaded() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 					try {
 						List<Entry> removedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).removeChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
 						logger.info("Unloaded " + (removedChildren == null ? "no" : removedChildren.size()) + " dynamic children of artifact: " + entry.getId());
-						if (removedChildren != null) {
-							for (Entry removedChild : removedChildren) {
-								if (removedChild != null) {
-									unbuildReferenceMap(removedChild.getId());
-								}
-							}
-						}
 					}
 					catch (InstantiationException e) {
 						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
@@ -630,6 +625,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 						logger.error("Could not finish unloading generated children for " + entry.getId(), e);
 					}
 				}
+				unbuildGeneratedChildren(generatedChildren);
+				fireGeneratedLifecycle(generatedChildren, State.UNLOAD, true);
 				getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.UNLOAD, true), this);
 			}
 		}
@@ -667,6 +664,11 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	@Override
 	public void reloadAll(Collection<String> ids) {
 		reloadAll(ids, false);
+	}
+
+	@Override
+	public void reloadDependencies(Collection<String> ids) {
+		reloadAll(ids, true);
 	}
 	
 	private void reloadAll(Collection<String> ids, boolean dependenciesOnly) {
@@ -835,10 +837,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void liveReload(Entry entry) {
 		try {
 			logger.info("Live reloading: " + entry.getId());
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.RELOAD, false), this);
 			entry.refresh(false);
 			((LiveReloadable) entry.getNode().getArtifact()).liveReload();
 			// potentially update any references!
 			updateReferences(entry.getId(), entry.getNode().getReferences());
+			getEventDispatcher().fire(new NodeEvent(entry.getId(), entry.getNode(), State.RELOAD, true), this);
 		}
 		catch (Exception e) {
 			logger.warn("Can not live reload artifact " + entry.getId(), e);
@@ -1083,17 +1087,67 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		logger.debug("Loading children of: " + entry.getId());
 		try {
 			List<Entry> addedChildren = ((ArtifactRepositoryManager) entry.getNode().getArtifactManager().newInstance()).addChildren((ModifiableEntry) entry, entry.getNode().getArtifact());
-			if (addedChildren != null) {
-				for (Entry addedChild : addedChildren) {
-					buildReferenceMap(addedChild.getId(), addedChild.getNode().getReferences());
-				}
-			}
+			loadGeneratedChildren(entry.getId(), addedChildren);
 		}
 		catch (Exception e) {
 			logger.error("Could not finish loading generated children for: " + entry.getId(), e);
 		}
 		finally {
 			logSlowReloadPhase("load artifact manager", entry.getId(), started);
+		}
+	}
+
+	private void loadGeneratedChildren(String artifactId, List<Entry> children) {
+		List<Entry> generatedChildren = filterGeneratedChildren(artifactId, children);
+		fireGeneratedLifecycle(generatedChildren, State.LOAD, false);
+		for (Entry generatedChild : generatedChildren) {
+			buildReferenceMap(generatedChild.getId(), generatedChild.getNode().getReferences());
+		}
+		fireGeneratedLifecycle(generatedChildren, State.LOAD, true);
+	}
+
+	private void unloadGeneratedChildren(List<Entry> generatedChildren) {
+		fireGeneratedLifecycle(generatedChildren, State.UNLOAD, false);
+		unbuildGeneratedChildren(generatedChildren);
+		fireGeneratedLifecycle(generatedChildren, State.UNLOAD, true);
+	}
+
+	private List<Entry> getGeneratedChildren(String artifactId) {
+		List<Entry> generatedChildren = new ArrayList<Entry>();
+		for (String dependency : getDependencies(artifactId)) {
+			Entry child = getEntry(dependency);
+			if (isGeneratedChild(artifactId, child)) {
+				generatedChildren.add(child);
+			}
+		}
+		return generatedChildren;
+	}
+
+	private List<Entry> filterGeneratedChildren(String artifactId, List<Entry> children) {
+		List<Entry> generatedChildren = new ArrayList<Entry>();
+		if (children != null) {
+			for (Entry child : children) {
+				if (isGeneratedChild(artifactId, child)) {
+					generatedChildren.add(child);
+				}
+			}
+		}
+		return generatedChildren;
+	}
+
+	private boolean isGeneratedChild(String artifactId, Entry child) {
+		return child instanceof DynamicEntry && child.isNode() && artifactId.equals(((DynamicEntry) child).getOriginatingArtifact());
+	}
+
+	private void unbuildGeneratedChildren(List<Entry> generatedChildren) {
+		for (Entry generatedChild : generatedChildren) {
+			unbuildReferenceMap(generatedChild.getId());
+		}
+	}
+
+	private void fireGeneratedLifecycle(List<Entry> generatedChildren, State state, boolean done) {
+		for (Entry generatedChild : generatedChildren) {
+			getEventDispatcher().fire(new NodeEvent(generatedChild.getId(), generatedChild.getNode(), state, done), this);
 		}
 	}
 
@@ -1456,6 +1510,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				// if it is the same artifact (version doesn't matter), reload it
 				if (mavenArtifact.getArtifact().getGroupId().equals(artifact.getGroupId()) && mavenArtifact.getArtifact().getArtifactId().equals(artifact.getArtifactId())) {
 					try {
+						unloadGeneratedChildren(getGeneratedChildren(mavenArtifact.getId()));
 						mavenManager.removeChildren(getRoot(), mavenArtifact);
 					}
 					catch (IOException e) {
@@ -1488,6 +1543,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			MavenArtifact artifact = artifactIterator.next();
 			if (artifact.getRepository().equals(domainRepository)) {
 				try {
+					unloadGeneratedChildren(getGeneratedChildren(artifact.getId()));
 					MavenManager.detachChildren(getRoot(), artifact);
 				}
 				catch (IOException e) {
@@ -1549,8 +1605,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// To (quickly) circumvent this issue, we simply don't attach the children on startup. In the startup sequence there was already a "reattach" at the very end because other loading can reset the initial attach anyway
 			// This is still a rather dirty hack and it would be better to have the dependency checking or really split up the two stages cleanly
 			if (!initial) {
+				unloadGeneratedChildren(getGeneratedChildren(artifact.getId()));
 				mavenManager.removeChildren(getRoot(), artifact);
-				mavenManager.addChildren(getRoot(), artifact);
+				loadGeneratedChildren(artifact.getId(), mavenManager.addChildren(getRoot(), artifact));
 			}
 			mavenIfaceResolvers.put(artifact, new POJOInterfaceResolver(artifact.getClassLoader()));
 			DefinedServiceInterfaceResolverFactory.getInstance().addResolver(mavenIfaceResolvers.get(artifact));
@@ -1567,7 +1624,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void reattachMavenArtifacts(ModifiableEntry entry) {
 		for (MavenArtifact artifact : mavenArtifacts) {
 			try {
-				MavenManager.attachChildren(entry, artifact);
+				List<Entry> attachedChildren = MavenManager.attachChildren(entry, artifact);
+				if (entry.getRepository() == this) {
+					loadGeneratedChildren(artifact.getId(), attachedChildren);
+				}
 			}
 			catch (IOException e) {
 				logger.error("Could not reattach maven artifact: " + artifact, e);
