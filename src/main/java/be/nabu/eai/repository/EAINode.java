@@ -48,6 +48,7 @@ public class EAINode implements Node {
 	private Class<? extends ArtifactManager> artifactManager;
 	private Class<? extends Artifact> artifactClass;
 	private Artifact artifact;
+	private boolean loading;
 	private List<String> references;
 	private Entry entry;
 	private List<Validation<?>> messages = new ArrayList<Validation<?>>();
@@ -80,8 +81,17 @@ public class EAINode implements Node {
 		if (artifact == null) {
 			synchronized(this) {
 				if (artifact == null) {
-					messages.clear();
-					artifact = newArtifactManager().load((ResourceEntry) entry, messages);
+					if (loading) {
+						throw new ParseException("Circular artifact reference while loading: " + (entry == null ? null : entry.getId()), 0);
+					}
+					loading = true;
+					try {
+						messages.clear();
+						artifact = newArtifactManager().load((ResourceEntry) entry, messages);
+					}
+					finally {
+						loading = false;
+					}
 				}
 			}
 		}

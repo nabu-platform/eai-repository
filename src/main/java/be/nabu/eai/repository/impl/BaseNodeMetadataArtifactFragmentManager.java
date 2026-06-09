@@ -300,7 +300,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 
 		@Override
 		public boolean isEditable() {
-			return entry instanceof ResourceEntry;
+			return entry instanceof ResourceEntry && entry.isEditable();
 		}
 
 		@Override
