@@ -71,6 +71,9 @@ Common simple-type properties:
 	- `collectionFormat`: MULTI (default), CSV, SSV, TSV, PIPES, LABEL, DEEP_OBJECT, MATRIX_IMPLODE, MATRIX_EXPLODE
 - Comparable simple types add: `minInclusive`, `maxInclusive`, `minExclusive`, `maxExclusive`
 
+For structures that will be synchronized to a database, add a `collectionName` attribute which should be the plural, this will be used as table name. For example structure "contract" needs a collectionName like "contracts".
+Collection names are automatically rewritten to underscores, so a collection name `contractLines` will be appear as table `contract_lines`.
+
 Built-in wrappers from `types-base`:
 - `java.lang.String` (`string`): supports `actualType` to validate the string as another simple type without changing runtime representation; also supports `token` for whitespace normalization.
 - `java.lang.Boolean` (`boolean`): accepts `true`/`false`; numeric strings are also accepted and map to `>= 1` => true.

@@ -267,7 +267,7 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 				+ "Notes:\n"
 				+ "- This updates `node.xml`, not the artifact content file.\n"
 				+ "- Unknown or invalid values return validation errors.\n"
-				+ "- Derived graph details such as references and dependencies are exposed as fragment properties, not XML elements.\n"
+				+ "- Derived graph details such as references and dependencies are exposed as fragment properties, not XML elements. These are calculated automatically.\n"
 				+ "- `deprecated` must use `yyyy-MM-dd'T'HH:mm:ss`.\n\n"
 				+ "Example:\n"
 				+ "```xml\n"

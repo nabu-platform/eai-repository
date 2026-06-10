@@ -55,6 +55,7 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 	public String getArtifactCategory();
 	public List<ArtifactFragment> listFragments(T artifact);
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent);
+	public default boolean shouldReloadAfterChange(String fragment) { return true; }
 	
 	/**
 	 * Explain how these fragments can be used.

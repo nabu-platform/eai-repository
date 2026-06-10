@@ -261,6 +261,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private MavenManager mavenManager;
 	private Map<MavenArtifact, DefinedServiceInterfaceResolver> mavenIfaceResolvers = new HashMap<MavenArtifact, DefinedServiceInterfaceResolver>();
 	private CacheProvider cacheProvider;
+	private RepositoryServiceLevelAgreementProvider serviceLevelAgreementProvider = new RepositoryServiceLevelAgreementProvider(this);
 
 	private List<ClassProvidingArtifact> classProvidingArtifacts = new ArrayList<ClassProvidingArtifact>();
 	
@@ -658,7 +659,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@Override
 	public void reload(String id) {
-		reload(id, true);
+		reload(id, true, true);
 	}
 
 	@Override
@@ -698,6 +699,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 
 	@Override
 	public void reload(String id, boolean recursiveReload) {
+		reload(id, recursiveReload, true);
+	}
+
+	public void reload(String id, boolean recursiveReload, boolean rescanTypes) {
 		long reloadStarted = System.currentTimeMillis();
 		logger.info("Reloading: " + id + " (" + recursiveReload + ")");
 		if (recursiveReload) {
@@ -801,10 +806,12 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 			logSlowReloadPhase("repository reload event", id, started);
 		}
-		long started = System.currentTimeMillis();
-		// rescan so we don't have surprises later on, otherwise the first scan might be triggered by a shutdown which will trigger an infinite reload loop
-		scanForTypes();
-		logSlowReloadPhase("scan types", id, started);
+		if (rescanTypes) {
+			long started = System.currentTimeMillis();
+			// rescan so we don't have surprises later on, otherwise the first scan might be triggered by a shutdown which will trigger an infinite reload loop
+			scanForTypes();
+			logSlowReloadPhase("scan types", id, started);
+		}
 		logSlowReloadPhase("total reload", id, reloadStarted);
 	}
 	
@@ -1666,6 +1673,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				return authorizerProvider;
 			}
 			@Override
+			public be.nabu.libs.services.api.ServiceLevelAgreementProvider getServiceLevelAgreementProvider() {
+				return serviceLevelAgreementProvider;
+			}
+			@Override
 			public String getCorrelationId() {
 				if (CorrelationIdEnricher.getCorrelationId() != null) {
 					return CorrelationIdEnricher.getCorrelationId();
@@ -1687,6 +1698,10 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	public CacheProvider getCacheProvider() {
 		return cacheProvider;
+	}
+
+	public RepositoryServiceLevelAgreementProvider getServiceLevelAgreementProvider() {
+		return serviceLevelAgreementProvider;
 	}
 
 	@Override
