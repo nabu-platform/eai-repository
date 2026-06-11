@@ -88,6 +88,8 @@ import be.nabu.libs.authentication.api.Device;
 import be.nabu.libs.authentication.api.Token;
 import be.nabu.libs.authentication.api.principals.DevicePrincipal;
 import be.nabu.libs.property.ValueUtils;
+import be.nabu.libs.resources.ResourceReadableContainer;
+import be.nabu.libs.resources.ResourceUtils;
 import be.nabu.libs.resources.api.FiniteResource;
 import be.nabu.libs.resources.api.ManageableContainer;
 import be.nabu.libs.resources.api.ReadableResource;
@@ -595,6 +597,21 @@ public class EAIRepositoryUtils {
 			throw new FileNotFoundException("Can not find " + name);
 		}
 		return resource;
+	}
+
+	public static String readResource(ResourceEntry entry, String name) {
+		try {
+			Resource resource = ResourceUtils.resolve(entry.getContainer(), name);
+			if (resource == null) {
+				throw new IOException("Can not find " + name);
+			}
+			try (ResourceReadableContainer readable = new ResourceReadableContainer((ReadableResource) resource)) {
+				return new String(IOUtils.toBytes(readable), "UTF-8");
+			}
+		}
+		catch (IOException e) {
+			throw new RuntimeException(e);
+		}
 	}
 	
 	public static String uncamelify(String string) {

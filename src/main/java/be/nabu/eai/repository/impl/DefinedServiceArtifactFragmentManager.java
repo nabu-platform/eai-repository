@@ -160,5 +160,5 @@ public class DefinedServiceArtifactFragmentManager<T extends DefinedService> ext
 	public String getArtifactCategory() {
 		return ARTIFACT_CATEGORY;
 	}
-	
+
 }
