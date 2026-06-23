@@ -1,8 +1,8 @@
 package be.nabu.eai.repository.impl;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -15,18 +15,13 @@ import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import be.nabu.eai.repository.EAINode;
+import be.nabu.eai.repository.EAIRepositoryUtils;
 import be.nabu.eai.repository.EAIResourceRepository;
 import be.nabu.eai.repository.api.ArtifactFragmentManager;
 import be.nabu.eai.repository.api.DynamicEntry;
@@ -347,18 +342,11 @@ public abstract class BaseNodeMetadataArtifactFragmentManager<T extends Artifact
 					}
 					fragments.appendChild(fragmentElement);
 				}
-				Transformer transformer = TransformerFactory.newInstance().newTransformer();
-				transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-				transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-				transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
-				StringWriter writer = new StringWriter();
-				transformer.transform(new DOMSource(document), new StreamResult(writer));
-				return writer.toString();
+				ByteArrayOutputStream output = new ByteArrayOutputStream();
+				EAIRepositoryUtils.prettyPrint(document, output);
+				return new String(output.toByteArray(), StandardCharsets.UTF_8);
 			}
-			catch (ParserConfigurationException e) {
-				throw new RuntimeException(e);
-			}
-			catch (TransformerException e) {
+			catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 		}
