@@ -54,6 +54,11 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 	public String getArtifactType();
 	public String getArtifactCategory();
 	public List<ArtifactFragment> listFragments(T artifact);
+	/**
+	 * Resolve a read-only fragment alias owned by this artifact.
+	 * Called only after an exact indexed fragment lookup fails.
+	 */
+	public default ArtifactFragment resolveFragmentAlias(T artifact, String requestedArtifactId, String requestedPath) { return null; }
 	public List<Validation<?>> updateFragment(T artifact, String path, String oldContent, String newContent);
 	public default boolean shouldReloadAfterChange(String fragment) { return true; }
 	
