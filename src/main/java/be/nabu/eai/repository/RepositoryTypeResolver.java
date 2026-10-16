@@ -19,7 +19,9 @@ package be.nabu.eai.repository;
 
 import be.nabu.eai.repository.api.Repository;
 import be.nabu.libs.artifacts.api.Artifact;
+import be.nabu.libs.services.DefinedServiceInterfaceResolverFactory;
 import be.nabu.libs.services.api.DefinedService;
+import be.nabu.libs.services.api.DefinedServiceInterface;
 import be.nabu.libs.types.api.DefinedType;
 import be.nabu.libs.types.api.DefinedTypeResolver;
 
@@ -49,6 +51,12 @@ public class RepositoryTypeResolver implements DefinedTypeResolver {
 			}
 			else if ("output".equals(part)) {
 				return new DynamicallyDefinedComplexType(id + ":" + part, ((DefinedService) artifact).getServiceInterface().getOutputDefinition());
+			}
+		}
+		else if (artifact == null && ("input".equals(part) || "output".equals(part))) {
+			DefinedServiceInterface serviceInterface = DefinedServiceInterfaceResolverFactory.getInstance().getResolver().resolve(id);
+			if (serviceInterface != null) {
+				return new DynamicallyDefinedComplexType(id + ":" + part, "input".equals(part) ? serviceInterface.getInputDefinition() : serviceInterface.getOutputDefinition());
 			}
 		}
 		return null;
