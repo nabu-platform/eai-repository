@@ -25,6 +25,9 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -71,6 +74,47 @@ import be.nabu.utils.io.api.WritableContainer;
 public class RepositoryEntry implements ResourceEntry, ModifiableEntry, ModifiableNodeEntry, ExtensibleEntry {
 
 	private Logger logger = LoggerFactory.getLogger(getClass());
+	private static final long SLOW_EVENT_THRESHOLD = Long.getLong("reload.slow.phase.threshold", 5000L).longValue();
+	private static final boolean INVALIDATION_DIAGNOSTICS = Boolean.getBoolean("reload.node.invalidation.diagnostics");
+	private static final AtomicLong INVALIDATION_SEQUENCE = new AtomicLong();
+	private final AtomicReference<Invalidation> invalidation = new AtomicReference<Invalidation>();
+
+	private static final class Invalidation {
+		private final long token = INVALIDATION_SEQUENCE.incrementAndGet();
+		private final long created = System.currentTimeMillis();
+		private final String thread = Thread.currentThread().getName();
+		private final String origin;
+
+		private Invalidation() {
+			StackTraceElement[] stack = Thread.currentThread().getStackTrace();
+			StringBuilder builder = new StringBuilder();
+			for (int i = 3; i < Math.min(stack.length, 8); i++) {
+				if (builder.length() > 0) {
+					builder.append(" <- ");
+				}
+				builder.append(stack[i].getClassName()).append('.').append(stack[i].getMethodName()).append(':').append(stack[i].getLineNumber());
+			}
+			origin = builder.toString();
+		}
+	}
+
+	private void fireNodeEvent(NodeEvent event) {
+		Invalidation observed = INVALIDATION_DIAGNOSTICS ? invalidation.get() : null;
+		long started = System.nanoTime();
+		try {
+			repository.getEventDispatcher().fire(event, this);
+		}
+		finally {
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+			if (observed != null) {
+				logger.warn("Node lifecycle id={} token={} state={} done={} elapsedMs={} originThread={} thread={}",
+					getId(), observed.token, event.getState(), event.isDone(), elapsed, observed.thread, Thread.currentThread().getName());
+			}
+			if (elapsed >= SLOW_EVENT_THRESHOLD) {
+				logger.warn("Slow synchronous node event dispatch id={} state={} done={} elapsedMs={} (wall elapsed including handlers)", getId(), event.getState(), event.isDone(), elapsed);
+			}
+		}
+	}
 	
 	private ResourceContainer<?> container;
 	private RepositoryEntry parent;
@@ -128,12 +172,25 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		if (EAIResourceRepository.isDevelopment()) {
 			logger.info("Refreshing node for " + getId() + " due to expliciet reloadNode request (" + lastLoaded + ") " + includeData + " / " + recursive);
 		}
+		Invalidation marker = INVALIDATION_DIAGNOSTICS ? new Invalidation() : null;
+		if (marker != null) {
+			invalidation.set(marker);
+			logger.warn("Node invalidation id={} token={} cause=refresh includeData={} recursive={} originThread={} origin={} at={}",
+				getId(), marker.token, includeData, recursive, marker.thread, marker.origin, marker.created);
+		}
 		lastLoaded = null;
 		reloadNode = true;
 		if (includeData) {
 			refreshData();
 		}
-		rescan(recursive);
+		try {
+			rescan(recursive);
+		}
+		finally {
+			if (marker != null) {
+				logger.warn("Node refresh completed id={} token={} thread={}", getId(), marker.token, Thread.currentThread().getName());
+			}
+		}
 	}
 
 	public void refreshData() {
@@ -494,6 +551,10 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 	}
 	
 	public EAINode getNode() {
+		long started = System.nanoTime();
+		Invalidation observed = null;
+		boolean loadedFromResource = false;
+		try {
 		// if we have a node, even if it is outdated, we want the system to force us to reload it
 		// otherwise it leads to odd things because we tend to save (update node), then reload
 		// but on reload, the node sees "hey, new node.xml!" fetches it and (more importantly) that tosses the already loaded artifact, then claim "nope, not loaded yet"
@@ -501,16 +562,17 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			Resource resource = container.getChild("node.xml");
 			if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
 				synchronized(this) {
+					observed = INVALIDATION_DIAGNOSTICS ? invalidation.get() : null;
 					boolean isReload = false;
 					try {
 						if (resource != null && (node == null || lastLoaded == null || (resource instanceof TimestampedResource && ((TimestampedResource) resource).getLastModified().after(lastLoaded)))) {
 							if (node != null) {
 								isReload = true;
-								repository.getEventDispatcher().fire(new NodeEvent(getId(), node, State.RELOAD, false), this);
+								fireNodeEvent(new NodeEvent(getId(), node, State.RELOAD, false));
 								node = null;
 							}
 							else {
-								repository.getEventDispatcher().fire(new NodeEvent(getId(), null, State.LOAD, false), this);
+								fireNodeEvent(new NodeEvent(getId(), null, State.LOAD, false));
 							}
 							try {
 								ReadableContainer<ByteBuffer> readable = new ResourceReadableContainer((ReadableResource) resource);
@@ -518,6 +580,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 									node = (EAINode) getJAXBContext().createUnmarshaller().unmarshal(IOUtils.toInputStream(readable));
 									node.setEntry(this);
 									reloadNode = false;
+									loadedFromResource = true;
 								}
 								catch (JAXBException e) {
 									throw new IOException(e);
@@ -536,7 +599,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 							// trigger a reload _after_ we have updated the lastLoaded
 							// otherwise we can get into a loop, the reload triggers a start in the server, the start (e.g. for a web application) does a getNode()
 							// the getNode() sees the already loaded node but wants to reload it cause the timestamp is not clear, and triggers a reload etc etc
-							repository.getEventDispatcher().fire(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true), this);
+							fireNodeEvent(new NodeEvent(getId(), node, isReload ? State.RELOAD : State.LOAD, true));
 						}
 					}
 					catch (Exception e) {
@@ -546,6 +609,21 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			}
 		}
 		return node;
+		}
+		finally {
+			long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+			if (elapsed >= SLOW_EVENT_THRESHOLD) {
+				logger.warn("Slow getNode id={} elapsedMs={} (wall elapsed including lock wait, XML and synchronous events)", getId(), elapsed);
+			}
+			if (observed != null && observed == invalidation.get() && (loadedFromResource || elapsed >= SLOW_EVENT_THRESHOLD)) {
+				logger.warn("Node getNode id={} token={} loaded={} elapsedMs={} ageMs={} originThread={} origin={} thread={}",
+					getId(), observed.token, loadedFromResource, elapsed, System.currentTimeMillis() - observed.created,
+					observed.thread, observed.origin, Thread.currentThread().getName());
+			}
+			if (loadedFromResource && observed != null) {
+				invalidation.compareAndSet(observed, null);
+			}
+		}
 	}
 
 	@Override

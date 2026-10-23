@@ -44,6 +44,7 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -682,19 +683,20 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		}
 		if (dependenciesOnly) {
 			for (String id : dependenciesToReload) {
-				reload(id, false);
+				reload(id, false, false);
 			}
 		}
 		else {
-			ArrayList<String> cores = new ArrayList<String>(ids);
+			ArrayList<String> cores = new ArrayList<String>(new LinkedHashSet<String>(ids));
 			cores.removeAll(dependenciesToReload);
 			cores.addAll(dependenciesToReload);
 			for (String id : cores) {
-				reload(id, false);
+				reload(id, false, false);
 			}
 		}
 		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
+		scanForTypes();
 	}
 
 	@Override
@@ -779,7 +781,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 					// don't reload dependencies inside the entry, they have already been reloaded
 					if (!dependency.startsWith(entry.getId() + ".")) {
 						long dependencyStarted = System.currentTimeMillis();
-						reload(dependency, false);
+						reload(dependency, false, false);
 						long dependencyDuration = System.currentTimeMillis() - dependencyStarted;
 						reloadedDependencies++;
 						if (dependencyDuration > slowestDependencyDuration) {
@@ -919,9 +921,22 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	private void load(Entry entry) {
 		logger.info("Loading: " + entry.getId());
 		List<Entry> artifactRepositoryManagers = new ArrayList<Entry>();
-		long started = System.currentTimeMillis();
-		load(entry, artifactRepositoryManagers);
-		logSlowReloadPhase("load traversal", entry.getId(), started);
+		long started = System.nanoTime();
+		// A separate per-invocation accumulator avoids shared state across concurrent reloads.
+		TraversalTiming timing = new TraversalTiming();
+		try {
+			load(entry, artifactRepositoryManagers, timing);
+		}
+		finally {
+			long elapsed = System.nanoTime() - started;
+			if (TimeUnit.NANOSECONDS.toMillis(elapsed) >= SLOW_RELOAD_PHASE_LOG_THRESHOLD || Boolean.getBoolean("reload.traversal.diagnostics")) {
+				logger.warn("Load traversal root={} elapsedMs={} entries={} refreshMs={} metadataMs={} referencesTodosMs={} privateMavenMs={} traversalOwnMs={} slowestEntry={} slowestEntryMs={} (wall elapsed; buckets exclude recursive child time, metadata includes synchronous events)",
+					entry.getId(), TimeUnit.NANOSECONDS.toMillis(elapsed), timing.entries,
+					TimeUnit.NANOSECONDS.toMillis(timing.refresh), TimeUnit.NANOSECONDS.toMillis(timing.metadata),
+					TimeUnit.NANOSECONDS.toMillis(timing.references), TimeUnit.NANOSECONDS.toMillis(timing.privateMaven),
+					TimeUnit.NANOSECONDS.toMillis(timing.own), timing.slowestId, TimeUnit.NANOSECONDS.toMillis(timing.slowest));
+			}
+		}
 		// first load the repositories without dependencies
 		logger.info("Sorting artifact generators");
 		// if we optimize, we DON'T move the ones with no references to the front as this will trigger quite a few moves
@@ -1199,12 +1214,25 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		return blacklistedEntries;
 	}
 	
+	private static class TraversalTiming {
+		private long refresh, metadata, references, privateMaven, own, slowest;
+		private int entries;
+		private String slowestId;
+	}
+
 	@SuppressWarnings({ "rawtypes" })
-	private void load(Entry entry, List<Entry> artifactRepositoryManagers) {
+	private void load(Entry entry, List<Entry> artifactRepositoryManagers, TraversalTiming timing) {
+		long started = System.nanoTime();
+		long childTime = 0;
+		long measured = 0;
+		boolean skipped = false;
+		try {
 		// don't load...
 		if (entry.getId() != null && !entry.getId().trim().isEmpty() && getBlacklistedEntries().indexOf(entry.getId()) >= 0) {
+			skipped = true;
 			return;
 		}
+		long phase = System.nanoTime();
 		// don't refresh on initial load, this messes up performance for remote file systems
 		if (!isLoading && !isPreload(entry)) {
 			// refresh every entry before reloading it, there could be new elements (e.g. remote changes to repo)
@@ -1212,14 +1240,28 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// reset this to make sure any newly loaded entries are picked up or old entries are deleted
 			reset();
 		}
-		if (entry.isNode()) {
+		long duration = System.nanoTime() - phase;
+		timing.refresh += duration;
+		measured += duration;
+		phase = System.nanoTime();
+		boolean nodeEntry = entry.isNode();
+		if (nodeEntry) {
 			logger.info("Loading entry: " + entry.getId());
-			buildReferenceMap(entry.getId(), entry.getNode().getReferences());
+			Node node = entry.getNode();
+			duration = System.nanoTime() - phase;
+			timing.metadata += duration;
+			measured += duration;
+			phase = System.nanoTime();
+			buildReferenceMap(entry.getId(), node.getReferences());
 			updateTodos(entry.getId(), entry.getNode().getTodos());
 			if (entry instanceof ModifiableEntry && entry.isNode() && entry.getNode().getArtifactManager() != null && ArtifactRepositoryManager.class.isAssignableFrom(entry.getNode().getArtifactManager())) {
 				artifactRepositoryManagers.add(entry);
 			}
 		}
+		duration = System.nanoTime() - phase;
+		timing.references += duration;
+		measured += duration;
+		phase = System.nanoTime();
 		if (entry instanceof ResourceEntry) {
 			ResourceContainer<?> container = (ResourceContainer) ((ResourceEntry) entry).getContainer().getChild(PRIVATE);
 			if (container != null) {
@@ -1240,13 +1282,35 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 				}
 			}
 		}
+		duration = System.nanoTime() - phase;
+		timing.privateMaven += duration;
+		measured += duration;
 		if (!entry.isLeaf()) {
 			for (Entry child : entry) {
+				long childStarted = System.nanoTime();
 				try {
-					load(child, artifactRepositoryManagers);
+					try {
+						load(child, artifactRepositoryManagers, timing);
+					}
+					finally {
+						childTime += System.nanoTime() - childStarted;
+					}
 				}
 				catch (Exception e) {
 					logger.error("Can not load: " + child.getId(), e);
+				}
+			}
+		}
+		}
+		finally {
+			if (!skipped) {
+				long elapsed = System.nanoTime() - started;
+				long own = elapsed - childTime;
+				timing.entries++;
+				timing.own += own - measured;
+				if (own > timing.slowest) {
+					timing.slowest = own;
+					timing.slowestId = entry.getId();
 				}
 			}
 		}

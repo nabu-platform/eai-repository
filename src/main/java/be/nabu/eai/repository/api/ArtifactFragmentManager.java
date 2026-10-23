@@ -47,6 +47,10 @@ public interface ArtifactFragmentManager<T extends Artifact> {
 		 */
 		public Map<String, String> getProperties();
 	}
+	/** Optional stable content revision; null requires content comparison. */
+	public interface RevisionedArtifactFragment extends ArtifactFragment {
+		String getRevision();
+	}
 	/**
 	 * The logical type of artifact managed by this manager, used for manager and guideline resolution.
 	 * Need a stable slug for this, based on the "name" (prettified), but ideally provide a stable slug.
