@@ -68,6 +68,7 @@ import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.api.Templater;
 import be.nabu.eai.repository.artifacts.container.ContainerArtifactManager;
 import be.nabu.eai.repository.events.NodeEvent;
+import be.nabu.eai.repository.events.RepositoryCatalogChangedEvent;
 import be.nabu.eai.repository.events.RepositoryEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.eai.repository.events.RepositoryEvent.RepositoryState;
@@ -656,6 +657,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		preload(getRoot());
 		load(getRoot());
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
+		scanForTypes();
+		getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 	
 	@Override
@@ -697,6 +700,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 		reattachMavenArtifacts();
 		getEventDispatcher().fire(new RepositoryEvent(RepositoryState.RELOAD, true), this);
 		scanForTypes();
+		getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 
 	@Override
@@ -813,6 +817,9 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			// rescan so we don't have surprises later on, otherwise the first scan might be triggered by a shutdown which will trigger an infinite reload loop
 			scanForTypes();
 			logSlowReloadPhase("scan types", id, started);
+		}
+		if (recursiveReload || rescanTypes) {
+			getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		}
 		logSlowReloadPhase("total reload", id, reloadStarted);
 	}
@@ -1428,6 +1435,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		scanForTypes();
+		getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		return validations;
 	}
 	
@@ -1569,6 +1577,7 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	
 	@Override
 	public void unloadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
+		boolean changed = false;
 		Iterator<MavenArtifact> iterator = mavenArtifacts.iterator();
 		while(iterator.hasNext()) {
 			MavenArtifact mavenArtifact = iterator.next();
@@ -1588,8 +1597,13 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 						logger.error("Could not remove children of maven artifact: " + artifact, e);
 					}
 					iterator.remove();
+					changed = true;
 				}
 			}
+		}
+		if (changed) {
+			scanForTypes();
+			getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		}
 	}
 	
@@ -1597,6 +1611,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void loadMavenArtifact(be.nabu.libs.maven.api.Artifact artifact) {
 		if (mavenManager.getRepository().isInternal(artifact)) {
 			startMavenArtifact(mavenManager, artifact, false);
+			scanForTypes();
+			getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		}
 	}
 	
@@ -1604,6 +1620,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 	public void register(DomainRepository domainRepository) {
 		mavenRepositories.add(domainRepository);
 		startMavenRepository(domainRepository);
+		scanForTypes();
+		getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 	
 	@Override
@@ -1632,6 +1650,8 @@ public class EAIResourceRepository implements ResourceRepository, MavenRepositor
 			}
 		}
 		mavenRepositories.remove(domainRepository);
+		scanForTypes();
+		getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 	
 	private void startMavenRepository(ResourceContainer<?> target) throws IOException {

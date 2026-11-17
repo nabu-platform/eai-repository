@@ -49,6 +49,7 @@ import be.nabu.eai.repository.api.ModifiableNodeEntry;
 import be.nabu.eai.repository.api.ResourceEntry;
 import be.nabu.eai.repository.api.ResourceRepository;
 import be.nabu.eai.repository.events.NodeEvent;
+import be.nabu.eai.repository.events.RepositoryCatalogChangedEvent;
 import be.nabu.eai.repository.events.NodeEvent.State;
 import be.nabu.libs.resources.ResourceReadableContainer;
 import be.nabu.libs.resources.ResourceUtils;
@@ -340,6 +341,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			if (getContainer() instanceof CacheableResource) {
 				((CacheableResource) getContainer()).resetCache();
 			}
+			repository.getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		}
 	}
 	
@@ -412,6 +414,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		if (reload) {
 			repository.getEventDispatcher().fire(new NodeEvent(getId() + "." + name, node, State.CREATE, true), this);
 		}
+		repository.getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 		return (RepositoryEntry) child;
 	}
 	
@@ -419,6 +422,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		if (isNode()) {
 			try {
 				writeNode(getContainer(), getNode());
+				repository.getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 			}
 			catch (IOException e) {
 				throw new RuntimeException(e);
@@ -463,6 +467,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 			((EAIResourceRepository) repository).updateReferences(getId(), references);
 			((EAIResourceRepository) repository).updateTodos(getId(), node.getTodos());
 		}
+		repository.getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 	
 	@Override
@@ -472,6 +477,7 @@ public class RepositoryEntry implements ResourceEntry, ModifiableEntry, Modifiab
 		node.setVersion(version);
 		node.setLastModified(lastModified);
 		writeNode(getContainer(), node);
+		repository.getEventDispatcher().fire(new RepositoryCatalogChangedEvent(), this);
 	}
 	
 	private CollectionImpl collection;
